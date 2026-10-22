@@ -1,0 +1,5 @@
+# dsh-home bundle：挂 Node half（活动账本 + 同源围栏路由）与 client half
+# （替换左上角 logo 入口的首页仪表盘 + 侧栏条目）。
+- insert:
+    - id: dsh-home
+      name: '@vlln/dsh-home'
