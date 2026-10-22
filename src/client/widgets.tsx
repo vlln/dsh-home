@@ -277,39 +277,83 @@ function RunningBody({ t, data, sessions, now, actions }: WidgetProps) {
   )
 }
 
-function SessionsBody({ t, data, sessions, now, actions }: WidgetProps) {
-  const rows = topLevel(data)
-    .filter(session => session.todayTurns > 0)
-    .slice(0, 5)
-  if (rows.length === 0) return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.sessions.empty')}</Empty>
+function AreasBody({ t, data, actions }: WidgetProps) {
+  const groups = new Map<string, {
+    name: string
+    ms: number
+    sessions: number
+    lastAt: number
+    topLevelId?: string
+  }>()
+  // 子代理会话也算进它的工作区（时长归因要能对得上「今天」的总数）；
+  // 但点击只开顶层会话，只有子代理的组不可点。
+  for (const session of data?.sessions ?? []) {
+    if (session.todayMs <= 0 && session.todayTurns <= 0) continue
+    const key = session.cwd ?? ''
+    const name = key.split('/').filter(Boolean).pop() ?? t('unit.unknown')
+    const group = groups.get(key) ?? { name, ms: 0, sessions: 0, lastAt: 0 }
+    group.ms += session.todayMs
+    group.sessions += 1
+    const topLevelSession = session.parentSessionId === undefined && session.origin !== 'subagent'
+    if (topLevelSession && session.lastAt >= group.lastAt) {
+      group.lastAt = session.lastAt
+      group.topLevelId = session.id
+    }
+    groups.set(key, group)
+  }
+  const sorted = [...groups.values()].sort((left, right) => right.ms - left.ms)
+  const rows = sorted.slice(0, 5)
+  const rest = sorted.slice(5)
+  if (rows.length === 0) {
+    return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.areas.empty')}</Empty>
+  }
+  const restMs = rest.reduce((sum, group) => sum + group.ms, 0)
+  const restSessions = rest.reduce((sum, group) => sum + group.sessions, 0)
   return (
     <div className="dsh-rows">
-      {rows.map((session) => (
-        <button
-          key={session.id}
-          type="button"
-          className="dsh-row"
-          onClick={() => { actions.openSession(session.id) }}
-        >
+      {rows.map(group => {
+        const meta = (
+          <span className="dsh-row-meta">
+            {t('widget.areas.row', { dur: formatDuration(group.ms, t), sessions: group.sessions })}
+          </span>
+        )
+        const title = (
           <span className="dsh-row-top">
-            <span className="dsh-row-title">{sessionTitle(session, sessions, t)}</span>
-            <span className="dsh-row-arrow" aria-hidden="true">→</span>
+            <span className="dsh-row-title">{group.name}</span>
+            {group.topLevelId !== undefined && <span className="dsh-row-arrow" aria-hidden="true">→</span>}
+          </span>
+        )
+        return group.topLevelId === undefined
+          ? <div key={group.name} className="dsh-row dsh-row-static">{title}{meta}</div>
+          : (
+            <button
+              key={group.name}
+              type="button"
+              className="dsh-row"
+              onClick={() => { actions.openSession(group.topLevelId as string) }}
+            >
+              {title}
+              {meta}
+            </button>
+          )
+      })}
+      {rest.length > 0 && (
+        <div className="dsh-row dsh-row-static">
+          <span className="dsh-row-top">
+            <span className="dsh-row-title">{t('widget.areas.others', { count: rest.length })}</span>
           </span>
           <span className="dsh-row-meta">
-            {t('widget.sessions.row', {
-              turns: session.todayTurns,
-              dur: formatDuration(session.todayMs, t),
-            })}
+            {t('widget.areas.row', { dur: formatDuration(restMs, t), sessions: restSessions })}
           </span>
-        </button>
-      ))}
+        </div>
+      )}
     </div>
   )
 }
 
 function RhythmBody({ t, data }: WidgetProps) {
   const days = data?.days ?? []
-  if (days.length === 0) return <Empty>{t('widget.sessions.empty')}</Empty>
+  if (days.length === 0) return <Empty>{t('widget.rhythm.empty')}</Empty>
   const peak = Math.max(1, ...days.map(day => day.activeMs))
   const total = days.reduce((sum, day) => sum + day.activeMs, 0)
   const best = days.reduce((winner, day) => (day.activeMs > winner.activeMs ? day : winner), days[0]!)
@@ -377,8 +421,8 @@ export const BUILTIN_WIDGETS: readonly BuiltinWidget[] = [
     title: t => t('widget.running.title'), body: RunningBody,
   },
   {
-    id: 'sessions', order: 40, defaultSize: 's', Glyph: IconSessions,
-    title: t => t('widget.sessions.title'), body: SessionsBody,
+    id: 'areas', order: 40, defaultSize: 's', Glyph: IconSessions,
+    title: t => t('widget.areas.title'), body: AreasBody,
   },
   {
     id: 'rhythm', order: 50, defaultSize: 'm', Glyph: IconRhythm,

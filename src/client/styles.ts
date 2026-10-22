@@ -134,6 +134,8 @@ export const CSS = `
   outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: 1px;
 }
+.dsh-row-static { cursor: default; }
+.dsh-row-static:hover { background: transparent; }
 .dsh-row-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .dsh-row-arrow {
   flex: none;

@@ -1,7 +1,7 @@
 {
   "name": "@vlln/dsh-home",
   "description": "把 DSH 首页换成可自排的小组件仪表盘：最近活跃会话、今日时间带、在跑/在等、节律。",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "lib/index.mjs",
   "icon": "./icon.svg",

@@ -48,13 +48,13 @@ home（源不动）。
 | `__DSH_BOOT__` | 含 `{"id":"@vlln/dsh-home","url":"plugins/??@vlln/dsh-home/client.js…"}` |
 | 路由 | `POST /api {op:"snapshot"}` → `ok:true`；跨站 Origin → `forbidden` |
 | 渲染（playwright + 系统 Chrome） | 点 logo → `.dsh-home` 出现；6 张卡都有内容；console 0 error 0 warning |
-| 编辑 | 切 L → `data-size=l`；隐藏 → 5 张 + 「1 hidden」；全部显示 → 6；完成 |
+| 编辑 | 切 L → `data-size=l`；清单里隐藏 → 5 张、状态变「显示」；恢复 → 6；完成 |
 | 持久化 | 重进首页尺寸仍是 L；`layout.get` 返回同一份 |
 | 返回 | 「返回会话」后面板消失；点「继续」首行回到那个会话 |
 | 折叠态 | 点 rail 上的 logo → 展开侧栏，**不进首页** |
 | 窄屏 760px | 2 列，无横向溢出 |
 | 小组件清单 | 6 项；隐藏「在跑」→ 5 张卡、条目状态变「显示」；再点恢复 6 张 |
-| 拖拽 | 把手拖到「近两周」右半 → 落下后顺序为 `today,running,sessions,rhythm,continue,quick`，过程中有 1 个插入线标记 |
+| 拖拽 | 把手拖到「近两周」右半 → 落下后顺序为 `today,running,areas,rhythm,continue,quick`，过程中有 1 个插入线标记 |
 | 两步重置 | 第一次点只出现「确认恢复默认？」，第二次才生效：尺寸回 `m`、顺序回默认 |
 | Esc 分层 | 第一次关清单，第二次退出编辑（`tray=0`、`tools=0`） |
 | 刷新 | 标题旁 `↻` 存在；`账本更新于 刚刚` 文案随取数更新 |
@@ -76,7 +76,7 @@ pnpm pack             # vlln-dsh-home-<ver>.tgz → 装进隔离 home
 重装到隔离实例（**Node 半边改动必须重启进程**；client 半边装完刷新即可）：
 
 ```sh
-DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-0.1.0.tgz
+DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-<ver>.tgz
 # 重启 dsh web --port 0 --no-open，再跑 ui-check
 ```
 
@@ -101,7 +101,12 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
   都有明确的显示/隐藏开关，也是将来"添加第三方 widget"的入口。
 - **刷新放标题行，不放页脚**：六张卡时页脚在首屏之外，状态与刷新必须常驻可见。
 - **拖拽按落点左右半边决定前后**：只判断"落在哪张卡上"无法表达"插到它前面还是后面"，
-  插入线让结果可预期；键盘用 ← → 作为等价路径。
+  插入线让结果可预期；键盘用 ← → 作为等价路径；拖到视口上下 64px 内自动滚动。
+- **「今天动过」换成「今天按工作区」**：原来的会话列表与「继续」几乎同构（同一屏两份列表），
+  改成按 cwd 归因的时长后才提供新信息，也顺手把"工时表"这条线接上。子代理会话的时长并入
+  其工作区，让这张卡的和能对上「今天」的总数；超过 5 个工作区时补一行「其他 N 个工作区」。
+- **扫描中补拉**：首屏取数时账本可能还在扫（`scanning: true`），store 3 秒后自动补一次，
+  否则用户要等 60 秒才看到完整数字。
 
 ## 待办
 

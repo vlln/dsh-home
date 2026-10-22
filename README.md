@@ -31,7 +31,7 @@ dsh plugin --profile web add "github:vlln/dsh-home"
 
 ```sh
 pnpm pack
-dsh plugin --profile web add ./vlln-dsh-home-0.1.0.tgz
+dsh plugin --profile web add ./vlln-dsh-home-0.2.0.tgz
 ```
 
 **装不上时**：如果是 `pending (waiting for service: …)`，说明这版 dsh 的服务名变了，看下面的兼容性表。
@@ -71,7 +71,7 @@ dsh plugin --profile web add ./vlln-dsh-home-0.1.0.tgz
 | 继续 | 最近四个真动过的会话，停在多久之前、今天动了多久 | 会话日志的事件时间 |
 | 今天 | 24 小时活动带 + 在场时长 + agent 运行时长 | 同上 |
 | 在跑 | 此刻有 agent 在跑的会话 | 官方会话目录 |
-| 今天动过 | 今天碰过的会话与轮次/时长 | 会话日志 |
+| 今天按工作区 | 今天每个工作区的时长与会话数（含子代理时长，能对上总数） | 会话日志 + cwd |
 | 近两周 | 每日活跃时长柱状 + 峰值日 | 会话日志 |
 | 快捷 | 开新会话 / 回到上次会话 / 快捷键提示 | — |
 
@@ -103,7 +103,7 @@ ctx.slots.inject('home.widget', () => ctx.slots.register({
 
 - 数据是**观测式**的：插件启用后会回扫既有会话，之后按日志 `revision` 增量重折。
 - 空白会话不产生时长（没有事件）。
-- 子代理会话单独记账，也计入「今天」的总量；「继续 / 今天动过」只列顶层会话。
+- 子代理会话单独记账，也计入「今天」的总量；「继续」只列顶层会话，「今天按工作区」把子代理时长并入其工作区（所以能对上总数）。
 - 数字是**估算**，不是账单：它衡量的是"有人动过多久"，不是计费。
 
 ## 已知限制

@@ -59,6 +59,9 @@ export class HomeStore {
 
   private tick: ReturnType<typeof setInterval> | null = null
 
+  /** 账本还在扫描时的补拉定时器（首屏不应停在部分数据上等 60 秒）。 */
+  private followUp: ReturnType<typeof setTimeout> | null = null
+
   private saveTimer: ReturnType<typeof setTimeout> | null = null
 
   private sessionOff: (() => void) | null = null
@@ -126,6 +129,10 @@ export class HomeStore {
     try {
       const ledger = await fetchSnapshot()
       this.set({ ledger, loading: false, refreshing: false, error: null, lastLoadedAt: Date.now(), now: Date.now() })
+      if (ledger.scanning || ledger.scannedAt === null) {
+        if (this.followUp !== null) clearTimeout(this.followUp)
+        this.followUp = setTimeout(() => { this.followUp = null; void this.refresh() }, 3000)
+      }
     } catch (error) {
       this.set({ loading: false, refreshing: false, error: error instanceof Error ? error.message : String(error) })
     }
@@ -214,6 +221,7 @@ export class HomeStore {
     this.disposed = true
     if (this.timer !== null) clearInterval(this.timer)
     if (this.tick !== null) clearInterval(this.tick)
+    if (this.followUp !== null) clearTimeout(this.followUp)
     if (this.saveTimer !== null) clearTimeout(this.saveTimer)
     this.sessionOff?.()
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibility)

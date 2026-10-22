@@ -135,8 +135,15 @@ export function HomePage(props: HomePageProps): ReactNode {
     setDropSide(null)
   }, [dragging, dropTarget, dropSide, fallbackOrder, store])
 
-  const onPointerMove = useCallback((event: { clientX: number; clientY: number }) => {
+  const onPointerMove = useCallback((event: { clientX: number; clientY: number; currentTarget: EventTarget | null }) => {
     if (dragging === null) return
+    // 拖到视口上下边缘时自动滚动（长页面里把卡片拖到首屏之外）。
+    const container = (event.currentTarget as Element | null)?.closest('.dsh-home') as HTMLElement | null
+    if (container !== null) {
+      const rect = container.getBoundingClientRect()
+      if (event.clientY < rect.top + 64) container.scrollTop -= 14
+      else if (event.clientY > rect.bottom - 64) container.scrollTop += 14
+    }
     const element = document.elementFromPoint(event.clientX, event.clientY)
     const card = element?.closest('[data-widget-id]') as HTMLElement | null
     const id = card?.dataset.widgetId ?? null
