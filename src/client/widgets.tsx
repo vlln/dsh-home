@@ -11,7 +11,7 @@
 import type { ReactNode } from 'react'
 import type { LedgerSession, LedgerSnapshot, WidgetSize } from './api.ts'
 import type { SessionMeta } from './store.ts'
-import { formatAgo, formatDuration, shortcutHint, shortDay, type Translate } from './format.ts'
+import { formatAgo, formatDuration, hhmm, shortcutHint, shortDay, type Translate } from './format.ts'
 
 /** 导航动作（由 index.tsx 接到官方 `uiWorkspace` 上）。 */
 export interface WidgetActions {
@@ -92,9 +92,23 @@ function IconQuick() {
   )
 }
 
-/** 空的友好态（不画灰框，只给一句话）。 */
-function Empty({ children }: { children: ReactNode }) {
-  return <div className="dsh-empty">{children}</div>
+/** 空的友好态（不画灰框，只给一句话 + 可选动作）。 */
+function Empty({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  return (
+    <div className="dsh-empty">
+      <span>{children}</span>
+      {action}
+    </div>
+  )
+}
+
+/** 空态里的主行动（开个新会话）。 */
+function StartAction({ t, actions }: Pick<WidgetProps, 't' | 'actions'>) {
+  return (
+    <button type="button" className="dsh-empty-action" onClick={() => { actions.startSession() }}>
+      {t('widget.empty.action')}
+    </button>
+  )
 }
 
 /** 会话标题：官方标题 → 目录名 → 短 id。 */
@@ -129,7 +143,7 @@ function ContinueBody({ t, data, sessions, now, actions }: WidgetProps) {
   const rows = topLevel(data)
     .filter(session => session.turns > 0 && session.lastAt >= now - 14 * DAY_MS)
     .slice(0, 4)
-  if (rows.length === 0) return <Empty>{t('widget.continue.empty')}</Empty>
+  if (rows.length === 0) return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.continue.empty')}</Empty>
   return (
     <div className="dsh-rows">
       {rows.map((session) => {
@@ -147,6 +161,7 @@ function ContinueBody({ t, data, sessions, now, actions }: WidgetProps) {
             <span className="dsh-row-top">
               {live && <span className="dsh-row-live" />}
               <span className="dsh-row-title">{sessionTitle(session, sessions, t)}</span>
+              <span className="dsh-row-arrow" aria-hidden="true">→</span>
             </span>
             <span className="dsh-row-meta">
               {t('widget.continue.lastAt', { time: formatAgo(session.lastAt, now, t) })}
@@ -160,18 +175,22 @@ function ContinueBody({ t, data, sessions, now, actions }: WidgetProps) {
   )
 }
 
-function TodayBody({ t, data, now }: WidgetProps) {
+function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
   const start = startOfToday(now)
   const end = start + DAY_MS
-  const segments: { left: number; width: number }[] = []
+  const segments: { left: number; width: number; live: boolean; label: string }[] = []
+  let longest = 0
   for (const session of data?.sessions ?? []) {
     for (const [from, to] of session.clusters) {
       const begin = Math.max(from, start)
       const finish = Math.min(to, end)
       if (finish <= begin) continue
+      longest = Math.max(longest, finish - begin)
       segments.push({
         left: ((begin - start) / DAY_MS) * 100,
         width: Math.max(0.4, ((finish - begin) / DAY_MS) * 100),
+        live: finish >= now - 10 * 60_000,
+        label: `${hhmm(begin)}–${hhmm(finish)} · ${formatDuration(finish - begin, t)} · ${sessionTitle(session, sessions, t)}`,
       })
     }
   }
@@ -186,28 +205,37 @@ function TodayBody({ t, data, now }: WidgetProps) {
         <span className="dsh-label">{t('widget.today.focused')}</span>
       </div>
       {hasActivity ? (
-        <div className="dsh-band-track" aria-label={t('aria.band')} role="img">
-          {segments.map((segment, index) => (
-            <span
-              key={index}
-              className="dsh-band-seg"
-              data-now={segment.left + segment.width >= nowFraction - 0.5 ? 'true' : 'false'}
-              style={{ left: `${segment.left}%`, width: `${segment.width}%` }}
-            />
-          ))}
-          <span className="dsh-band-now" style={{ left: `${nowFraction}%` }} />
-        </div>
+        <>
+          <div className="dsh-band-track" aria-label={t('aria.band')} role="img">
+            {segments.map((segment, index) => (
+              <span
+                key={index}
+                className="dsh-band-seg"
+                data-now={segment.live ? 'true' : 'false'}
+                style={{ left: `${segment.left}%`, width: `${segment.width}%` }}
+                title={segment.label}
+              />
+            ))}
+            <span className="dsh-band-now" style={{ left: `${nowFraction}%` }} />
+          </div>
+          <div className="dsh-band-scale" aria-hidden="true">
+            <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
+          </div>
+        </>
       ) : (
-        <Empty>{t('widget.today.empty', { shortcut: shortcutHint() })}</Empty>
+        <Empty action={<StartAction t={t} actions={actions} />}>
+          {t('widget.today.empty', { shortcut: shortcutHint() })}
+        </Empty>
       )}
+      <div className="dsh-w-facts">
+        <span>{t('widget.today.stats', { sessions: data?.today.sessions ?? 0, turns: data?.today.turns ?? 0 })}</span>
+        {longest > 0 && <span>· {t('widget.today.longest', { dur: formatDuration(longest, t) })}</span>}
+      </div>
       <span className="dsh-muted">
         {t('widget.today.run', { dur: formatDuration(run, t) })}
         {' · '}
         {t('widget.today.waiting')}
       </span>
-      <div className="dsh-band-scale" aria-hidden="true">
-        <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
-      </div>
     </>
   )
 }
@@ -234,6 +262,7 @@ function RunningBody({ t, data, sessions, now, actions }: WidgetProps) {
               <span className="dsh-row-top">
                 <span className="dsh-row-live" />
                 <span className="dsh-row-title">{sessionTitle(ledger ?? { id: session.id, cwd: session.cwd }, sessions, t)}</span>
+                <span className="dsh-row-arrow" aria-hidden="true">→</span>
               </span>
               {ledger !== undefined && (
                 <span className="dsh-row-meta">
@@ -250,9 +279,9 @@ function RunningBody({ t, data, sessions, now, actions }: WidgetProps) {
 
 function SessionsBody({ t, data, sessions, now, actions }: WidgetProps) {
   const rows = topLevel(data)
-    .filter(session => session.todayMs > 0 || session.todayTurns > 0)
+    .filter(session => session.todayTurns > 0)
     .slice(0, 5)
-  if (rows.length === 0) return <Empty>{t('widget.sessions.empty')}</Empty>
+  if (rows.length === 0) return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.sessions.empty')}</Empty>
   return (
     <div className="dsh-rows">
       {rows.map((session) => (
@@ -264,6 +293,7 @@ function SessionsBody({ t, data, sessions, now, actions }: WidgetProps) {
         >
           <span className="dsh-row-top">
             <span className="dsh-row-title">{sessionTitle(session, sessions, t)}</span>
+            <span className="dsh-row-arrow" aria-hidden="true">→</span>
           </span>
           <span className="dsh-row-meta">
             {t('widget.sessions.row', {

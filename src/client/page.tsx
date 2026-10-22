@@ -1,10 +1,15 @@
 /**
  * 首页面板（`main` 槽，key = `home`）：标题行 + 小组件网格 + 编辑态。
  *
- * 网格是 3 列（窄屏 2/1 列），每张卡按 `data-size` 跨列。编辑态下每张卡的标题行
- * 右侧长出工具条：拖动把手（指针拖拽 + 方向键）、S/M/L 尺寸、隐藏、恢复默认。
- * 布局只存覆盖（order / size / hidden），默认排布由内置组件表 + `home.widget`
- * 槽的注册顺序合成——所以卸载一个 widget 包不会把别人的布局弄坏。
+ * 交互分三层：
+ * - **阅读态**：卡片只是数据；行可点（回到那个会话），时间带/柱状可悬停看明细。
+ * - **编辑态**（"编辑布局"）：每张卡长出工具条（拖动把手 / S·M·L / 隐藏），顶部出现
+ *   小组件清单（逐张显隐）、两步确认的「恢复默认」与「重建账本」；Esc 退出。
+ * - **拖拽**：把手按下后按落点左右半边决定插到目标前还是后，目标卡显示一条插入线；
+ *   键盘聚焦把手可用 ← → 调序。
+ *
+ * 布局只存覆盖（order / size / hidden），默认排布由内置表 + `home.widget` 槽的注册
+ * 顺序合成——卸载一个 widget 包不会把别人的布局弄坏。
  *
  * @module @vlln/dsh-home/client/page
  */
@@ -49,6 +54,30 @@ function sizeLabel(size: WidgetSize, t: Translate): string {
   return t(`edit.size.${size}`)
 }
 
+function RefreshGlyph({ spinning }: { spinning: boolean }) {
+  return (
+    <svg className={spinning ? 'dsh-spin' : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M13 8a5 5 0 1 1-1.5-3.57M13 3v2.6h-2.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/** 首屏骨架：三块卡片的形状，避免"暂无数据"闪一下。 */
+function SkeletonGrid() {
+  return (
+    <div className="dsh-home-grid" aria-hidden="true">
+      {[0, 1, 2].map(index => (
+        <div key={index} className="dsh-w dsh-w-skeleton" data-size={index === 0 ? 'm' : 's'}>
+          <div className="dsh-skeleton" style={{ width: '32%' }} />
+          <div className="dsh-skeleton" style={{ width: '64%', height: 22 }} />
+          <div className="dsh-skeleton" style={{ width: '88%' }} />
+          <div className="dsh-skeleton" style={{ width: '72%' }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /**
  * 渲染首页。
  * @param props 面板 props
@@ -57,13 +86,24 @@ export function HomePage(props: HomePageProps): ReactNode {
   const { t, renderSlot, store, widgets, actions, locale, rescan } = props
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
   const external = useSyncExternalStore(widgets.subscribe, widgets.getSnapshot, widgets.getSnapshot)
+
   // 编辑态是这一屏的临时状态：面板卸载即消失，不会跟着用户回到会话里。
   const [editing, setEditing] = useState(false)
+  const [trayOpen, setTrayOpen] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
   const [dragging, setDragging] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
+  const [dropSide, setDropSide] = useState<'before' | 'after' | null>(null)
 
   // 每次进入首页都拉一次最新数字（点 logo → 立刻是新的）。
   useEffect(() => { void store.refresh() }, [store])
+
+  // 恢复默认要两次：第一次只把按钮变成"确认恢复？"，4 秒后自动取消。
+  useEffect(() => {
+    if (!confirmReset) return
+    const timer = setTimeout(() => { setConfirmReset(false) }, 4000)
+    return () => { clearTimeout(timer) }
+  }, [confirmReset])
 
   const metas = useMemo(() => {
     const list: WidgetMeta[] = BUILTIN_WIDGETS.map(widget => ({
@@ -86,20 +126,28 @@ export function HomePage(props: HomePageProps): ReactNode {
   const visible = order.filter(id => !state.layout.hidden.includes(id))
   const hiddenCount = order.length - visible.length
 
-  const dragEnd = useCallback(() => {
-    if (dragging !== null && dropTarget !== null && dragging !== dropTarget) {
-      store.moveBefore(dragging, dropTarget, fallbackOrder)
+  const endDrag = useCallback(() => {
+    if (dragging !== null && dropTarget !== null && dropSide !== null && dragging !== dropTarget) {
+      store.moveRelative(dragging, dropTarget, dropSide, fallbackOrder)
     }
     setDragging(null)
     setDropTarget(null)
-  }, [dragging, dropTarget, fallbackOrder, store])
+    setDropSide(null)
+  }, [dragging, dropTarget, dropSide, fallbackOrder, store])
 
   const onPointerMove = useCallback((event: { clientX: number; clientY: number }) => {
     if (dragging === null) return
     const element = document.elementFromPoint(event.clientX, event.clientY)
     const card = element?.closest('[data-widget-id]') as HTMLElement | null
     const id = card?.dataset.widgetId ?? null
-    if (id !== null && id !== dragging) setDropTarget(id)
+    if (card === null || id === null || id === dragging) {
+      setDropTarget(null)
+      setDropSide(null)
+      return
+    }
+    const rect = card.getBoundingClientRect()
+    setDropTarget(id)
+    setDropSide(event.clientX > rect.left + rect.width / 2 ? 'after' : 'before')
   }, [dragging])
 
   const nudge = useCallback((id: string, delta: number) => {
@@ -107,9 +155,20 @@ export function HomePage(props: HomePageProps): ReactNode {
     const index = current.indexOf(id)
     const target = current[index + delta]
     if (target === undefined) return
-    // 往左：插到目标之前；往右：插到目标之后（= 目标的下一个元素之前）。
     store.moveBefore(id, delta < 0 ? target : current[index + delta + 1], fallbackOrder)
   }, [fallbackOrder, store])
+
+  // Esc：先取消拖拽，再关清单，最后退出编辑。
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      if (dragging !== null) { endDrag(); return }
+      if (trayOpen) { setTrayOpen(false); return }
+      if (editing) { setEditing(false); setConfirmReset(false) }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => { window.removeEventListener('keydown', onKeyDown) }
+  }, [dragging, endDrag, editing, trayOpen])
 
   const data = state.ledger
   const todaySummary = data === null
@@ -119,25 +178,40 @@ export function HomePage(props: HomePageProps): ReactNode {
       sessions: data.today.sessions,
       turns: data.today.turns,
     })
+  const showSkeleton = data === null && state.loading && state.error === null
 
   return (
     <div className="dsh-home">
       <div className="dsh-home-inner">
         <div className="dsh-home-head">
           <div className="dsh-home-heading">
-            <h1 className="dsh-home-title">{t('panel.title')}</h1>
+            <div className="dsh-home-title-row">
+              <h1 className="dsh-home-title">{t('panel.title')}</h1>
+              <button
+                type="button"
+                className="dsh-icon-button"
+                aria-label={t('action.refresh')}
+                title={t('action.refresh')}
+                onClick={() => { void store.refresh() }}
+              >
+                <RefreshGlyph spinning={state.refreshing} />
+              </button>
+              <span className="dsh-home-updated">
+                {state.lastLoadedAt === null
+                  ? t('summary.scanning')
+                  : t('summary.updated', { time: formatAgo(state.lastLoadedAt, state.now, t) })}
+                {data !== null && data.scanning ? ` · ${t('summary.scanning')}` : ''}
+              </span>
+            </div>
             <div className="dsh-home-sub" aria-live="polite">
-              <span>{t('panel.subtitle', { date: formatDay(state.now, locale()) })}</span>
+              <span>{formatDay(state.now, locale())}</span>
               <span className="dsh-home-dot" aria-hidden="true" />
               <span>{todaySummary}</span>
               {data !== null && data.week.sessions > 0 && (
                 <>
                   <span className="dsh-home-dot" aria-hidden="true" />
                   <span>
-                    {t('summary.week', {
-                      active: formatDuration(data.week.activeMs, t),
-                      sessions: data.week.sessions,
-                    })}
+                    {t('summary.week', { active: formatDuration(data.week.activeMs, t) })}
                   </span>
                 </>
               )}
@@ -150,7 +224,11 @@ export function HomePage(props: HomePageProps): ReactNode {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setEditing(!editing) }}
+              aria-pressed={editing}
+              onClick={() => {
+                setEditing(!editing)
+                if (editing) { setTrayOpen(false); setConfirmReset(false) }
+              }}
             >
               {editing ? t('action.done') : t('action.edit')}
             </Button>
@@ -170,15 +248,69 @@ export function HomePage(props: HomePageProps): ReactNode {
         )}
 
         {editing && (
-          <div className="dsh-edit-hint">
-            <span>{t('edit.hint')}</span>
-            <Button variant="ghost" size="sm" onClick={() => { store.reset() }}>{t('action.reset')}</Button>
-            <Button variant="ghost" size="sm" onClick={rescan}>{t('action.rescan')}</Button>
+          <div className="dsh-edit-bar">
+            <span className="dsh-edit-hint">{t('edit.hint')}</span>
+            <div className="dsh-edit-actions">
+              <Button
+                variant={trayOpen ? 'outline' : 'ghost'}
+                size="sm"
+                aria-expanded={trayOpen}
+                onClick={() => { setTrayOpen(!trayOpen) }}
+              >
+                {hiddenCount > 0 ? t('action.widgetsCount', { count: hiddenCount }) : t('action.widgets')}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                style={confirmReset ? { color: 'var(--dsw-alias-state-error-primary)' } : undefined}
+                onClick={() => {
+                  if (!confirmReset) { setConfirmReset(true); return }
+                  store.reset()
+                  setConfirmReset(false)
+                }}
+              >
+                {confirmReset ? t('action.resetConfirm') : t('action.reset')}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={rescan}>{t('action.rescan')}</Button>
+            </div>
           </div>
         )}
 
-        {visible.length === 0 ? (
-          <div className="dsh-empty">{t('empty.noWidgets')}</div>
+        {editing && trayOpen && (
+          <section className="dsh-tray" aria-label={t('tray.title')}>
+            <div className="dsh-tray-head">
+              <span className="dsh-tray-title">{t('tray.title')}</span>
+              <span className="dsh-muted">{t('tray.hint')}</span>
+            </div>
+            <div className="dsh-tray-list">
+              {metas.map((meta) => {
+                const hidden = state.layout.hidden.includes(meta.id)
+                return (
+                  <button
+                    key={meta.id}
+                    type="button"
+                    className="dsh-tray-item"
+                    data-hidden={hidden ? 'true' : 'false'}
+                    aria-pressed={!hidden}
+                    onClick={() => { store.toggleHidden(meta.id) }}
+                  >
+                    <span className="dsh-tray-glyph">{meta.Glyph !== undefined ? <meta.Glyph /> : null}</span>
+                    <span className="dsh-tray-name">{meta.title}</span>
+                    <span className="dsh-tray-state">{hidden ? t('tray.show') : t('tray.hide')}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {showSkeleton ? <SkeletonGrid /> : visible.length === 0 ? (
+          <div className="dsh-empty">
+            <span>{t('empty.noWidgets')}</span>
+            <Button variant="ghost" size="sm" onClick={() => { store.showAll(); setTrayOpen(false) }}>
+              {t('empty.restore')}
+            </Button>
+          </div>
         ) : (
           <div className="dsh-home-grid">
             {visible.map((id) => {
@@ -203,12 +335,12 @@ export function HomePage(props: HomePageProps): ReactNode {
                   data-widget-id={id}
                   data-size={size}
                   data-dragging={dragging === id ? 'true' : 'false'}
-                  data-droptarget={dropTarget === id ? 'true' : 'false'}
+                  data-drop={dropTarget === id ? dropSide ?? 'true' : 'false'}
                   aria-label={t('aria.widget', { title: meta.title })}
                 >
                   <div className="dsh-w-head">
                     {meta.Glyph !== undefined && <meta.Glyph />}
-                    <span className="dsh-w-title">{meta.title}</span>
+                    <h2 className="dsh-w-title">{meta.title}</h2>
                     {editing && (
                       <div className="dsh-tools">
                         <button
@@ -222,10 +354,11 @@ export function HomePage(props: HomePageProps): ReactNode {
                             event.currentTarget.setPointerCapture(event.pointerId)
                             setDragging(id)
                             setDropTarget(null)
+                            setDropSide(null)
                           }}
                           onPointerMove={onPointerMove}
-                          onPointerUp={dragEnd}
-                          onPointerCancel={dragEnd}
+                          onPointerUp={endDrag}
+                          onPointerCancel={endDrag}
                           onKeyDown={(event) => {
                             if (event.key === 'ArrowLeft') { event.preventDefault(); nudge(id, -1) }
                             if (event.key === 'ArrowRight') { event.preventDefault(); nudge(id, 1) }
@@ -265,21 +398,6 @@ export function HomePage(props: HomePageProps): ReactNode {
           </div>
         )}
 
-        {editing && hiddenCount > 0 && (
-          <div className="dsh-hidden-tray">
-            <span>{t('edit.hidden', { count: hiddenCount })}</span>
-            <Button variant="ghost" size="sm" onClick={() => { store.showAll() }}>
-              {t('edit.showAll')}
-            </Button>
-          </div>
-        )}
-
-        {data !== null && data.scannedAt !== null && (
-          <div className="dsh-muted" style={{ marginTop: 18 }}>
-            {t('summary.updated', { time: formatAgo(data.scannedAt, state.now, t) })}
-            {data.scanning ? ` · ${t('summary.scanning')}` : ''}
-          </div>
-        )}
       </div>
     </div>
   )

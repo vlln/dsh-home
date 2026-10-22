@@ -13,6 +13,7 @@ export type Translate = (key: string, params?: Record<string, string | number>) 
  * @param t 翻译
  */
 export function formatDuration(ms: number, t: Translate): string {
+  if (ms > 0 && ms < 60_000) return t('dur.lessThanMinute')
   const minutes = Math.max(0, Math.round(ms / 60_000))
   if (minutes <= 0) return t('dur.none')
   if (minutes < 60) return t('dur.minutes', { n: minutes })
@@ -46,7 +47,9 @@ export function formatAgo(time: number, now: number, t: Translate): string {
 export function formatDay(now: number, locale: string): string {
   const tag = locale === 'zh' || locale.startsWith('zh') ? 'zh-CN' : 'en-US'
   try {
-    return new Intl.DateTimeFormat(tag, { month: 'long', day: 'numeric', weekday: 'short' }).format(now)
+    const date = new Intl.DateTimeFormat(tag, { month: 'long', day: 'numeric' }).format(now)
+    const weekday = new Intl.DateTimeFormat(tag, { weekday: 'short' }).format(now)
+    return `${date} ${weekday}`
   } catch {
     return new Date(now).toDateString()
   }
@@ -68,6 +71,15 @@ export function shortDay(key: string): string {
 export function shortcutHint(): string {
   const platform = typeof navigator === 'undefined' ? '' : navigator.platform
   return /mac/i.test(platform) ? '⌘N' : 'Ctrl+N'
+}
+
+/**
+ * 时刻的 `HH:MM`（本地时区，24 小时制）。
+ * @param time 时刻
+ */
+export function hhmm(time: number): string {
+  const date = new Date(time)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 /**

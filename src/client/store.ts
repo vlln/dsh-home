@@ -28,7 +28,9 @@ export interface HomeState {
   layout: Layout
   sessions: Record<string, SessionMeta>
   loading: boolean
+  refreshing: boolean
   error: string | null
+  lastLoadedAt: number | null
   now: number
 }
 
@@ -45,13 +47,17 @@ export class HomeStore {
     layout: emptyLayout(),
     sessions: {},
     loading: true,
+    refreshing: false,
     error: null,
+    lastLoadedAt: null,
     now: Date.now(),
   }
 
   private readonly listeners = new Set<() => void>()
 
   private timer: ReturnType<typeof setInterval> | null = null
+
+  private tick: ReturnType<typeof setInterval> | null = null
 
   private saveTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -67,6 +73,8 @@ export class HomeStore {
         if (typeof document !== 'undefined' && document.hidden) return
         void this.refresh()
       }, REFRESH_MS)
+      // 相对时间（"停在 3 分钟前"）每 30 秒走一格，不必等下一次取数。
+      this.tick = setInterval(() => { this.set({ now: Date.now() }) }, 30_000)
       // 切回标签页立刻刷一次：隔夜回来不该看到昨天的账。
       document.addEventListener('visibilitychange', this.onVisibility)
     }
@@ -113,11 +121,13 @@ export class HomeStore {
 
   /** 拉一次账本快照。 */
   async refresh(): Promise<void> {
+    if (this.state.refreshing) return
+    this.set({ refreshing: true })
     try {
       const ledger = await fetchSnapshot()
-      this.set({ ledger, loading: false, error: null, now: Date.now() })
+      this.set({ ledger, loading: false, refreshing: false, error: null, lastLoadedAt: Date.now(), now: Date.now() })
     } catch (error) {
-      this.set({ loading: false, error: error instanceof Error ? error.message : String(error) })
+      this.set({ loading: false, refreshing: false, error: error instanceof Error ? error.message : String(error) })
     }
   }
 
@@ -146,6 +156,25 @@ export class HomeStore {
     const kept = this.state.layout.order.filter(id => known.has(id))
     const rest = fallbackOrder.filter(id => !kept.includes(id))
     return [...kept, ...rest]
+  }
+
+  /** 把 id 插到 target 前/后（拖拽落点用）。 */
+  moveRelative(id: string, target: string, side: 'before' | 'after', fallbackOrder: string[]): void {
+    if (id === target) return
+    const order = this.ordered(fallbackOrder).filter(item => item !== id)
+    const index = order.indexOf(target)
+    if (index < 0) return
+    order.splice(side === 'before' ? index : index + 1, 0, id)
+    this.set({ layout: { ...this.state.layout, order } })
+    this.persistSoon()
+  }
+
+  /** 显示/隐藏一张卡（编辑态的小组件清单用）。 */
+  toggleHidden(id: string): void {
+    const hidden = this.state.layout.hidden
+    const next = hidden.includes(id) ? hidden.filter(item => item !== id) : [...hidden, id]
+    this.set({ layout: { ...this.state.layout, hidden: next } })
+    this.persistSoon()
   }
 
   setSize(id: string, size: WidgetSize): void {
@@ -184,6 +213,7 @@ export class HomeStore {
   dispose(): void {
     this.disposed = true
     if (this.timer !== null) clearInterval(this.timer)
+    if (this.tick !== null) clearInterval(this.tick)
     if (this.saveTimer !== null) clearTimeout(this.saveTimer)
     this.sessionOff?.()
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibility)
