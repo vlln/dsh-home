@@ -1,10 +1,11 @@
 /**
  * 首页面板（`main` 槽，key = `home`）。
  *
- * 默认是**三件事**（`focus.tsx`）：回到现场 / 在等我 / 今天——固定、不可拖拽、不可隐藏。
- * 可编排的小组件网格退到「更多数据与小组件」里（opt-in），编辑态也只作用于那一层：
- * 拖动排序、S/M/L、隐藏、小组件清单、两步重置、重建账本。
+ * 两块，都可排序（拖拽自 `reorder.tsx`，window 级监听 + 保留落点 + 边缘自动滚动）：
+ * - **三件事**（`focus.tsx`）：回到现场 / 在等我 / 今天，纵向排列，顺序存在 `layout.focusOrder`；
+ * - **更多数据与小组件**（opt-in）：网格，顺序/尺寸/隐藏存在 `layout` 的其余字段。
  *
+ * 拖拽在阅读态就能用（把手常显），编辑态只负责尺寸 / 隐藏 / 清单 / 重置。
  * 记忆放在 `prefs`：`lastSeenAt` 支持"自上次以来"，`dismissed` 让"看过了"不等于
  * "永远别看"（会话有新活动就复活）。
  *
@@ -18,6 +19,7 @@ import { formatAgo, formatDay, formatDuration, type Translate } from './format.t
 import { BUILTIN_WIDGETS, type WidgetActions, type WidgetProps } from './widgets.tsx'
 import { FocusQueue, FocusResume, FocusToday, type SessionStatusMap } from './focus.tsx'
 import { CardBoundary } from './boundary.tsx'
+import { DragHandle, useReorder } from './reorder.tsx'
 import type { HomeStore } from './store.ts'
 import type { WidgetSize } from './api.ts'
 
@@ -52,21 +54,11 @@ export interface HomePageProps {
 
 const EMPTY_STATUSES: SessionStatusMap = new Map()
 
+/** 「三件事」的固定成员与默认顺序。 */
+const FOCUS_FALLBACK = ['resume', 'queue', 'today']
+
 /** 固定在三件事里、不进网格的内置卡。 */
 const FOCUS_IDS = new Set(['today'])
-
-/** 一张卡的正文：必须作为**子组件**渲染，错误边界才捕得到（直接调用 body() 会抛在
- * HomePage 自己的 render 里，边界捕不到，整块面板会被宿主的槽边界摘掉）。 */
-function WidgetBody({ meta, widgetProps, renderSlot, size }: {
-  meta: WidgetMeta
-  widgetProps: WidgetProps
-  renderSlot: HomePageProps['renderSlot']
-  size: WidgetSize
-}): ReactNode {
-  if (meta.builtin === undefined) return renderSlot('home.widget', { size }, { only: meta.id })
-  const Body = meta.builtin.body
-  return <Body {...widgetProps} />
-}
 
 function sizeLabel(size: WidgetSize, t: Translate): string {
   return t(`edit.size.${size}`)
@@ -107,6 +99,18 @@ function FocusSkeleton() {
   )
 }
 
+/** 一张卡的正文：必须作为**子组件**渲染，错误边界才捕得到。 */
+function WidgetBody({ meta, widgetProps, renderSlot, size }: {
+  meta: WidgetMeta
+  widgetProps: WidgetProps
+  renderSlot: HomePageProps['renderSlot']
+  size: WidgetSize
+}): ReactNode {
+  if (meta.builtin === undefined) return renderSlot('home.widget', { size }, { only: meta.id })
+  const Body = meta.builtin.body
+  return <Body {...widgetProps} />
+}
+
 /**
  * 渲染首页。
  * @param props 面板 props
@@ -125,9 +129,6 @@ export function HomePage(props: HomePageProps): ReactNode {
   const [editing, setEditing] = useState(false)
   const [trayOpen, setTrayOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
-  const [dragging, setDragging] = useState<string | null>(null)
-  const [dropTarget, setDropTarget] = useState<string | null>(null)
-  const [dropSide, setDropSide] = useState<'before' | 'after' | null>(null)
   const [resumeIndex, setResumeIndex] = useState(0)
   const [sinceCount, setSinceCount] = useState<number | null>(null)
   const seenRef = useRef(false)
@@ -144,7 +145,6 @@ export function HomePage(props: HomePageProps): ReactNode {
       )).length
       setSinceCount(count)
     }
-    // 首次访问没有"上次"，只把这次的看到时间记下来（否则永远不会有下次比较）。
     seenRef.current = true
     store.markSeen()
   }, [state.ledger, state.prefs.lastSeenAt, store])
@@ -177,102 +177,43 @@ export function HomePage(props: HomePageProps): ReactNode {
   const order = store.ordered(fallbackOrder)
   const visible = order.filter(id => !state.layout.hidden.includes(id))
   const hiddenCount = order.length - visible.length
+  const focusOrder = store.orderedFocus(FOCUS_FALLBACK)
 
-  /** 落点的 ref 镜像：pointerup 时读它，避免闭包拿到旧的 state。 */
-  const dropRef = useRef<{ target: string | null; side: 'before' | 'after' | null }>({ target: null, side: null })
+  const commitGrid = useCallback((id: string, target: string, side: 'before' | 'after') => {
+    store.moveRelative(id, target, side, fallbackOrder)
+  }, [fallbackOrder, store])
+  const commitFocus = useCallback((id: string, target: string, side: 'before' | 'after') => {
+    store.moveFocusRelative(id, target, side, FOCUS_FALLBACK)
+  }, [store])
 
-  // 拖拽用 window 级监听 + rAF 自动滚动，不用 pointer capture：capture 在手柄被重渲染
-  // 或指针离开元素时会丢事件，表现就是"拖了但没有落点"。
-  // 关键取舍：指针落在空白处时**保留上一个落点**，而不是清空——否则把卡片拖到两张卡之间
-  // 的缝里松手，就什么也不会发生（这是真实用户最容易踩的情况）。
-  useEffect(() => {
-    if (dragging === null) return
-    const container = document.querySelector('.dsh-home') as HTMLElement | null
-    let lastX = 0
-    let lastY = 0
-    let frame = 0
+  const gridDrag = useReorder('data-widget-id', commitGrid)
+  const focusDrag = useReorder('data-focus-id', commitFocus)
 
-    const hit = (): void => {
-      if (container === null) return
-      const element = document.elementFromPoint(lastX, lastY)
-      const card = element?.closest('[data-widget-id]') as HTMLElement | null
-      const id = card?.dataset.widgetId ?? null
-      if (card === null || id === null || id === dragging) return
-      const rect = card.getBoundingClientRect()
-      const side = lastX > rect.left + rect.width / 2 ? 'after' : 'before'
-      dropRef.current = { target: id, side }
-      setDropTarget(id)
-      setDropSide(side)
-    }
-
-    const onMove = (event: PointerEvent): void => {
-      lastX = event.clientX
-      lastY = event.clientY
-      hit()
-    }
-
-    // 边缘自动滚动按帧跑：只靠 pointermove 的话，指针停在边缘不动就不会再滚。
-    const tick = (): void => {
-      if (container !== null && (lastX !== 0 || lastY !== 0)) {
-        const rect = container.getBoundingClientRect()
-        const edge = 80
-        let delta = 0
-        if (lastY < rect.top + edge) delta = -Math.min(18, Math.ceil((rect.top + edge - lastY) / 5))
-        else if (lastY > rect.bottom - edge) delta = Math.min(18, Math.ceil((lastY - (rect.bottom - edge)) / 5))
-        if (delta !== 0) {
-          container.scrollTop += delta
-          hit()
-        }
-      }
-      frame = requestAnimationFrame(tick)
-    }
-
-    const onUp = (): void => {
-      const { target, side } = dropRef.current
-      if (target !== null && side !== null) store.moveRelative(dragging, target, side, fallbackOrder)
-      dropRef.current = { target: null, side: null }
-      setDragging(null)
-      setDropTarget(null)
-      setDropSide(null)
-    }
-
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onUp)
-    frame = requestAnimationFrame(tick)
-    return () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onUp)
-      cancelAnimationFrame(frame)
-    }
-  }, [dragging, fallbackOrder, store])
-
-  const nudge = useCallback((id: string, delta: number) => {
-    const current = store.ordered(fallbackOrder)
+  const nudge = useCallback((id: string, delta: number, focus: boolean) => {
+    const current = focus ? store.orderedFocus(FOCUS_FALLBACK) : store.ordered(fallbackOrder)
     const index = current.indexOf(id)
     const target = current[index + delta]
     if (target === undefined) return
-    store.moveBefore(id, delta < 0 ? target : current[index + delta + 1], fallbackOrder)
+    const after = current[index + delta + 1]
+    if (focus) {
+      store.moveFocusRelative(id, delta < 0 ? target : after ?? target, delta < 0 || after !== undefined ? 'before' : 'after', FOCUS_FALLBACK)
+      return
+    }
+    store.moveBefore(id, delta < 0 ? target : after, fallbackOrder)
   }, [fallbackOrder, store])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
-      if (dragging !== null) {
-        dropRef.current = { target: null, side: null }
-        setDragging(null)
-        setDropTarget(null)
-        setDropSide(null)
-        return
-      }
+      if (gridDrag.dragging !== null) { gridDrag.cancel(); return }
+      if (focusDrag.dragging !== null) { focusDrag.cancel(); return }
       if (trayOpen) { setTrayOpen(false); return }
       if (editing) { setEditing(false); setConfirmReset(false); return }
       if (expanded) setExpanded(false)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => { window.removeEventListener('keydown', onKeyDown) }
-  }, [dragging, editing, expanded, trayOpen])
+  }, [editing, expanded, focusDrag, gridDrag, trayOpen])
 
   const data = state.ledger
   const focusProps = {
@@ -291,6 +232,21 @@ export function HomePage(props: HomePageProps): ReactNode {
     : (data.today.activeMs === 0 ? t('panel.notStarted') : t('panel.today', { dur: formatDuration(data.today.activeMs, t) }))
 
   const dismiss = useCallback((id: string) => { store.dismiss(id) }, [store])
+
+  const focusHandle = (id: string): ReactNode => (
+    <DragHandle
+      label={t('edit.drag')}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return
+        event.preventDefault()
+        focusDrag.begin(id)
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'ArrowUp') { event.preventDefault(); nudge(id, -1, true) }
+        if (event.key === 'ArrowDown') { event.preventDefault(); nudge(id, 1, true) }
+      }}
+    />
+  )
 
   return (
     <div className="dsh-home">
@@ -350,24 +306,53 @@ export function HomePage(props: HomePageProps): ReactNode {
         )}
 
         {showSkeleton ? <FocusSkeleton /> : (
-          <>
-            <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
-              <FocusResume
-                {...focusProps}
-                index={resumeIndex}
-                onNext={() => { setResumeIndex(index => index + 1) }}
-                onDismiss={dismiss}
-              />
-            </CardBoundary>
-
-            <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
-              <FocusQueue {...focusProps} onDismiss={dismiss} />
-            </CardBoundary>
-
-            <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
-              <FocusToday {...focusProps} />
-            </CardBoundary>
-          </>
+          <div className="dsh-focus-stack">
+            {focusOrder.map((id) => {
+              const dragging = focusDrag.dragging === id
+              const drop = focusDrag.dropTarget === id ? focusDrag.dropSide ?? 'true' : 'false'
+              const common = {
+                key: id,
+                className: 'dsh-focus-item',
+                'data-focus-id': id,
+                'data-dragging': dragging ? 'true' : 'false',
+                'data-drop': drop,
+              } as const
+              if (id === 'resume') {
+                return (
+                  <div {...common}>
+                    <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
+                      <FocusResume
+                        {...focusProps}
+                        index={resumeIndex}
+                        onNext={() => { setResumeIndex(index => index + 1) }}
+                        onDismiss={dismiss}
+                        handle={focusHandle(id)}
+                      />
+                    </CardBoundary>
+                  </div>
+                )
+              }
+              if (id === 'queue') {
+                return (
+                  <div {...common}>
+                    <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
+                      <FocusQueue {...focusProps} onDismiss={dismiss} handle={focusHandle(id)} />
+                    </CardBoundary>
+                  </div>
+                )
+              }
+              if (id === 'today') {
+                return (
+                  <div {...common}>
+                    <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
+                      <FocusToday {...focusProps} handle={focusHandle(id)} />
+                    </CardBoundary>
+                  </div>
+                )
+              }
+              return null
+            })}
+          </div>
         )}
 
         <button
@@ -482,8 +467,8 @@ export function HomePage(props: HomePageProps): ReactNode {
                         className="dsh-w"
                         data-widget-id={id}
                         data-size={size}
-                        data-dragging={dragging === id ? 'true' : 'false'}
-                        data-drop={dropTarget === id ? dropSide ?? 'true' : 'false'}
+                        data-dragging={gridDrag.dragging === id ? 'true' : 'false'}
+                        data-drop={gridDrag.dropTarget === id ? gridDrag.dropSide ?? 'true' : 'false'}
                         data-editing={editing ? 'true' : 'false'}
                         aria-label={t('aria.widget', { title: meta.title })}
                       >
@@ -491,26 +476,18 @@ export function HomePage(props: HomePageProps): ReactNode {
                           {meta.Glyph !== undefined && <meta.Glyph />}
                           <h2 className="dsh-w-title">{meta.title}</h2>
                           <div className="dsh-tools">
-                            <button
-                              type="button"
-                              className="dsh-tool dsh-drag"
-                              aria-label={t('edit.drag')}
-                              title={t('edit.drag')}
+                            <DragHandle
+                              label={t('edit.drag')}
                               onPointerDown={(event) => {
                                 if (event.button !== 0) return
                                 event.preventDefault()
-                                dropRef.current = { target: null, side: null }
-                                setDragging(id)
-                                setDropTarget(null)
-                                setDropSide(null)
+                                gridDrag.begin(id)
                               }}
                               onKeyDown={(event) => {
-                                if (event.key === 'ArrowLeft') { event.preventDefault(); nudge(id, -1) }
-                                if (event.key === 'ArrowRight') { event.preventDefault(); nudge(id, 1) }
+                                if (event.key === 'ArrowLeft') { event.preventDefault(); nudge(id, -1, false) }
+                                if (event.key === 'ArrowRight') { event.preventDefault(); nudge(id, 1, false) }
                               }}
-                            >
-                              ⠿
-                            </button>
+                            />
                             {editing && (['s', 'm', 'l'] as const).map(option => (
                               <button
                                 key={option}

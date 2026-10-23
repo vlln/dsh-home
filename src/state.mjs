@@ -149,7 +149,10 @@ export function normalizeLayout(raw) {
   }
   const uniqueOrder = []
   for (const id of order) if (!uniqueOrder.includes(id)) uniqueOrder.push(id)
-  return { order: uniqueOrder, size, hidden: [...new Set(hidden)] }
+  const focusOrder = Array.isArray(raw.focusOrder) ? raw.focusOrder.filter(isWidgetId).slice(0, MAX_ENTRIES) : []
+  const uniqueFocus = []
+  for (const id of focusOrder) if (!uniqueFocus.includes(id)) uniqueFocus.push(id)
+  return { order: uniqueOrder, focusOrder: uniqueFocus, size, hidden: [...new Set(hidden)] }
 }
 
 /**

@@ -106,7 +106,12 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
 - **拖拽别用 pointer capture**：手柄在拖动中会被重渲染、指针也会离开元素，capture 一丢
   就没有 pointermove；更隐蔽的是"最后一次 pointermove 落在空白/视口外 → 落点被清空 →
   松手什么都不发生"。现在用 window 监听、**保留最后一个有效落点**、rAF 按帧自动滚动。
-  回归信号：`[data-widget-id]` 顺序 + 拖动中 `[data-drop]` 的出现/消失。
+  回归信号：`[data-widget-id]` / `[data-focus-id]` 顺序 + 拖动中 `[data-drop]` 的出现/消失。
+- **拖动期间必须禁文本选择**：`body.dsh-home-dragging { user-select: none }` + 卡片标题/眉标
+  行常驻 `user-select: none`。用户看到的"拖不动"其实是"选中了标题文字"——这是最容易被
+  误判成 bug 的表现。把手也要**常显**（0.5 透明度），悬停才出现等于没有。
+- 回归断言里不要用 `.dsh-tools` 数量当"编辑态"信号：阅读态每张卡也有一个把手。用
+  `[data-editing="true"]`。
 - 安装后 `dsh plugin add` 同一版本号**可能复用缓存副本**（`Already up to date`），产物没换。
   判据用 sha256 对比 `lib/client.js` 与 profile 里的副本，别信 mtime；换了产物必须**重启**
   host 再验（否则浏览器拿到的还是旧 bundle，会得到假阴性——本插件就在这上面栽过一次）。
@@ -139,8 +144,11 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
 - **卡内容必须作为子组件渲染**（`WidgetBody`），不能在 HomePage 的 render 里直接调
   `body(props)`：错误边界只捕**子孙**，直接调用会把异常抛在 HomePage 自己的 render 里，
   于是被宿主的槽边界接住、整块面板消失。这条是负控逼出来的（首版确实是这样坏的）。
-- **拖拽在阅读态就要可用**（悬停出现 `⠿`），编辑态只负责尺寸/隐藏/清单。把拖动藏在
-  "编辑布局"后面，用户的第一反应是"这些组件根本不能动"（0.3.0 的真实反馈）。
+- **拖拽在阅读态就要可用**，编辑态只负责尺寸/隐藏/清单。把拖动藏在"编辑布局"后面，
+  用户的第一反应是"这些组件根本不能动"（0.3.0 的真实反馈）。
+- **三件事也允许排序**（0.3.2）：用户第二次反馈"每个组件都不能改变位置"时，指的是这三张。
+  原设计把它们当固定产品面，代价是"顺序永远可预期"；现在改为可排序 + 恢复默认一起复位。
+  把手放在眉标行（回到现场）或标题行（在等我 / 今天），顺序存 `layout.focusOrder`。
 
 ## 待办
 

@@ -66,8 +66,9 @@ export function FocusResume(props: FocusProps & {
   index: number
   onNext: () => void
   onDismiss: (id: string) => void
+  handle?: ReactNode
 }): ReactNode {
-  const { t, data, sessions, statuses, dismissed, now, actions, index, onNext, onDismiss } = props
+  const { t, data, sessions, statuses, dismissed, now, actions, index, onNext, onDismiss, handle } = props
   const candidates = resumeCandidates(data, dismissed)
   const candidate = candidates.length === 0 ? undefined : candidates[index % candidates.length]
 
@@ -89,6 +90,7 @@ export function FocusResume(props: FocusProps & {
     <section className="dsh-focus" aria-label={t('aria.resume')}>
       <div className="dsh-focus-eyebrow-row">
         <span className="dsh-focus-eyebrow">{t('resume.eyebrow')}</span>
+        {handle}
         <button
           type="button"
           className="dsh-icon-button"
@@ -138,8 +140,8 @@ interface QueueItem {
 }
 
 /** 「在等我」：官方 sessionStatus 给的待审批 / 待回答 / 跑完没看。 */
-export function FocusQueue(props: FocusProps & { onDismiss: (id: string) => void }): ReactNode {
-  const { t, data, sessions, statuses, dismissed, now, actions, onDismiss } = props
+export function FocusQueue(props: FocusProps & { onDismiss: (id: string) => void; handle?: ReactNode }): ReactNode {
+  const { t, data, sessions, statuses, dismissed, now, actions, onDismiss, handle } = props
   const lastAt = new Map((data?.sessions ?? []).map(session => [session.id, session.lastAt]))
   const items: QueueItem[] = []
   for (const [id, status] of statuses) {
@@ -170,6 +172,7 @@ export function FocusQueue(props: FocusProps & { onDismiss: (id: string) => void
         <QueueGlyph />
         <h2 className="dsh-w-title">{t('queue.title')}</h2>
         {items.length > 0 && <span className="dsh-w-extra">{items.length}</span>}
+        {handle}
       </div>
       <div className="dsh-w-body">
         {items.length === 0 ? (
@@ -209,8 +212,8 @@ export function FocusQueue(props: FocusProps & { onDismiss: (id: string) => void
 }
 
 /** 「今天」：一条时间带 + 一个主数字 + 两句事实，不上数字墙。 */
-export function FocusToday(props: FocusProps): ReactNode {
-  const { t, data, sessions, now, actions } = props
+export function FocusToday(props: FocusProps & { handle?: ReactNode }): ReactNode {
+  const { t, data, sessions, now, actions, handle } = props
   const widget = BUILTIN_WIDGETS.find(item => item.id === 'today')
   const widgetProps: WidgetProps = { t, data, sessions, now, actions, size: 'l' }
   return (
@@ -218,6 +221,7 @@ export function FocusToday(props: FocusProps): ReactNode {
       <div className="dsh-w-head">
         <TodayGlyph />
         <h2 className="dsh-w-title">{t('widget.today.title')}</h2>
+        {handle}
         {data !== null && data.scanning && (
           <span className="dsh-w-extra">
             {t('today.progress', { done: data.progress.done, total: data.progress.total })}

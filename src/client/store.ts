@@ -202,6 +202,25 @@ export class HomeStore {
     return [...kept, ...rest]
   }
 
+  /** 「三件事」的实际顺序：默认顺序 + 用户覆盖。 */
+  orderedFocus(fallbackOrder: string[]): string[] {
+    const known = new Set(fallbackOrder)
+    const kept = this.state.layout.focusOrder.filter(id => known.has(id))
+    const rest = fallbackOrder.filter(id => !kept.includes(id))
+    return [...kept, ...rest]
+  }
+
+  /** 把「三件事」里的 id 插到 target 前/后。 */
+  moveFocusRelative(id: string, target: string, side: 'before' | 'after', fallbackOrder: string[]): void {
+    if (id === target) return
+    const order = this.orderedFocus(fallbackOrder).filter(item => item !== id)
+    const index = order.indexOf(target)
+    if (index < 0) return
+    order.splice(side === 'before' ? index : index + 1, 0, id)
+    this.set({ layout: { ...this.state.layout, focusOrder: order } })
+    this.persistSoon()
+  }
+
   /** 把 id 插到 target 前/后（拖拽落点用）。 */
   moveRelative(id: string, target: string, side: 'before' | 'after', fallbackOrder: string[]): void {
     if (id === target) return

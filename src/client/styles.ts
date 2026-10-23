@@ -340,6 +340,20 @@ export const CSS = `
 .dsh-band-seg { transition: opacity 120ms ease-out; }
 .dsh-band-seg:hover { opacity: 1; }
 .dsh-rhythm-col:hover .dsh-rhythm-bar { opacity: 1; }
+.dsh-focus-item { position: relative; }
+.dsh-focus-item[data-dragging="true"] { opacity: 0.5; }
+.dsh-focus-item[data-drop="before"]::before,
+.dsh-focus-item[data-drop="after"]::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--dsw-alias-state-business-primary);
+}
+.dsh-focus-item[data-drop="before"]::before { top: -6px; }
+.dsh-focus-item[data-drop="after"]::after { bottom: -6px; }
 .dsh-w[data-drop="before"]::before,
 .dsh-w[data-drop="after"]::after {
   content: '';
@@ -393,8 +407,9 @@ export const CSS = `
   box-shadow: inset 0 0 0 1px var(--dsw-alias-button-ghost-active-border);
 }
 .dsh-drag { cursor: grab; touch-action: none; }
-/* 阅读态只露一个拖拽把手（悬停/聚焦才出现），编辑态整条常显。 */
-.dsh-w-head .dsh-tools { opacity: 0; transition: opacity 120ms ease-out; }
+/* 阅读态常显一个半透明把手（曾经做成"悬停才出现"，用户根本没发现）；
+   悬停/聚焦/编辑态全显。 */
+.dsh-w-head .dsh-tools { opacity: 0.5; transition: opacity 120ms ease-out; }
 .dsh-w:hover .dsh-tools,
 .dsh-w:focus-within .dsh-tools,
 .dsh-w[data-editing="true"] .dsh-tools { opacity: 1; }
@@ -465,9 +480,11 @@ export const CSS = `
 .dsh-focus-stack { display: flex; flex-direction: column; gap: 12px; }
 .dsh-home-head + .dsh-focus,
 .dsh-home-head + .dsh-focus-stack { margin-top: 20px; }
-.dsh-focus + .dsh-w,
-.dsh-w + .dsh-w,
-.dsh-focus + .dsh-focus { margin-top: 12px; }
+.dsh-w + .dsh-w { margin-top: 12px; }
+/* 拖动期间禁掉文本选择：否则用户一按一拖选中的是标题文字，看起来像"拖不动"。 */
+body.dsh-home-dragging { user-select: none; cursor: grabbing; }
+body.dsh-home-dragging * { cursor: grabbing !important; }
+.dsh-w-head, .dsh-focus-eyebrow-row, .dsh-focus-title { user-select: none; }
 
 .dsh-focus {
   display: flex;

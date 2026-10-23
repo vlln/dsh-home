@@ -14,6 +14,8 @@ export type WidgetSize = 's' | 'm' | 'l'
 /** 用户布局（只存覆盖，默认值在页面侧合并）。 */
 export interface Layout {
   order: string[]
+  /** 「三件事」的纵向顺序（卡片 id：resume / queue / today）。 */
+  focusOrder: string[]
   size: Record<string, WidgetSize>
   hidden: string[]
 }
@@ -100,7 +102,7 @@ export function emptyPrefs(): Prefs {
 
 /** 空布局。 */
 export function emptyLayout(): Layout {
-  return { order: [], size: {}, hidden: [] }
+  return { order: [], focusOrder: [], size: {}, hidden: [] }
 }
 
 /** 取账本快照。 */
