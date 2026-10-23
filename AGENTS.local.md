@@ -18,7 +18,8 @@ src/state.mjs        state.json（布局/偏好，写得勤）+ ledger.json（�
 src/trust.mjs        Origin/Host 同源围栏（照 dsh-pr-inbox）
 src/client/index.tsx apply：字典、面板、侧栏条目、logo 入口
 src/client/page.tsx  三件事 + 「更多」网格 + 编辑态 + 拖拽
-src/client/focus.tsx 回到现场 / 在等我 / 今天（默认视图，不可拖拽）
+src/client/focus.tsx 回到现场 / 在等我 / 今天（默认视图；排序由 page 包一层）
+src/client/reorder.tsx 拖拽排序（window 监听 + 保留落点 + rAF 滚动 + 禁选中）
 src/client/boundary.tsx 单卡错误边界（第三方 widget 抛错只坏一张）
 src/client/widgets.tsx 内置卡（只画卡内，外壳由 page 提供）
 src/client/store.ts  快照/会话目录/布局/编辑态，useSyncExternalStore 契约

@@ -495,7 +495,8 @@ body.dsh-home-dragging * { cursor: grabbing !important; }
   border: 0.5px solid var(--dsw-alias-settings-card-stroke);
   background: var(--dsw-alias-settings-card-fill);
 }
-.dsh-focus-eyebrow-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dsh-focus-eyebrow-row { display: flex; align-items: center; gap: 8px; }
+.dsh-focus-eyebrow-row .dsh-icon-button { margin-left: auto; }
 .dsh-focus-eyebrow {
   font-size: 11px;
   line-height: 16px;
