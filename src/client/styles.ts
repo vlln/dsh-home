@@ -485,6 +485,9 @@ export const CSS = `
 body.dsh-home-dragging { user-select: none; cursor: grabbing; }
 body.dsh-home-dragging * { cursor: grabbing !important; }
 .dsh-w-head, .dsh-focus-eyebrow-row, .dsh-focus-title { user-select: none; }
+/* 标题行本身就是拖拽面：用户会先试着拖标题，而不是先找把手。 */
+.dsh-drag-surface { cursor: grab; }
+.dsh-drag-surface:active { cursor: grabbing; }
 
 .dsh-focus {
   display: flex;

@@ -316,6 +316,15 @@ export function HomePage(props: HomePageProps): ReactNode {
                 'data-focus-id': id,
                 'data-dragging': dragging ? 'true' : 'false',
                 'data-drop': drop,
+                onPointerDown: (event: { button: number; target: EventTarget | null; preventDefault: () => void }) => {
+                  if (event.button !== 0) return
+                  const target = event.target as Element | null
+                  if (target === null) return
+                  if (target.closest('button, a, input, textarea') !== null) return
+                  if (target.closest('.dsh-w-head, .dsh-focus-eyebrow-row, .dsh-focus-title') === null) return
+                  event.preventDefault()
+                  focusDrag.begin(id)
+                },
               } as const
               if (id === 'resume') {
                 return (
@@ -472,7 +481,15 @@ export function HomePage(props: HomePageProps): ReactNode {
                         data-editing={editing ? 'true' : 'false'}
                         aria-label={t('aria.widget', { title: meta.title })}
                       >
-                        <div className="dsh-w-head">
+                        <div
+                          className="dsh-w-head dsh-drag-surface"
+                          onPointerDown={(event) => {
+                            if (event.button !== 0) return
+                            if ((event.target as Element).closest('button, a, input, textarea') !== null) return
+                            event.preventDefault()
+                            gridDrag.begin(id)
+                          }}
+                        >
                           {meta.Glyph !== undefined && <meta.Glyph />}
                           <h2 className="dsh-w-title">{meta.title}</h2>
                           <div className="dsh-tools">
