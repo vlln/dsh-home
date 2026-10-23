@@ -393,6 +393,13 @@ export const CSS = `
   box-shadow: inset 0 0 0 1px var(--dsw-alias-button-ghost-active-border);
 }
 .dsh-drag { cursor: grab; touch-action: none; }
+/* 阅读态只露一个拖拽把手（悬停/聚焦才出现），编辑态整条常显。 */
+.dsh-w-head .dsh-tools { opacity: 0; transition: opacity 120ms ease-out; }
+.dsh-w:hover .dsh-tools,
+.dsh-w:focus-within .dsh-tools,
+.dsh-w[data-editing="true"] .dsh-tools { opacity: 1; }
+@media (hover: none) { .dsh-w-head .dsh-tools { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dsh-w-head .dsh-tools { transition: none; } }
 .dsh-drag:active { cursor: grabbing; }
 
 .dsh-chip {

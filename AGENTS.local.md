@@ -103,6 +103,10 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
 - Playwright 缓存的 chromium 版本可能和包要求的 build 不一致（1243 vs 1248）——用
   `channel: 'chrome'` 走系统 Chrome。
 - 同一个 widget id 既在内置表又在 `home.widget` 里时，内置优先（`metas` 去重）。
+- **拖拽别用 pointer capture**：手柄在拖动中会被重渲染、指针也会离开元素，capture 一丢
+  就没有 pointermove；更隐蔽的是"最后一次 pointermove 落在空白/视口外 → 落点被清空 →
+  松手什么都不发生"。现在用 window 监听、**保留最后一个有效落点**、rAF 按帧自动滚动。
+  回归信号：`[data-widget-id]` 顺序 + 拖动中 `[data-drop]` 的出现/消失。
 - 安装后 `dsh plugin add` 同一版本号**可能复用缓存副本**（`Already up to date`），产物没换。
   判据用 sha256 对比 `lib/client.js` 与 profile 里的副本，别信 mtime；换了产物必须**重启**
   host 再验（否则浏览器拿到的还是旧 bundle，会得到假阴性——本插件就在这上面栽过一次）。
@@ -135,6 +139,8 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
 - **卡内容必须作为子组件渲染**（`WidgetBody`），不能在 HomePage 的 render 里直接调
   `body(props)`：错误边界只捕**子孙**，直接调用会把异常抛在 HomePage 自己的 render 里，
   于是被宿主的槽边界接住、整块面板消失。这条是负控逼出来的（首版确实是这样坏的）。
+- **拖拽在阅读态就要可用**（悬停出现 `⠿`），编辑态只负责尺寸/隐藏/清单。把拖动藏在
+  "编辑布局"后面，用户的第一反应是"这些组件根本不能动"（0.3.0 的真实反馈）。
 
 ## 待办
 

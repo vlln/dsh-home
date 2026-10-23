@@ -178,35 +178,75 @@ export function HomePage(props: HomePageProps): ReactNode {
   const visible = order.filter(id => !state.layout.hidden.includes(id))
   const hiddenCount = order.length - visible.length
 
-  const endDrag = useCallback(() => {
-    if (dragging !== null && dropTarget !== null && dropSide !== null && dragging !== dropTarget) {
-      store.moveRelative(dragging, dropTarget, dropSide, fallbackOrder)
-    }
-    setDragging(null)
-    setDropTarget(null)
-    setDropSide(null)
-  }, [dragging, dropTarget, dropSide, fallbackOrder, store])
+  /** 落点的 ref 镜像：pointerup 时读它，避免闭包拿到旧的 state。 */
+  const dropRef = useRef<{ target: string | null; side: 'before' | 'after' | null }>({ target: null, side: null })
 
-  const onPointerMove = useCallback((event: { clientX: number; clientY: number; currentTarget: EventTarget | null }) => {
+  // 拖拽用 window 级监听 + rAF 自动滚动，不用 pointer capture：capture 在手柄被重渲染
+  // 或指针离开元素时会丢事件，表现就是"拖了但没有落点"。
+  // 关键取舍：指针落在空白处时**保留上一个落点**，而不是清空——否则把卡片拖到两张卡之间
+  // 的缝里松手，就什么也不会发生（这是真实用户最容易踩的情况）。
+  useEffect(() => {
     if (dragging === null) return
-    const container = (event.currentTarget as Element | null)?.closest('.dsh-home') as HTMLElement | null
-    if (container !== null) {
-      const rect = container.getBoundingClientRect()
-      if (event.clientY < rect.top + 64) container.scrollTop -= 14
-      else if (event.clientY > rect.bottom - 64) container.scrollTop += 14
+    const container = document.querySelector('.dsh-home') as HTMLElement | null
+    let lastX = 0
+    let lastY = 0
+    let frame = 0
+
+    const hit = (): void => {
+      if (container === null) return
+      const element = document.elementFromPoint(lastX, lastY)
+      const card = element?.closest('[data-widget-id]') as HTMLElement | null
+      const id = card?.dataset.widgetId ?? null
+      if (card === null || id === null || id === dragging) return
+      const rect = card.getBoundingClientRect()
+      const side = lastX > rect.left + rect.width / 2 ? 'after' : 'before'
+      dropRef.current = { target: id, side }
+      setDropTarget(id)
+      setDropSide(side)
     }
-    const element = document.elementFromPoint(event.clientX, event.clientY)
-    const card = element?.closest('[data-widget-id]') as HTMLElement | null
-    const id = card?.dataset.widgetId ?? null
-    if (card === null || id === null || id === dragging) {
+
+    const onMove = (event: PointerEvent): void => {
+      lastX = event.clientX
+      lastY = event.clientY
+      hit()
+    }
+
+    // 边缘自动滚动按帧跑：只靠 pointermove 的话，指针停在边缘不动就不会再滚。
+    const tick = (): void => {
+      if (container !== null && (lastX !== 0 || lastY !== 0)) {
+        const rect = container.getBoundingClientRect()
+        const edge = 80
+        let delta = 0
+        if (lastY < rect.top + edge) delta = -Math.min(18, Math.ceil((rect.top + edge - lastY) / 5))
+        else if (lastY > rect.bottom - edge) delta = Math.min(18, Math.ceil((lastY - (rect.bottom - edge)) / 5))
+        if (delta !== 0) {
+          container.scrollTop += delta
+          hit()
+        }
+      }
+      frame = requestAnimationFrame(tick)
+    }
+
+    const onUp = (): void => {
+      const { target, side } = dropRef.current
+      if (target !== null && side !== null) store.moveRelative(dragging, target, side, fallbackOrder)
+      dropRef.current = { target: null, side: null }
+      setDragging(null)
       setDropTarget(null)
       setDropSide(null)
-      return
     }
-    const rect = card.getBoundingClientRect()
-    setDropTarget(id)
-    setDropSide(event.clientX > rect.left + rect.width / 2 ? 'after' : 'before')
-  }, [dragging])
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    frame = requestAnimationFrame(tick)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      cancelAnimationFrame(frame)
+    }
+  }, [dragging, fallbackOrder, store])
 
   const nudge = useCallback((id: string, delta: number) => {
     const current = store.ordered(fallbackOrder)
@@ -219,14 +259,20 @@ export function HomePage(props: HomePageProps): ReactNode {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
-      if (dragging !== null) { endDrag(); return }
+      if (dragging !== null) {
+        dropRef.current = { target: null, side: null }
+        setDragging(null)
+        setDropTarget(null)
+        setDropSide(null)
+        return
+      }
       if (trayOpen) { setTrayOpen(false); return }
       if (editing) { setEditing(false); setConfirmReset(false); return }
       if (expanded) setExpanded(false)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => { window.removeEventListener('keydown', onKeyDown) }
-  }, [dragging, endDrag, editing, expanded, trayOpen])
+  }, [dragging, editing, expanded, trayOpen])
 
   const data = state.ledger
   const focusProps = {
@@ -438,49 +484,47 @@ export function HomePage(props: HomePageProps): ReactNode {
                         data-size={size}
                         data-dragging={dragging === id ? 'true' : 'false'}
                         data-drop={dropTarget === id ? dropSide ?? 'true' : 'false'}
+                        data-editing={editing ? 'true' : 'false'}
                         aria-label={t('aria.widget', { title: meta.title })}
                       >
                         <div className="dsh-w-head">
                           {meta.Glyph !== undefined && <meta.Glyph />}
                           <h2 className="dsh-w-title">{meta.title}</h2>
-                          {editing && (
-                            <div className="dsh-tools">
+                          <div className="dsh-tools">
+                            <button
+                              type="button"
+                              className="dsh-tool dsh-drag"
+                              aria-label={t('edit.drag')}
+                              title={t('edit.drag')}
+                              onPointerDown={(event) => {
+                                if (event.button !== 0) return
+                                event.preventDefault()
+                                dropRef.current = { target: null, side: null }
+                                setDragging(id)
+                                setDropTarget(null)
+                                setDropSide(null)
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === 'ArrowLeft') { event.preventDefault(); nudge(id, -1) }
+                                if (event.key === 'ArrowRight') { event.preventDefault(); nudge(id, 1) }
+                              }}
+                            >
+                              ⠿
+                            </button>
+                            {editing && (['s', 'm', 'l'] as const).map(option => (
                               <button
+                                key={option}
                                 type="button"
-                                className="dsh-tool dsh-drag"
-                                aria-label={t('edit.drag')}
-                                title={t('edit.drag')}
-                                onPointerDown={(event) => {
-                                  if (event.button !== 0) return
-                                  event.preventDefault()
-                                  event.currentTarget.setPointerCapture(event.pointerId)
-                                  setDragging(id)
-                                  setDropTarget(null)
-                                  setDropSide(null)
-                                }}
-                                onPointerMove={onPointerMove}
-                                onPointerUp={endDrag}
-                                onPointerCancel={endDrag}
-                                onKeyDown={(event) => {
-                                  if (event.key === 'ArrowLeft') { event.preventDefault(); nudge(id, -1) }
-                                  if (event.key === 'ArrowRight') { event.preventDefault(); nudge(id, 1) }
-                                }}
+                                className="dsh-tool"
+                                data-active={size === option ? 'true' : 'false'}
+                                aria-label={t('edit.size', { size: sizeLabel(option, t) })}
+                                aria-pressed={size === option}
+                                onClick={() => { store.setSize(id, option) }}
                               >
-                                ⠿
+                                {sizeLabel(option, t)}
                               </button>
-                              {(['s', 'm', 'l'] as const).map(option => (
-                                <button
-                                  key={option}
-                                  type="button"
-                                  className="dsh-tool"
-                                  data-active={size === option ? 'true' : 'false'}
-                                  aria-label={t('edit.size', { size: sizeLabel(option, t) })}
-                                  aria-pressed={size === option}
-                                  onClick={() => { store.setSize(id, option) }}
-                                >
-                                  {sizeLabel(option, t)}
-                                </button>
-                              ))}
+                            ))}
+                            {editing && (
                               <button
                                 type="button"
                                 className="dsh-tool"
@@ -490,8 +534,8 @@ export function HomePage(props: HomePageProps): ReactNode {
                               >
                                 ×
                               </button>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                         <div className="dsh-w-body">
                           <WidgetBody meta={meta} widgetProps={widgetProps} renderSlot={renderSlot} size={size} />

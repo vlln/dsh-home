@@ -37,7 +37,7 @@ dsh plugin --profile web add "github:vlln/dsh-home"
 
 ```sh
 pnpm pack
-dsh plugin --profile web add ./vlln-dsh-home-0.3.0.tgz
+dsh plugin --profile web add ./vlln-dsh-home-0.3.1.tgz
 ```
 
 ## 用起来
@@ -68,7 +68,7 @@ dsh plugin --profile web add ./vlln-dsh-home-0.3.0.tgz
 - **近两周**：每日活跃时长柱状；
 - **快捷**：开新会话 / 回到上次会话。
 
-点「编辑布局」后可以拖动排序（落点显示插入线，拖到边缘自动滚动，键盘 `←/→` 也可）、切 `小/中/大`、隐藏、在「小组件」清单里逐张显隐；「恢复默认」点两次才生效（第二次才真的清）。
+每张卡右上角的 `⠿` **悬停就出现，直接拖**——不用先进编辑态（拖到落点显示插入线，拖到上下边缘按帧自动滚动，键盘 `←/→` 也可调序）。「编辑布局」管的是另外三件事：切 `小/中/大`、隐藏、在「小组件」清单里逐张显隐；「恢复默认」点两次才生效。
 
 ![编辑布局](docs/preview/edit.png)
 
