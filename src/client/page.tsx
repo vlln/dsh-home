@@ -1,24 +1,23 @@
 /**
- * 首页面板（`main` 槽，key = `home`）：标题行 + 小组件网格 + 编辑态。
+ * 首页面板（`main` 槽，key = `home`）。
  *
- * 交互分三层：
- * - **阅读态**：卡片只是数据；行可点（回到那个会话），时间带/柱状可悬停看明细。
- * - **编辑态**（"编辑布局"）：每张卡长出工具条（拖动把手 / S·M·L / 隐藏），顶部出现
- *   小组件清单（逐张显隐）、两步确认的「恢复默认」与「重建账本」；Esc 退出。
- * - **拖拽**：把手按下后按落点左右半边决定插到目标前还是后，目标卡显示一条插入线；
- *   键盘聚焦把手可用 ← → 调序。
+ * 默认是**三件事**（`focus.tsx`）：回到现场 / 在等我 / 今天——固定、不可拖拽、不可隐藏。
+ * 可编排的小组件网格退到「更多数据与小组件」里（opt-in），编辑态也只作用于那一层：
+ * 拖动排序、S/M/L、隐藏、小组件清单、两步重置、重建账本。
  *
- * 布局只存覆盖（order / size / hidden），默认排布由内置表 + `home.widget` 槽的注册
- * 顺序合成——卸载一个 widget 包不会把别人的布局弄坏。
+ * 记忆放在 `prefs`：`lastSeenAt` 支持"自上次以来"，`dismissed` 让"看过了"不等于
+ * "永远别看"（会话有新活动就复活）。
  *
  * @module @vlln/dsh-home/client/page
  */
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { formatAgo, formatDay, formatDuration, type Translate } from './format.ts'
 import { BUILTIN_WIDGETS, type WidgetActions, type WidgetProps } from './widgets.tsx'
+import { FocusQueue, FocusResume, FocusToday, type SessionStatusMap } from './focus.tsx'
+import { CardBoundary } from './boundary.tsx'
 import type { HomeStore } from './store.ts'
 import type { WidgetSize } from './api.ts'
 
@@ -47,9 +46,28 @@ export interface HomePageProps {
   actions: WidgetActions
   locale: () => string
   rescan: () => void
+  /** 官方 sessionStatus 根钩子（缺席时队列为空）。 */
+  useSessionStatus?: (selector: (snapshot: SessionStatusMap) => unknown) => unknown
 }
 
-/** 三档尺寸的展示名。 */
+const EMPTY_STATUSES: SessionStatusMap = new Map()
+
+/** 固定在三件事里、不进网格的内置卡。 */
+const FOCUS_IDS = new Set(['today'])
+
+/** 一张卡的正文：必须作为**子组件**渲染，错误边界才捕得到（直接调用 body() 会抛在
+ * HomePage 自己的 render 里，边界捕不到，整块面板会被宿主的槽边界摘掉）。 */
+function WidgetBody({ meta, widgetProps, renderSlot, size }: {
+  meta: WidgetMeta
+  widgetProps: WidgetProps
+  renderSlot: HomePageProps['renderSlot']
+  size: WidgetSize
+}): ReactNode {
+  if (meta.builtin === undefined) return renderSlot('home.widget', { size }, { only: meta.id })
+  const Body = meta.builtin.body
+  return <Body {...widgetProps} />
+}
+
 function sizeLabel(size: WidgetSize, t: Translate): string {
   return t(`edit.size.${size}`)
 }
@@ -62,18 +80,29 @@ function RefreshGlyph({ spinning }: { spinning: boolean }) {
   )
 }
 
-/** 首屏骨架：三块卡片的形状，避免"暂无数据"闪一下。 */
-function SkeletonGrid() {
+function Chevron({ open }: { open: boolean }) {
   return (
-    <div className="dsh-home-grid" aria-hidden="true">
-      {[0, 1, 2].map(index => (
-        <div key={index} className="dsh-w dsh-w-skeleton" data-size={index === 0 ? 'm' : 's'}>
-          <div className="dsh-skeleton" style={{ width: '32%' }} />
-          <div className="dsh-skeleton" style={{ width: '64%', height: 22 }} />
-          <div className="dsh-skeleton" style={{ width: '88%' }} />
-          <div className="dsh-skeleton" style={{ width: '72%' }} />
-        </div>
-      ))}
+    <svg
+      width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"
+      style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 160ms ease-out' }}
+    >
+      <path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function FocusSkeleton() {
+  return (
+    <div className="dsh-focus-stack" aria-hidden="true">
+      <div className="dsh-focus dsh-w-skeleton">
+        <div className="dsh-skeleton" style={{ width: '18%' }} />
+        <div className="dsh-skeleton" style={{ width: '52%', height: 24 }} />
+        <div className="dsh-skeleton" style={{ width: '76%' }} />
+      </div>
+      <div className="dsh-w dsh-w-skeleton">
+        <div className="dsh-skeleton" style={{ width: '26%' }} />
+        <div className="dsh-skeleton" style={{ width: '64%' }} />
+      </div>
     </div>
   )
 }
@@ -83,37 +112,60 @@ function SkeletonGrid() {
  * @param props 面板 props
  */
 export function HomePage(props: HomePageProps): ReactNode {
-  const { t, renderSlot, store, widgets, actions, locale, rescan } = props
+  const { t, store, renderSlot, widgets, actions, locale, rescan } = props
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
   const external = useSyncExternalStore(widgets.subscribe, widgets.getSnapshot, widgets.getSnapshot)
 
-  // 编辑态是这一屏的临时状态：面板卸载即消失，不会跟着用户回到会话里。
+  // 官方根钩子：待审批 / 跑完没看。缺席时用常量 Map 兜底（同一个调用点，不条件调用）。
+  const readStatus = props.useSessionStatus
+    ?? ((selector: (snapshot: SessionStatusMap) => unknown) => selector(EMPTY_STATUSES))
+  const statuses = readStatus(snapshot => snapshot) as SessionStatusMap
+
+  const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [trayOpen, setTrayOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [dragging, setDragging] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [dropSide, setDropSide] = useState<'before' | 'after' | null>(null)
+  const [resumeIndex, setResumeIndex] = useState(0)
+  const [sinceCount, setSinceCount] = useState<number | null>(null)
+  const seenRef = useRef(false)
 
-  // 每次进入首页都拉一次最新数字（点 logo → 立刻是新的）。
   useEffect(() => { void store.refresh() }, [store])
 
-  // 恢复默认要两次：第一次只把按钮变成"确认恢复？"，4 秒后自动取消。
+  // "自上次以来"：只在拿到偏好与数据后算一次，然后把这次看到的时间记下来。
+  useEffect(() => {
+    if (seenRef.current || state.ledger === null) return
+    const previous = state.prefs.lastSeenAt
+    if (previous !== null) {
+      const count = state.ledger.sessions.filter(session => (
+        session.parentSessionId === undefined && session.turns > 0 && session.lastAt > previous
+      )).length
+      setSinceCount(count)
+    }
+    // 首次访问没有"上次"，只把这次的看到时间记下来（否则永远不会有下次比较）。
+    seenRef.current = true
+    store.markSeen()
+  }, [state.ledger, state.prefs.lastSeenAt, store])
+
   useEffect(() => {
     if (!confirmReset) return
     const timer = setTimeout(() => { setConfirmReset(false) }, 4000)
     return () => { clearTimeout(timer) }
   }, [confirmReset])
 
-  const metas = useMemo(() => {
-    const list: WidgetMeta[] = BUILTIN_WIDGETS.map(widget => ({
-      id: widget.id,
-      order: widget.order,
-      defaultSize: widget.defaultSize,
-      title: widget.title(t),
-      Glyph: widget.Glyph,
-      builtin: widget,
-    }))
+  const gridMetas = useMemo(() => {
+    const list: WidgetMeta[] = BUILTIN_WIDGETS
+      .filter(widget => !FOCUS_IDS.has(widget.id))
+      .map(widget => ({
+        id: widget.id,
+        order: widget.order,
+        defaultSize: widget.defaultSize,
+        title: widget.title(t),
+        Glyph: widget.Glyph,
+        builtin: widget,
+      }))
     for (const widget of external) {
       if (list.some(meta => meta.id === widget.id)) continue
       list.push({ ...widget, title: widget.title === '' ? t('widget.unknown') : widget.title })
@@ -121,7 +173,7 @@ export function HomePage(props: HomePageProps): ReactNode {
     return list.sort((left, right) => left.order - right.order)
   }, [external, t])
 
-  const fallbackOrder = useMemo(() => metas.map(meta => meta.id), [metas])
+  const fallbackOrder = useMemo(() => gridMetas.map(meta => meta.id), [gridMetas])
   const order = store.ordered(fallbackOrder)
   const visible = order.filter(id => !state.layout.hidden.includes(id))
   const hiddenCount = order.length - visible.length
@@ -137,7 +189,6 @@ export function HomePage(props: HomePageProps): ReactNode {
 
   const onPointerMove = useCallback((event: { clientX: number; clientY: number; currentTarget: EventTarget | null }) => {
     if (dragging === null) return
-    // 拖到视口上下边缘时自动滚动（长页面里把卡片拖到首屏之外）。
     const container = (event.currentTarget as Element | null)?.closest('.dsh-home') as HTMLElement | null
     if (container !== null) {
       const rect = container.getBoundingClientRect()
@@ -165,27 +216,35 @@ export function HomePage(props: HomePageProps): ReactNode {
     store.moveBefore(id, delta < 0 ? target : current[index + delta + 1], fallbackOrder)
   }, [fallbackOrder, store])
 
-  // Esc：先取消拖拽，再关清单，最后退出编辑。
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
       if (dragging !== null) { endDrag(); return }
       if (trayOpen) { setTrayOpen(false); return }
-      if (editing) { setEditing(false); setConfirmReset(false) }
+      if (editing) { setEditing(false); setConfirmReset(false); return }
+      if (expanded) setExpanded(false)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => { window.removeEventListener('keydown', onKeyDown) }
-  }, [dragging, endDrag, editing, trayOpen])
+  }, [dragging, endDrag, editing, expanded, trayOpen])
 
   const data = state.ledger
-  const todaySummary = data === null
-    ? (state.loading ? t('summary.scanning') : t('summary.empty'))
-    : t('summary.today', {
-      active: formatDuration(data.today.activeMs, t),
-      sessions: data.today.sessions,
-      turns: data.today.turns,
-    })
+  const focusProps = {
+    t,
+    data,
+    sessions: state.sessions,
+    statuses,
+    dismissed: state.prefs.dismissed,
+    now: state.now,
+    actions,
+    statusSource: props.useSessionStatus === undefined ? 'none' as const : 'runtime' as const,
+  }
   const showSkeleton = data === null && state.loading && state.error === null
+  const todayLabel = data === null
+    ? undefined
+    : (data.today.activeMs === 0 ? t('panel.notStarted') : t('panel.today', { dur: formatDuration(data.today.activeMs, t) }))
+
+  const dismiss = useCallback((id: string) => { store.dismiss(id) }, [store])
 
   return (
     <div className="dsh-home">
@@ -207,19 +266,20 @@ export function HomePage(props: HomePageProps): ReactNode {
                 {state.lastLoadedAt === null
                   ? t('summary.scanning')
                   : t('summary.updated', { time: formatAgo(state.lastLoadedAt, state.now, t) })}
-                {data !== null && data.scanning ? ` · ${t('summary.scanning')}` : ''}
               </span>
             </div>
             <div className="dsh-home-sub" aria-live="polite">
               <span>{formatDay(state.now, locale())}</span>
-              <span className="dsh-home-dot" aria-hidden="true" />
-              <span>{todaySummary}</span>
-              {data !== null && data.week.sessions > 0 && (
+              {todayLabel !== undefined && (
                 <>
                   <span className="dsh-home-dot" aria-hidden="true" />
-                  <span>
-                    {t('summary.week', { active: formatDuration(data.week.activeMs, t) })}
-                  </span>
+                  <span>{todayLabel}</span>
+                </>
+              )}
+              {sinceCount !== null && sinceCount > 0 && (
+                <>
+                  <span className="dsh-home-dot" aria-hidden="true" />
+                  <span>{t('panel.since', { count: sinceCount })}</span>
                 </>
               )}
             </div>
@@ -227,17 +287,6 @@ export function HomePage(props: HomePageProps): ReactNode {
           <div className="dsh-home-actions" role="group" aria-label={t('aria.actions')}>
             <Button variant="primary" size="sm" onClick={() => { actions.startSession() }}>
               {t('action.newSession')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              aria-pressed={editing}
-              onClick={() => {
-                setEditing(!editing)
-                if (editing) { setTrayOpen(false); setConfirmReset(false) }
-              }}
-            >
-              {editing ? t('action.done') : t('action.edit')}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => { actions.leave() }}>
               {t('action.back')}
@@ -254,157 +303,207 @@ export function HomePage(props: HomePageProps): ReactNode {
           </div>
         )}
 
-        {editing && (
-          <div className="dsh-edit-bar">
-            <span className="dsh-edit-hint">{t('edit.hint')}</span>
-            <div className="dsh-edit-actions">
-              <Button
-                variant={trayOpen ? 'outline' : 'ghost'}
-                size="sm"
-                aria-expanded={trayOpen}
-                onClick={() => { setTrayOpen(!trayOpen) }}
-              >
-                {hiddenCount > 0 ? t('action.widgetsCount', { count: hiddenCount }) : t('action.widgets')}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                style={confirmReset ? { color: 'var(--dsw-alias-state-error-primary)' } : undefined}
-                onClick={() => {
-                  if (!confirmReset) { setConfirmReset(true); return }
-                  store.reset()
-                  setConfirmReset(false)
-                }}
-              >
-                {confirmReset ? t('action.resetConfirm') : t('action.reset')}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={rescan}>{t('action.rescan')}</Button>
-            </div>
-          </div>
+        {showSkeleton ? <FocusSkeleton /> : (
+          <>
+            <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
+              <FocusResume
+                {...focusProps}
+                index={resumeIndex}
+                onNext={() => { setResumeIndex(index => index + 1) }}
+                onDismiss={dismiss}
+              />
+            </CardBoundary>
+
+            <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
+              <FocusQueue {...focusProps} onDismiss={dismiss} />
+            </CardBoundary>
+
+            <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
+              <FocusToday {...focusProps} />
+            </CardBoundary>
+          </>
         )}
 
-        {editing && trayOpen && (
-          <section className="dsh-tray" aria-label={t('tray.title')}>
-            <div className="dsh-tray-head">
-              <span className="dsh-tray-title">{t('tray.title')}</span>
-              <span className="dsh-muted">{t('tray.hint')}</span>
-            </div>
-            <div className="dsh-tray-list">
-              {metas.map((meta) => {
-                const hidden = state.layout.hidden.includes(meta.id)
-                return (
-                  <button
-                    key={meta.id}
-                    type="button"
-                    className="dsh-tray-item"
-                    data-hidden={hidden ? 'true' : 'false'}
-                    aria-pressed={!hidden}
-                    onClick={() => { store.toggleHidden(meta.id) }}
-                  >
-                    <span className="dsh-tray-glyph">{meta.Glyph !== undefined ? <meta.Glyph /> : null}</span>
-                    <span className="dsh-tray-name">{meta.title}</span>
-                    <span className="dsh-tray-state">{hidden ? t('tray.show') : t('tray.hide')}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-        )}
+        <button
+          type="button"
+          className="dsh-expand"
+          aria-expanded={expanded}
+          onClick={() => {
+            setExpanded(!expanded)
+            if (expanded) { setEditing(false); setTrayOpen(false) }
+          }}
+        >
+          <span>{expanded ? t('expand.hide') : t('expand.show', { count: Math.max(0, gridMetas.length - hiddenCount) })}</span>
+          <Chevron open={expanded} />
+        </button>
 
-        {showSkeleton ? <SkeletonGrid /> : visible.length === 0 ? (
-          <div className="dsh-empty">
-            <span>{t('empty.noWidgets')}</span>
-            <Button variant="ghost" size="sm" onClick={() => { store.showAll(); setTrayOpen(false) }}>
-              {t('empty.restore')}
-            </Button>
-          </div>
-        ) : (
-          <div className="dsh-home-grid">
-            {visible.map((id) => {
-              const meta = metas.find(item => item.id === id)
-              if (meta === undefined) return null
-              const size = state.layout.size[id] ?? meta.defaultSize
-              const widgetProps: WidgetProps = {
-                t,
-                data,
-                sessions: state.sessions,
-                now: state.now,
-                actions,
-                size,
-              }
-              const content = meta.builtin !== undefined
-                ? meta.builtin.body(widgetProps)
-                : renderSlot('home.widget', { size }, { only: id })
-              return (
-                <section
-                  key={id}
-                  className="dsh-w"
-                  data-widget-id={id}
-                  data-size={size}
-                  data-dragging={dragging === id ? 'true' : 'false'}
-                  data-drop={dropTarget === id ? dropSide ?? 'true' : 'false'}
-                  aria-label={t('aria.widget', { title: meta.title })}
+        {expanded && (
+          <>
+            <div className="dsh-edit-bar">
+              <span className="dsh-edit-hint">{t('edit.hint')}</span>
+              <div className="dsh-edit-actions">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-pressed={editing}
+                  onClick={() => {
+                    setEditing(!editing)
+                    if (editing) { setTrayOpen(false); setConfirmReset(false) }
+                  }}
                 >
-                  <div className="dsh-w-head">
-                    {meta.Glyph !== undefined && <meta.Glyph />}
-                    <h2 className="dsh-w-title">{meta.title}</h2>
-                    {editing && (
-                      <div className="dsh-tools">
-                        <button
-                          type="button"
-                          className="dsh-tool dsh-drag"
-                          aria-label={t('edit.drag')}
-                          title={t('edit.drag')}
-                          onPointerDown={(event) => {
-                            if (event.button !== 0) return
-                            event.preventDefault()
-                            event.currentTarget.setPointerCapture(event.pointerId)
-                            setDragging(id)
-                            setDropTarget(null)
-                            setDropSide(null)
-                          }}
-                          onPointerMove={onPointerMove}
-                          onPointerUp={endDrag}
-                          onPointerCancel={endDrag}
-                          onKeyDown={(event) => {
-                            if (event.key === 'ArrowLeft') { event.preventDefault(); nudge(id, -1) }
-                            if (event.key === 'ArrowRight') { event.preventDefault(); nudge(id, 1) }
-                          }}
-                        >
-                          ⠿
-                        </button>
-                        {(['s', 'm', 'l'] as const).map(option => (
-                          <button
-                            key={option}
-                            type="button"
-                            className="dsh-tool"
-                            data-active={size === option ? 'true' : 'false'}
-                            aria-label={t('edit.size', { size: sizeLabel(option, t) })}
-                            aria-pressed={size === option}
-                            onClick={() => { store.setSize(id, option) }}
-                          >
-                            {sizeLabel(option, t)}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          className="dsh-tool"
-                          aria-label={t('edit.hide')}
-                          title={t('edit.hide')}
-                          onClick={() => { store.hide(id) }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="dsh-w-body">{content}</div>
-                </section>
-              )
-            })}
-          </div>
-        )}
+                  {editing ? t('action.done') : t('action.edit')}
+                </Button>
+                {editing && (
+                  <>
+                    <Button
+                      variant={trayOpen ? 'outline' : 'ghost'}
+                      size="sm"
+                      aria-expanded={trayOpen}
+                      onClick={() => { setTrayOpen(!trayOpen) }}
+                    >
+                      {hiddenCount > 0 ? t('action.widgetsCount', { count: hiddenCount }) : t('action.widgets')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      style={confirmReset ? { color: 'var(--dsw-alias-state-error-primary)' } : undefined}
+                      onClick={() => {
+                        if (!confirmReset) { setConfirmReset(true); return }
+                        store.reset()
+                        setConfirmReset(false)
+                      }}
+                    >
+                      {confirmReset ? t('action.resetConfirm') : t('action.reset')}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={rescan}>{t('action.rescan')}</Button>
+                  </>
+                )}
+              </div>
+            </div>
 
+            {editing && trayOpen && (
+              <section className="dsh-tray" aria-label={t('tray.title')}>
+                <div className="dsh-tray-head">
+                  <span className="dsh-tray-title">{t('tray.title')}</span>
+                  <span className="dsh-muted">{t('tray.hint')}</span>
+                </div>
+                <div className="dsh-tray-list">
+                  {gridMetas.map((meta) => {
+                    const hidden = state.layout.hidden.includes(meta.id)
+                    return (
+                      <button
+                        key={meta.id}
+                        type="button"
+                        className="dsh-tray-item"
+                        data-hidden={hidden ? 'true' : 'false'}
+                        aria-pressed={!hidden}
+                        onClick={() => { store.toggleHidden(meta.id) }}
+                      >
+                        <span className="dsh-tray-glyph">{meta.Glyph !== undefined ? <meta.Glyph /> : null}</span>
+                        <span className="dsh-tray-name">{meta.title}</span>
+                        <span className="dsh-tray-state">{hidden ? t('tray.show') : t('tray.hide')}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+
+            {visible.length === 0 ? (
+              <div className="dsh-empty">
+                <span>{t('empty.noWidgets')}</span>
+                <Button variant="ghost" size="sm" onClick={() => { store.showAll(); setTrayOpen(false) }}>
+                  {t('empty.restore')}
+                </Button>
+              </div>
+            ) : (
+              <div className="dsh-home-grid">
+                {visible.map((id) => {
+                  const meta = gridMetas.find(item => item.id === id)
+                  if (meta === undefined) return null
+                  const size = state.layout.size[id] ?? meta.defaultSize
+                  const widgetProps: WidgetProps = {
+                    t,
+                    data,
+                    sessions: state.sessions,
+                    now: state.now,
+                    actions,
+                    size,
+                  }
+                  return (
+                    <CardBoundary key={id} fallback={<div className="dsh-w dsh-error">{t('error.card')}</div>}>
+                      <section
+                        className="dsh-w"
+                        data-widget-id={id}
+                        data-size={size}
+                        data-dragging={dragging === id ? 'true' : 'false'}
+                        data-drop={dropTarget === id ? dropSide ?? 'true' : 'false'}
+                        aria-label={t('aria.widget', { title: meta.title })}
+                      >
+                        <div className="dsh-w-head">
+                          {meta.Glyph !== undefined && <meta.Glyph />}
+                          <h2 className="dsh-w-title">{meta.title}</h2>
+                          {editing && (
+                            <div className="dsh-tools">
+                              <button
+                                type="button"
+                                className="dsh-tool dsh-drag"
+                                aria-label={t('edit.drag')}
+                                title={t('edit.drag')}
+                                onPointerDown={(event) => {
+                                  if (event.button !== 0) return
+                                  event.preventDefault()
+                                  event.currentTarget.setPointerCapture(event.pointerId)
+                                  setDragging(id)
+                                  setDropTarget(null)
+                                  setDropSide(null)
+                                }}
+                                onPointerMove={onPointerMove}
+                                onPointerUp={endDrag}
+                                onPointerCancel={endDrag}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'ArrowLeft') { event.preventDefault(); nudge(id, -1) }
+                                  if (event.key === 'ArrowRight') { event.preventDefault(); nudge(id, 1) }
+                                }}
+                              >
+                                ⠿
+                              </button>
+                              {(['s', 'm', 'l'] as const).map(option => (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  className="dsh-tool"
+                                  data-active={size === option ? 'true' : 'false'}
+                                  aria-label={t('edit.size', { size: sizeLabel(option, t) })}
+                                  aria-pressed={size === option}
+                                  onClick={() => { store.setSize(id, option) }}
+                                >
+                                  {sizeLabel(option, t)}
+                                </button>
+                              ))}
+                              <button
+                                type="button"
+                                className="dsh-tool"
+                                aria-label={t('edit.hide')}
+                                title={t('edit.hide')}
+                                onClick={() => { store.hide(id) }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="dsh-w-body">
+                          <WidgetBody meta={meta} widgetProps={widgetProps} renderSlot={renderSlot} size={size} />
+                        </div>
+                      </section>
+                    </CardBoundary>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

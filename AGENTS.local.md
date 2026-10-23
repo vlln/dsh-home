@@ -15,9 +15,11 @@ src/index.mjs        Node half：活动账本 + 同源围栏路由 /plugins/dsh-
 src/ledger.mjs       纯折叠：事件 → 天桶 + 活动簇（单测覆盖）
 src/state.mjs        $DSH_HOME/data/dsh-home/state.json 原子读写 + 布局校验
 src/trust.mjs        Origin/Host 同源围栏（照 dsh-pr-inbox）
-src/client/index.tsx apply：字典、面板、侧栏条目、logo 入口、面板进出钩子
-src/client/page.tsx  标题行 + 网格 + 编辑态 + 拖拽
-src/client/widgets.tsx 六张内置卡（只画卡内，外壳由 page 提供）
+src/client/index.tsx apply：字典、面板、侧栏条目、logo 入口
+src/client/page.tsx  三件事 + 「更多」网格 + 编辑态 + 拖拽
+src/client/focus.tsx 回到现场 / 在等我 / 今天（默认视图，不可拖拽）
+src/client/boundary.tsx 单卡错误边界（第三方 widget 抛错只坏一张）
+src/client/widgets.tsx 内置卡（只画卡内，外壳由 page 提供）
 src/client/store.ts  快照/会话目录/布局/编辑态，useSyncExternalStore 契约
 src/client/api.ts    POST 信封 + 类型
 src/client/styles.ts 注入式样式表（前缀 dsh-home，只用 --dsw-* token）
@@ -35,6 +37,14 @@ src/client/styles.ts 注入式样式表（前缀 dsh-home，只用 --dsw-* token
    只解第一帧（一条 60KB 的日志解出 167 字节），绕过官方就是自找格式债。
 3. **布局只存覆盖**：`{ order, size, hidden }` 里只出现用户动过的项；默认排布由内置表
    + `home.widget` 注册顺序合成，所以卸载一个 widget 包不会毁掉别人的布局。
+4. **默认是三件事，网格是 opt-in**（decisions/0005）：报表会衰减、N=1 时六张卡五张空、
+   布局编辑器维护成本最高而使用频率最低。首页先解决"接着干什么"。
+5. **记忆是首页的一部分**：`prefs.lastSeenAt` 支撑「自上次以来」，`prefs.dismissed`
+   让 dismiss 只静音到下一次有新活动。没有记忆的 home 只是海报。
+6. **折叠口径带版本号**（`FOLD_VERSION`）：改口径 → 整个账本重折；否则 revision 没变的旧
+   聚合会永远留着错数。
+7. **扫描有上界**：真实机器 974 条会话 / 2.1 GB 日志，按创建时间从新到旧、每批 4 条并发、
+   批间让出事件循环、每 1.5 秒落盘；`progress` 随快照下发，前端显示「正在整理 N/M」。
 
 ## 验证记录（2026-10-22，dsh 0.2.1-rc.1）
 
@@ -61,6 +71,11 @@ home（源不动）。
 | 时间带 tooltip | `11:26–11:28 · 2 分钟 · default-workspace` |
 | 隐藏持久化 | 隐藏「快捷」→ 刷新页面 → 仍 5 张 |
 | 负控 | 把 `inject` 改成 `['webServer','definitelyMissingService']` 重打包装进另一个 home → `dsh: warning: 1 entry did not activate` + `pending (waiting for service: …)` |
+| 三件事（0.3） | 默认只渲染 `.dsh-focus` + 队列 + 今天；`[data-widget-id]` 为 0；展开后 4 张 |
+| 记忆 | 「换一个」改变标题；dismiss 后当前会话不再出现；`prefs.dismissed` 落盘；同日再进页面不重复计入 |
+| sessionStatus | 队列节点带 `data-status-source="runtime"`（确认根钩子真的送到了 `main` 面板组件） |
+| 扫描进度 | 快照里 `progress.done/total` 随批量推进；`今日` 卡在扫描中显示「正在整理 N/M」 |
+| 错误边界（负控） | 把 `AreasBody` 改成 `throw` 另打一个 9.9.9 → 首页仍在、焦点卡仍在、3 张网格卡正常、只有那一张显示 `dsh-error`，console 有一条 `[dsh-home] widget failed` |
 
 截图：`docs/preview/home.png`、`docs/preview/edit.png`（2880×1800 @2x）。
 
@@ -108,9 +123,23 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
 - **扫描中补拉**：首屏取数时账本可能还在扫（`scanning: true`），store 3 秒后自动补一次，
   否则用户要等 60 秒才看到完整数字。
 
+## 第三轮（形态 pivot，0.3.0）的取舍
+
+- **删掉「继续 / 今天动过」**：「回到现场」替掉前者；后者与侧栏列表同构，信息重复。
+- **「今天按工作区」移进「更多」**：它是有用的第二层数据，但不该占首屏。
+- **空态要安静**：一天还没开始时不再摆"0 分钟 / 0 个会话 / agent 运行 0 分钟"三行零。
+- **队列依赖官方 `sessionStatus`**：`useSessionStatus` 是根标准钩子，`main` 面板组件能拿到
+  （用 `data-status-source` 断言过）。组合里没有它时只有空态。
+- **dismiss 语义是"静音到下次活动"**，不是永久隐藏：`dismissed[id] < lastAt` 就复活。
+- **卡内容必须作为子组件渲染**（`WidgetBody`），不能在 HomePage 的 render 里直接调
+  `body(props)`：错误边界只捕**子孙**，直接调用会把异常抛在 HomePage 自己的 render 里，
+  于是被宿主的槽边界接住、整块面板消失。这条是负控逼出来的（首版确实是这样坏的）。
+
 ## 待办
 
 - `conversation.hero.body` 上游提案（在空白会话输入框上方给一个官方槽）——有了它首页
   就能内嵌，而不只是一个面板。
 - 「未完成」卡：待审批 / 未发送草稿 / 未读子结果（需要 `ctx.status` 一类的接口）。
 - 周报导出（按工作区的工时表）。
+- snooze（"两小时后再提醒"）与"批量标记已读"。
+- logo 入口做成配置项（首页 / 新会话），并配一个快捷键入口。

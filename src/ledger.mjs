@@ -16,6 +16,16 @@
 /** 相邻事件超过这个间隔就算「离开过」，切新簇。 */
 export const IDLE_GAP_MS = 5 * 60_000
 
+/**
+ * 折叠口径版本：改动活跃阈值、配对规则、截断长度等"会影响结果"的逻辑时 +1。
+ * 账本里每个会话记着它被折时的版本，版本不一致就重折——否则修了口径之后，
+ * revision 没变的旧聚合会永远留着错数。
+ */
+export const FOLD_VERSION = 2
+
+/** 「回到现场」显示的原文截断长度。 */
+const SNIPPET_LENGTH = 160
+
 /** 活动簇保留窗口（只影响下发体积，不影响累计时长）。 */
 export const CLUSTER_WINDOW_MS = 45 * 24 * 3600_000
 
@@ -79,6 +89,7 @@ export function foldSession(header, events, now = Date.now()) {
   const days = {}
   const clusters = []
   const openSteps = new Map()
+  let lastUserText
   let turns = 0
   let runMs = 0
   let activeMs = 0
@@ -88,6 +99,19 @@ export function foldSession(header, events, now = Date.now()) {
     const time = typeof event?.time === 'number' ? event.time : undefined
     if (time === undefined) continue
     times.push(time)
+    if (event.type === 'user/message') {
+      const source = event.data?.source
+      const blocks = event.data?.content
+      if (source?.kind === 'user' && Array.isArray(blocks)) {
+        const text = blocks
+          .filter(block => block?.type === 'text' && typeof block.text === 'string')
+          .map(block => block.text)
+          .join('\n')
+          .replace(/\s+/g, ' ')
+          .trim()
+        if (text !== '') lastUserText = text.length > SNIPPET_LENGTH ? `${text.slice(0, SNIPPET_LENGTH)}…` : text
+      }
+    }
     if (event.type === 'turn/start') {
       turns += 1
       const day = days[dayKey(time)] ?? (days[dayKey(time)] = emptyDay())
@@ -142,6 +166,7 @@ export function foldSession(header, events, now = Date.now()) {
     turns,
     runMs,
     activeMs,
+    lastUserText,
     days,
     clusters: clusters.slice(-CLUSTER_LIMIT),
   }
@@ -189,6 +214,7 @@ export function buildSnapshot(state, { now = Date.now(), dayCount = 14, recentLi
 
   const recent = sessions.slice(0, recentLimit).map((session) => ({
     id: session.id,
+    lastUserText: session.lastUserText,
     cwd: session.cwd,
     createdAt: session.createdAt,
     parentSessionId: session.parentSessionId,
@@ -208,6 +234,7 @@ export function buildSnapshot(state, { now = Date.now(), dayCount = 14, recentLi
     generatedAt: now,
     scannedAt: state.scannedAt ?? null,
     scanning: state.scanning === true,
+    progress: state.progress ?? { done: 0, total: 0 },
     sessionCount: sessions.length,
     days,
     today,

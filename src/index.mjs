@@ -1,24 +1,27 @@
 /**
  * dsh-home 的 Node half：把会话日志折成活动账本，经一条同源围栏路由下发，
- * 并托管首页布局的读写。
+ * 并托管首页布局与偏好。
  *
  * 数据来源是官方的 `ctx.sessionPersistence`（`list` + `open(...,'read')` +
  * `read(0)`）——不直接读 `sessions/**.jsonl.zstd`：压缩帧、格式迁移（v0→v4）与
  * 撕裂尾部都归官方后端管，插件只消费逻辑事件流。
  *
- * 增量：按 `snapshot.revision` 判断会话是否变化，只重折变化的会话；其余直接复用
- * 上次结果。首次启用会回扫全部既有会话（后台分批，每 5 条落一次盘）。
+ * 增量与上界：
+ * - 每个会话记 `revision`（官方变更令牌）与 `foldVersion`（本插件的折叠口径版本）。
+ *   两者任一不匹配就重折；口径升级后旧聚合不会被留成错数。
+ * - 扫描按会话创建时间**从新到旧**分批（每批 4 条并发、批间让出事件循环），
+ *   每 1.5 秒落一次盘，随时可被打断——真实机器上有 900+ 条会话、2 GB 日志，
+ *   一次同步读完会让首页卡死几分钟。
+ * - 进度（`progress.done/total`）随快照下发，前端显示"正在整理历史 N/M"。
  *
- * 路由：`POST /plugins/dsh-home/api`，body `{ op }`，统一 `{ok,value}` /
- * `{ok:false,error}` 信封（与 dsh-pr-inbox / better-sidebar 同形）；带 `Origin`
- * 的请求必须同源（CSRF 围栏）。
+ * 落盘拆两份：`state.json`（布局 + 偏好，写得勤）与 `ledger.json`（会话聚合，写得少）。
  *
  * @module @vlln/dsh-home
  */
 
 import { isSameOrigin } from './trust.mjs'
-import { buildSnapshot, foldSession } from './ledger.mjs'
-import { loadState, normalizeLayout, saveState } from './state.mjs'
+import { buildSnapshot, foldSession, FOLD_VERSION } from './ledger.mjs'
+import { loadLedger, loadState, normalizeLayout, normalizePrefs, saveLedger, saveState } from './state.mjs'
 
 /** bundle 条目 id（= cordis.patch.yml 的 insert id）。 */
 export const PLUGIN_ID = 'dsh-home'
@@ -26,11 +29,17 @@ export const PLUGIN_ID = 'dsh-home'
 /** 前端取数路由（与 client/index.tsx 的 API_PATH 同源）。 */
 export const API_PATH = '/plugins/dsh-home/api'
 
-/** 路由体上限：只有 op 与一份布局，32 KiB 已经两个数量级余量。 */
+/** 路由体上限：只有 op、一份布局或偏好，32 KiB 足够。 */
 const BODY_LIMIT = 32 * 1024
 
 /** 快照触发的重扫阈值：60 秒内刚扫过就不再扫。 */
 const SCAN_TTL_MS = 60_000
+
+/** 每批并发读取的会话数。 */
+const SCAN_CONCURRENCY = 4
+
+/** 两次落盘之间的最小间隔（900 条会话的账本约几百 KB）。 */
+const PERSIST_INTERVAL_MS = 1500
 
 export const name = PLUGIN_ID
 
@@ -70,16 +79,25 @@ function send(res, status, body) {
 /**
  * 活动账本的进程内状态与扫描器。
  * @param ctx cordis 上下文（宿主半边）
- * @param routeOptions 注入点（测试可替换持久化实现）
+ * @param options 注入点（日志；测试可替换持久化实现）
  */
 export function createHomeService(ctx, { log = () => {} } = {}) {
   const state = loadState()
+  const ledger = loadLedger()
+  if (ledger.foldVersion !== FOLD_VERSION) {
+    // 口径升级：清空旧聚合与 scannedAt，下次快照就触发整份重折
+    // （留着旧的 scannedAt 会让"60 秒内刚扫过"的判断跳过重扫）。
+    ledger.sessions = {}
+    ledger.foldVersion = FOLD_VERSION
+    ledger.scannedAt = null
+  }
   /** @type {object | undefined} */
   let persistence
   let scanning = false
   let inflight = null
+  let progress = { done: 0, total: 0 }
 
-  const persist = () => {
+  const persistState = () => {
     try {
       saveState(state)
     } catch (error) {
@@ -87,58 +105,77 @@ export function createHomeService(ctx, { log = () => {} } = {}) {
     }
   }
 
+  const persistLedger = () => {
+    try {
+      saveLedger({ ...ledger, foldVersion: FOLD_VERSION })
+    } catch (error) {
+      log(`ledger write failed: ${error?.message ?? error}`)
+    }
+  }
+
+  const foldOne = async (snapshot) => {
+    const id = snapshot.header.id
+    const revision = String(snapshot.revision)
+    let handle
+    try {
+      handle = await persistence.open(id, 'read')
+      const { events } = await handle.read(0)
+      ledger.sessions[id] = { ...foldSession(snapshot.header, events), revision }
+    } catch (error) {
+      // 单条会话读不动（迁移中/损坏/权限）不该拖垮整次扫描；记下 revision
+      // 免得每次重试同一条坏会话。
+      log(`skip session ${id}: ${error?.message ?? error}`)
+      ledger.sessions[id] = { id, createdAt: snapshot.header.createdAt, revision, failed: true }
+    } finally {
+      if (handle !== undefined) await handle.close().catch(() => {})
+    }
+  }
+
   const scan = async () => {
     if (persistence === undefined) return
     if (inflight !== null) return inflight
     scanning = true
-    state.scanning = true
     inflight = (async () => {
       try {
         const snapshots = await persistence.list()
-        let processed = 0
-        for (const snapshot of snapshots) {
-          const id = snapshot.header.id
-          const revision = String(snapshot.revision)
-          const previous = state.sessions[id]
-          if (previous !== undefined && previous.revision === revision) continue
-          let handle
-          try {
-            handle = await persistence.open(id, 'read')
-            const { events } = await handle.read(0)
-            state.sessions[id] = { ...foldSession(snapshot.header, events), revision }
-            processed += 1
-          } catch (error) {
-            // 单条会话读不动（迁移中/损坏/权限）不该拖垮整次扫描。
-            log(`skip session ${id}: ${error?.message ?? error}`)
-          } finally {
-            if (handle !== undefined) await handle.close().catch(() => {})
+        // 最近创建的会话先折：首屏拿到的就是"最近在干什么"。
+        const pending = snapshots
+          .filter(snapshot => ledger.sessions[snapshot.header.id]?.revision !== String(snapshot.revision))
+          .sort((left, right) => right.header.createdAt - left.header.createdAt)
+        progress = { done: 0, total: pending.length }
+        let lastPersist = Date.now()
+        for (let index = 0; index < pending.length; index += SCAN_CONCURRENCY) {
+          const batch = pending.slice(index, index + SCAN_CONCURRENCY)
+          await Promise.all(batch.map(snapshot => foldOne(snapshot)))
+          progress = { done: Math.min(pending.length, index + batch.length), total: pending.length }
+          if (Date.now() - lastPersist > PERSIST_INTERVAL_MS) {
+            lastPersist = Date.now()
+            persistLedger()
           }
-          if (processed > 0 && processed % 5 === 0) {
-            await new Promise(resolve => setImmediate(resolve))
-            persist()
-          }
+          // 让出事件循环：扫描不能把用户在会话里的输入卡住。
+          await new Promise(resolve => setTimeout(resolve, 0))
         }
         const live = new Set(snapshots.map(snapshot => snapshot.header.id))
-        for (const id of Object.keys(state.sessions)) {
-          if (!live.has(id)) delete state.sessions[id]
+        for (const id of Object.keys(ledger.sessions)) {
+          if (!live.has(id)) delete ledger.sessions[id]
         }
-        state.scannedAt = Date.now()
+        ledger.scannedAt = Date.now()
+        ledger.foldVersion = FOLD_VERSION
       } catch (error) {
         log(`scan failed: ${error?.message ?? error}`)
       } finally {
         scanning = false
-        state.scanning = false
         inflight = null
-        persist()
+        persistLedger()
       }
     })()
     return inflight
   }
 
   const snapshot = () => {
-    const stale = state.scannedAt === null || Date.now() - state.scannedAt > SCAN_TTL_MS
+    const stale = ledger.scannedAt === null || Date.now() - ledger.scannedAt > SCAN_TTL_MS
     if (stale && !scanning) void scan()
-    return buildSnapshot({ ...state, scanning })
+    return buildSnapshot({ ...ledger, scanning, progress })
   }
 
   return {
@@ -150,13 +187,22 @@ export function createHomeService(ctx, { log = () => {} } = {}) {
     scan,
     snapshot,
     get state() { return state },
+    get ledger() { return ledger },
     setLayout(layout) {
       state.layout = layout
-      persist()
+      persistState()
       return state.layout
     },
     getLayout() {
       return state.layout
+    },
+    setPrefs(prefs) {
+      state.prefs = prefs
+      persistState()
+      return state.prefs
+    },
+    getPrefs() {
+      return state.prefs
     },
   }
 }
@@ -225,6 +271,14 @@ export function apply(ctx) {
             return
           }
           send(res, 200, { ok: true, value: { layout: service.setLayout(layout) } })
+          return
+        }
+        if (op === 'prefs.get') {
+          send(res, 200, { ok: true, value: { prefs: service.getPrefs() } })
+          return
+        }
+        if (op === 'prefs.set') {
+          send(res, 200, { ok: true, value: { prefs: service.setPrefs(normalizePrefs(body.prefs)) } })
           return
         }
         if (op === 'rescan') {

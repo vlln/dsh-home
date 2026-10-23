@@ -42,6 +42,8 @@ export interface LedgerSession {
   todayMs: number
   todayTurns: number
   clusters: [number, number][]
+  /** 最后一条人类输入的原文（截断），用于「回到现场」。 */
+  lastUserText?: string
 }
 
 /** 一次快照。 */
@@ -49,6 +51,8 @@ export interface LedgerSnapshot {
   generatedAt: number
   scannedAt: number | null
   scanning: boolean
+  /** 历史整理进度（done/total）；首屏可以据此说"还在整理"。 */
+  progress: { done: number; total: number }
   sessionCount: number
   days: DayBucket[]
   today: Omit<DayBucket, 'key'>
@@ -83,6 +87,17 @@ export async function post<T>(op: string, extra: Record<string, unknown> = {}): 
   return envelope.value as T
 }
 
+/** 首页偏好：上次看到的时间点 + 已 dismiss 的会话（新活动会让它复活）。 */
+export interface Prefs {
+  lastSeenAt: number | null
+  dismissed: Record<string, number>
+}
+
+/** 空偏好。 */
+export function emptyPrefs(): Prefs {
+  return { lastSeenAt: null, dismissed: {} }
+}
+
 /** 空布局。 */
 export function emptyLayout(): Layout {
   return { order: [], size: {}, hidden: [] }
@@ -102,6 +117,17 @@ export async function fetchLayout(): Promise<Layout | null> {
 /** 写用户布局。 */
 export function saveLayout(layout: Layout): Promise<Layout> {
   return post<{ layout: Layout }>('layout.set', { layout }).then(value => value.layout)
+}
+
+/** 取首页偏好。 */
+export async function fetchPrefs(): Promise<Prefs> {
+  const value = await post<{ prefs: Prefs }>('prefs.get')
+  return value.prefs
+}
+
+/** 写首页偏好。 */
+export function savePrefs(prefs: Prefs): Promise<Prefs> {
+  return post<{ prefs: Prefs }>('prefs.set', { prefs }).then(value => value.prefs)
 }
 
 /** 触发一次重扫（重建账本）。 */

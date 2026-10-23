@@ -43,14 +43,6 @@ export interface BuiltinWidget {
 
 const DAY_MS = 86_400_000
 
-function IconContinue() {
-  return (
-    <svg className="dsh-w-glyph" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
 function IconToday() {
   return (
     <svg className="dsh-w-glyph" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -139,42 +131,6 @@ function startOfToday(now: number): number {
   return date.getTime()
 }
 
-function ContinueBody({ t, data, sessions, now, actions }: WidgetProps) {
-  const rows = topLevel(data)
-    .filter(session => session.turns > 0 && session.lastAt >= now - 14 * DAY_MS)
-    .slice(0, 4)
-  if (rows.length === 0) return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.continue.empty')}</Empty>
-  return (
-    <div className="dsh-rows">
-      {rows.map((session) => {
-        const live = sessions[session.id]?.running === true
-        const meta = session.todayMs > 0
-          ? t('widget.continue.today', { dur: formatDuration(session.todayMs, t) })
-          : t('widget.continue.total', { dur: formatDuration(session.activeMs, t) })
-        return (
-          <button
-            key={session.id}
-            type="button"
-            className="dsh-row"
-            onClick={() => { actions.openSession(session.id) }}
-          >
-            <span className="dsh-row-top">
-              {live && <span className="dsh-row-live" />}
-              <span className="dsh-row-title">{sessionTitle(session, sessions, t)}</span>
-              <span className="dsh-row-arrow" aria-hidden="true">→</span>
-            </span>
-            <span className="dsh-row-meta">
-              {t('widget.continue.lastAt', { time: formatAgo(session.lastAt, now, t) })}
-              {' · '}
-              {meta}
-            </span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
   const start = startOfToday(now)
   const end = start + DAY_MS
@@ -198,6 +154,10 @@ function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
   const active = data?.today.activeMs ?? 0
   const run = data?.today.runMs ?? 0
   const hasActivity = segments.length > 0
+  if (!hasActivity && active === 0) {
+    // 一天还没开始：不要摆一个"0 分钟"的数字墙。
+    return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.today.empty', { shortcut: shortcutHint() })}</Empty>
+  }
   return (
     <>
       <div className="dsh-metric">
@@ -408,10 +368,6 @@ function QuickBody({ t, data, now, actions }: WidgetProps) {
 
 /** 内置小组件表：顺序即默认排布。 */
 export const BUILTIN_WIDGETS: readonly BuiltinWidget[] = [
-  {
-    id: 'continue', order: 10, defaultSize: 'm', Glyph: IconContinue,
-    title: t => t('widget.continue.title'), body: ContinueBody,
-  },
   {
     id: 'today', order: 20, defaultSize: 'm', Glyph: IconToday,
     title: t => t('widget.today.title'), body: TodayBody,

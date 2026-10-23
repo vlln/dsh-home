@@ -9,7 +9,8 @@
  */
 
 import {
-  emptyLayout, fetchLayout, fetchSnapshot, saveLayout, type Layout, type LedgerSnapshot, type WidgetSize,
+  emptyLayout, emptyPrefs, fetchLayout, fetchPrefs, fetchSnapshot, saveLayout, savePrefs,
+  type Layout, type LedgerSnapshot, type Prefs, type WidgetSize,
 } from './api.ts'
 
 /** 客户端会话目录里首页需要的那几个字段。 */
@@ -26,6 +27,7 @@ export interface SessionMeta {
 export interface HomeState {
   ledger: LedgerSnapshot | null
   layout: Layout
+  prefs: Prefs
   sessions: Record<string, SessionMeta>
   loading: boolean
   refreshing: boolean
@@ -45,6 +47,7 @@ export class HomeStore {
   private state: HomeState = {
     ledger: null,
     layout: emptyLayout(),
+    prefs: emptyPrefs(),
     sessions: {},
     loading: true,
     refreshing: false,
@@ -62,7 +65,9 @@ export class HomeStore {
   /** 账本还在扫描时的补拉定时器（首屏不应停在部分数据上等 60 秒）。 */
   private followUp: ReturnType<typeof setTimeout> | null = null
 
-  private saveTimer: ReturnType<typeof setTimeout> | null = null
+  private layoutTimer: ReturnType<typeof setTimeout> | null = null
+
+  private prefsTimer: ReturnType<typeof setTimeout> | null = null
 
   private sessionOff: (() => void) | null = null
 
@@ -71,6 +76,7 @@ export class HomeStore {
   constructor() {
     void this.refresh()
     void this.loadLayout()
+    void this.loadPrefs()
     if (typeof window !== 'undefined') {
       this.timer = setInterval(() => {
         if (typeof document !== 'undefined' && document.hidden) return
@@ -136,6 +142,37 @@ export class HomeStore {
     } catch (error) {
       this.set({ loading: false, refreshing: false, error: error instanceof Error ? error.message : String(error) })
     }
+  }
+
+  /** 拉首页偏好。 */
+  async loadPrefs(): Promise<void> {
+    try {
+      this.set({ prefs: await fetchPrefs() })
+    } catch {
+      // 偏好拿不到就退回空偏好：不影响阅读。
+    }
+  }
+
+  /** 记下"这次看到了"，下次进首页就能算"自上次以来"。 */
+  markSeen(): void {
+    if (this.state.prefs.lastSeenAt !== null
+      && Date.now() - this.state.prefs.lastSeenAt < 60_000) return
+    this.set({ prefs: { ...this.state.prefs, lastSeenAt: Date.now() } })
+    this.persistPrefsSoon()
+  }
+
+  /** "这条我看过了"：记下时间；会话有新活动后会重新出现。 */
+  dismiss(id: string): void {
+    this.set({ prefs: { ...this.state.prefs, dismissed: { ...this.state.prefs.dismissed, [id]: Date.now() } } })
+    this.persistPrefsSoon()
+  }
+
+  private persistPrefsSoon(): void {
+    if (this.prefsTimer !== null) clearTimeout(this.prefsTimer)
+    this.prefsTimer = setTimeout(() => {
+      this.prefsTimer = null
+      savePrefs(this.state.prefs).catch(() => {})
+    }, SAVE_DEBOUNCE_MS)
   }
 
   /** 拉用户布局（失败就用默认布局，不拦页面）。 */
@@ -208,9 +245,9 @@ export class HomeStore {
   }
 
   private persistSoon(): void {
-    if (this.saveTimer !== null) clearTimeout(this.saveTimer)
-    this.saveTimer = setTimeout(() => {
-      this.saveTimer = null
+    if (this.layoutTimer !== null) clearTimeout(this.layoutTimer)
+    this.layoutTimer = setTimeout(() => {
+      this.layoutTimer = null
       saveLayout(this.state.layout).catch(() => {
         // 落盘失败不回滚 UI：下一次改动会再写一遍。
       })
@@ -222,7 +259,8 @@ export class HomeStore {
     if (this.timer !== null) clearInterval(this.timer)
     if (this.tick !== null) clearInterval(this.tick)
     if (this.followUp !== null) clearTimeout(this.followUp)
-    if (this.saveTimer !== null) clearTimeout(this.saveTimer)
+    if (this.layoutTimer !== null) clearTimeout(this.layoutTimer)
+    if (this.prefsTimer !== null) clearTimeout(this.prefsTimer)
     this.sessionOff?.()
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibility)
     this.listeners.clear()
