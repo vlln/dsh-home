@@ -5,15 +5,16 @@
 
 ## 定位
 
-把 DSH 左上角 logo 的点击从「开新会话」改成「打开首页仪表盘」。首页 = `main` 面板
-（key `home`），六张内置卡 + 第三方经 `home.widget` 槽贡献的卡，布局可拖动/切尺寸/隐藏。
+把 DSH 左上角 logo 的点击从「开新会话」改成「打开首页」。首页 = `main` 面板（key `home`）：
+默认是三件事（回到现场 / 在等我 / 今天），可编排的网格在「更多数据与小组件」里
+（内置 4 张 + 第三方经 `home.widget` 贡献的卡）。
 
 ## 结构
 
 ```
 src/index.mjs        Node half：活动账本 + 同源围栏路由 /plugins/dsh-home/api
 src/ledger.mjs       纯折叠：事件 → 天桶 + 活动簇（单测覆盖）
-src/state.mjs        $DSH_HOME/data/dsh-home/state.json 原子读写 + 布局校验
+src/state.mjs        state.json（布局/偏好，写得勤）+ ledger.json（会话聚合，写得少）
 src/trust.mjs        Origin/Host 同源围栏（照 dsh-pr-inbox）
 src/client/index.tsx apply：字典、面板、侧栏条目、logo 入口
 src/client/page.tsx  三件事 + 「更多」网格 + 编辑态 + 拖拽
