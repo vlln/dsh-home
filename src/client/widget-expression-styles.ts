@@ -1,6 +1,12 @@
 /** BoardUI-inspired content grammar. Accents follow semantic landmarks, never type IDs. */
 export const widgetExpressionStyles = `
-.dsh-home { background:color-mix(in srgb,var(--dsw-alias-bg-module-platform) 72%,var(--dsw-alias-bg-base)); }
+.dsh-home { --dsh-home-canvas-fill:color-mix(in srgb,var(--dsw-alias-bg-module-platform) 72%,var(--dsw-alias-bg-base)); background:var(--dsh-home-canvas-fill); }
+/* Sticky chrome is part of the canvas, not a white rectangular card. */
+.dsh-home .dsh-home-head { background:var(--dsh-home-canvas-fill); }
+.dsh-home .dsh-home-widget-content > .dsh-widget-viewport > .dsh-empty:only-child { min-height:100%; }
+.dsh-home-widget .dsh-queue { min-height:100%; }
+.dsh-home-widget .dsh-queue[data-empty="true"] { display:flex; justify-content:center; }
+.dsh-home-widget .dsh-queue-empty { text-align:center; }
 .dsh-home .dsh-home-widget { background:var(--dsw-alias-bg-layer-1); border-color:var(--dsw-alias-border-l2); }
 .dsh-home-widget { --dsh-widget-accent:var(--dsw-alias-state-business-primary); }
 .dsh-home-widget:has(:is(.dsh-rhythm-content,.dsh-area-rows,.dsh-activity)) { --dsh-widget-accent:var(--dsw-alias-state-success-primary); }
@@ -54,6 +60,32 @@ export const widgetExpressionStyles = `
 .dsh-home-widget .dsh-task-options > button[aria-pressed="true"] { background:color-mix(in srgb,var(--dsw-alias-state-business-primary) 12%,transparent); color:var(--dsw-alias-state-business-primary); }
 .dsh-home-widget .dsh-quick-widget-links { padding:0; background:transparent; }
 .dsh-home-widget .dsh-quick-widget-link { background:var(--dsw-alias-bg-module-platform); }
+/* Content adapts within saved rectangles; whitespace is not an excuse to
+   clip text, invent data or resize the widget. */
+.dsh-home-widget .dsh-focus-title { white-space:normal; overflow-wrap:anywhere; }
+.dsh-home-widget .dsh-focus-snippet { -webkit-line-clamp:4; }
+.dsh-home-widget .dsh-focus-actions { margin-top:auto; }
+.dsh-home-widget .dsh-today-timeline { min-width:0; }
+.dsh-home-widget .dsh-today-content[data-roomy="true"] { gap:8px; justify-content:space-between; }
+.dsh-today-content[data-roomy="true"] .dsh-day-dial { width:72px; height:72px; }
+.dsh-home-widget .dsh-quick-widget { display:flex; flex-direction:column; min-height:100%; }
+.dsh-home-widget .dsh-quick-widget > .dsh-widget-own-editor { margin-top:auto; }
+.dsh-home-widget .dsh-quick-widget > .dsh-muted { margin-top:4px; }
+@container widget (min-width:560px) {
+  .dsh-home-widget .dsh-today-content { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); grid-template-rows:auto auto; gap:6px 24px; align-content:center; }
+  .dsh-today-content .dsh-today-hero { grid-column:1; grid-row:1 / span 2; }
+  .dsh-today-content .dsh-today-timeline { grid-column:2; grid-row:1; align-self:end; }
+  .dsh-home-widget .dsh-today-content .dsh-today-stats { grid-column:2; grid-row:2; align-self:start; }
+  .dsh-today-content .dsh-today-longest { grid-column:1 / -1; }
+  .dsh-home-widget .dsh-quick-widget-links { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .dsh-home-widget .dsh-tasks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:20px; align-content:start; }
+  .dsh-tasks > :is(.dsh-muted,.dsh-task-error) { grid-column:1 / -1; }
+  .dsh-tasks > .dsh-field { grid-column:1; grid-row:2; }
+  .dsh-tasks > .dsh-task-options { grid-column:2; grid-row:2 / span 2; align-content:start; }
+  .dsh-tasks > button:first-of-type { grid-column:1; grid-row:3; }
+  .dsh-tasks > .dsh-task-preview { grid-column:1 / -1; }
+  .dsh-tasks > button:last-of-type { grid-column:1 / -1; }
+}
 @container widget (max-width:280px) {
   .dsh-day-dial { width:48px; height:48px; }
   .dsh-home-widget .dsh-recent-row { grid-template-columns:24px minmax(0,1fr); column-gap:6px; }

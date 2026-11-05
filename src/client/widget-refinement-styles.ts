@@ -122,7 +122,6 @@ export const widgetRefinementStyles = `
 .dsh-home-widget .dsh-quick-widget > .dsh-widget-own-editor { justify-content:flex-start; padding-top:6px; }
 .dsh-home-widget .dsh-personal-clock { min-height:100%; }
 .dsh-home-widget .dsh-activity-secondary { font-variant-numeric:tabular-nums; }
-.dsh-home-widget .dsh-activity { gap:4px; }
 .dsh-home-widget .dsh-activity-legend { padding-top:2px; border-top:.5px solid var(--dsw-alias-border-l2); }
 .dsh-home-widget .dsh-activity-footer { display:flex; gap:4px 12px; justify-content:space-between; align-items:center; flex-wrap:wrap; }
 .dsh-home-widget .dsh-activity-footer > .dsh-muted { flex:1 1 200px; }

@@ -5,13 +5,14 @@ import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { LibraryDrag } from './library-drag-model.ts'
 import { libraryPointerInside } from './library-drag-model.ts'
-import GridLayout, { type Layout as EngineLayout, type LayoutItem } from 'react-grid-layout'
+import GridLayout, { setTransform, type Layout as EngineLayout, type LayoutItem, type Position } from 'react-grid-layout'
 import { snapCandidate } from './collision-preview.ts'
 import { multiPreviewPlacement, placementAxis } from './multi-preview.ts'
 import type { GridRect } from './api.ts'
 import { canPlace, type SpatialItem } from './spatial-model.ts'
 import { advanceHover, type HoverIntent } from './hover-intent.ts'
 import { pinDraggedItem, placementAccepted } from './drag-visual.ts'
+import { canvasContentHeight, clampCanvasLeft, clampCanvasScroll, EDIT_CANVAS_MIN_HEIGHT, extendCanvasHeight } from './canvas-extent.ts'
 
 export interface SpatialGridProps {
   width: number
@@ -54,6 +55,9 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
   const [epoch, setEpoch] = useState(0)
   const [current, setCurrent] = useState<EngineLayout>(layout)
   const [dragHeight, setDragHeight] = useState(0)
+  const extent = useRef(0)
+  const scrollOrigin = useRef<{ container: HTMLElement; top: number } | null>(null)
+  const settleScroll = useRef<{ container: HTMLElement; top: number } | null>(null)
   const active = useRef(false)
   const original = useRef<EngineLayout>(layout)
   const cancelled = useRef(false)
@@ -68,6 +72,42 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
   const desktopFinish = useRef<() => void>(() => {})
   const cancelGesture = useRef<() => void>(() => {})
   const updateLibraryTransaction = useRef<() => void>(() => {})
+  const retainCanvas = (contentBottom = 0, pixelBottom = 0): void => {
+    const grid = root.current
+    if (!grid) return
+    const container = grid.closest<HTMLElement>('.dsh-home')
+    const viewport = container?.getBoundingClientRect()
+    const next = extendCanvasHeight(extent.current, contentBottom, pixelBottom,
+      viewport ? viewport.bottom - grid.getBoundingClientRect().top : 0, container?.clientHeight ?? 0)
+    extent.current = next
+    // rAF scroll and RGL callbacks can run before React commits. Supply the scroll
+    // range synchronously, then mirror it in props so RGL cannot overwrite it.
+    grid.style.minHeight = `${next}px`
+    setDragHeight(next)
+  }
+  const beginCanvas = (): void => {
+    const container = root.current?.closest<HTMLElement>('.dsh-home')
+    scrollOrigin.current = container ? { container, top: container.scrollTop } : null
+    settleScroll.current = null
+    extent.current = root.current?.getBoundingClientRect().height ?? 0
+    retainCanvas(extent.current)
+  }
+  const releaseCanvas = (restore: boolean, result: EngineLayout): void => {
+    const container = scrollOrigin.current?.container ?? root.current?.closest<HTMLElement>('.dsh-home')
+    settleScroll.current = container ? { container, top: restore ? scrollOrigin.current?.top ?? container.scrollTop : container.scrollTop } : null
+    scrollOrigin.current = null
+    extent.current = 0
+    // Remove temporary runway only after retaining the committed content. Pending
+    // and rejected drops instead restore the original geometry and starting view.
+    if (root.current) root.current.style.minHeight = `${Math.max(EDIT_CANVAS_MIN_HEIGHT, canvasContentHeight(result))}px`
+    setDragHeight(0)
+  }
+  useLayoutEffect(() => {
+    const settled = settleScroll.current
+    if (!settled || active.current) return
+    settleScroll.current = null
+    settled.container.scrollTop = clampCanvasScroll(settled.top, settled.container.scrollHeight, settled.container.clientHeight)
+  })
   const clearHover = (): void => {
     if (hoverTimer.current !== null) clearTimeout(hoverTimer.current)
     hoverTimer.current = null
@@ -81,7 +121,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     cancelled.current = true
     gesture.current = null
     pointer.current = null
-    if (root.current) root.current.style.paddingBottom = ''
+    releaseCanvas(true, layout)
     setCurrent(layout)
     setDragHeight(0)
     document.body.classList.remove('dsh-home-dragging')
@@ -106,7 +146,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     active.current = false
     gesture.current = null
     pointer.current = null
-    if (root.current) root.current.style.paddingBottom = ''
+    releaseCanvas(true, original.current)
     setCurrent(original.current)
     setDragHeight(0)
     setEpoch(i => i + 1)
@@ -151,10 +191,9 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
         if (p.y > bounds.bottom - edge) dy = Math.min(16, Math.ceil((p.y - bounds.bottom + edge) / 5))
         else if (p.y < bounds.top + edge + 80) dy = -Math.min(16, Math.ceil((bounds.top + edge + 80 - p.y) / 5))
         if (dy !== 0) {
-          // Extend only while moving downward at the viewport edge; never globally compact.
-          if (dy > 0 && container.scrollTop + container.clientHeight >= container.scrollHeight - 24 && root.current) {
-            root.current.style.paddingBottom = `${Math.min(2000, Number.parseFloat(root.current.style.paddingBottom || '0') + 56)}px`
-          }
+          // Retain one viewport ahead *before* changing scrollTop; the old board
+          // bottom is not a boundary and the surface never shrinks mid-gesture.
+          if (dy > 0) retainCanvas()
           const before = container.scrollTop
           container.scrollTop += dy
           if (container.scrollTop !== before && !p.touch) {
@@ -188,7 +227,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     gesture.current = { id: item.i, kind, snapshot, candidate: { x: item.x, y: item.y, w: item.w, h: item.h }, preview: snapshot, intent: null, pending: false, direction: 'y', rejected: false, node,
       grab: box && Number.isFinite(mouse.clientX) ? { x: mouse.clientX - box.left, y: mouse.clientY - box.top } : undefined }
     if (Number.isFinite(mouse.clientX)) pointer.current = { x: mouse.clientX, y: mouse.clientY, touch: touch !== undefined }
-    setDragHeight(root.current?.getBoundingClientRect().height ?? 0)
+    beginCanvas()
     document.body.classList.add('dsh-home-dragging')
     const session = gesture.current
     desktopRelease.current?.()
@@ -249,9 +288,12 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
       if (session.rejected) root.current.dataset.dropRejected = 'true'
       else delete root.current.dataset.dropRejected
     }
-    const visualBottom = Math.max(session.candidate.y + session.candidate.h,
-      ...session.preview.filter(entry => !libraryRef.current || entry.i !== session.id).map(entry => entry.y + entry.h)) * 56 - 12
-    setDragHeight(previous => Math.max(previous, visualBottom))
+    const visualBottom = Math.max(canvasContentHeight([session.candidate]), canvasContentHeight(session.preview))
+    const gridBox = root.current?.getBoundingClientRect()
+    const point = pointer.current
+    const pixelBottom = gridBox && point && session.grab
+      ? point.y - session.grab.y - gridBox.top + session.candidate.h * 56 - 12 : 0
+    retainCanvas(visualBottom, pixelBottom)
     if (placeholder) {
       // RGL 2.2.3 reuses this callback object as its drop preview; pin and regression-test this integration.
       placeholder.x = session.candidate.x
@@ -294,7 +336,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     active.current = false
     gesture.current = null
     pointer.current = null
-    if (root.current) root.current.style.paddingBottom = ''
+    releaseCanvas(Boolean(restoreEngine), result)
     setCurrent(result)
     setDragHeight(0)
     if (restoreEngine) setEpoch(i => i + 1)
@@ -330,7 +372,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     cancelled.current=false; active.current=true
     pointer.current={...drag.start,touch:drag.touch}
     gesture.current={id:drag.id,kind:'drag',snapshot,candidate:{...drag.item},preview:snapshot,node:null,grab:drag.grab,intent:null,pending:true,direction:'y',rejected:false}
-    setDragHeight(root.current?.getBoundingClientRect().height??900)
+    beginCanvas()
     document.body.classList.add('dsh-home-dragging'); onActive(true)
     updateLibraryTransaction.current()
     const move=(event:PointerEvent) => {
@@ -347,24 +389,31 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
       const inside=grid&&libraryPointerInside(pointer.current,grid)&&!document.elementFromPoint(event.clientX,event.clientY)?.closest('.dsh-library-panel')
       const accepted=inside&&s&&!s.pending&&!s.rejected&&placementAccepted(s.preview,drag.id,s.candidate)
       clearHover(); active.current=false; gesture.current=null; pointer.current=null
-      if(root.current)root.current.style.paddingBottom=''
-      setCurrent(latestLayout.current);setLibraryVisual(null);setLibraryOutline(null);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false)
+      releaseCanvas(!accepted, accepted && s ? s.preview : latestLayout.current)
+      setCurrent(accepted && s ? s.preview : latestLayout.current);setLibraryVisual(null);setLibraryOutline(null);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false)
       if(accepted&&s)libraryHandlers.current.onLibraryDrop?.(drag,s.preview)
       libraryHandlers.current.onLibraryEnd?.()
     }
     const release=observeDragRelease({window,document,documentElement:document.documentElement},{transport:'pointer',pointerId:drag.pointerId,touch:drag.touch,
       onRelease:event=>finish(event as MouseEvent | PointerEvent),onCancel:()=>cancelGesture.current()})
     window.addEventListener('pointermove',move,{capture:true,passive:false})
-    return()=>{release();window.removeEventListener('pointermove',move,true);clearHover();active.current=false;gesture.current=null;pointer.current=null;if(root.current)root.current.style.paddingBottom='';setLibraryVisual(null);setLibraryOutline(null);setCurrent(latestLayout.current);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false)}
+    return()=>{release();window.removeEventListener('pointermove',move,true);clearHover();if(active.current)releaseCanvas(true,latestLayout.current);active.current=false;gesture.current=null;pointer.current=null;setLibraryVisual(null);setLibraryOutline(null);setCurrent(latestLayout.current);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false)}
     // A library gesture captures one immutable peer snapshot and uses the ordinary update() solver.
   },[libraryDrag?.id,cols,editing])
+  // RGL bounds:false is essential for downward growth. Its grid constraints bound
+  // only the snapped candidate, not live pixels: keep x on our fixed-width canvas
+  // through the public positioning strategy, without bounding y or replacing drag.
+  const positionStrategy = useMemo(() => ({
+    type: 'transform' as const, scale: 1,
+    calcStyle: (position: Position) => setTransform({ ...position, left: clampCanvasLeft(position.left, width, position.width) }),
+  }), [width])
   const constrained = useMemo(() => current.map(item => ({ ...item, maxH: item.maxH ?? 30 })), [current])
   return <><GridLayout key={`${cols}-${epoch}`} width={width} layout={constrained} innerRef={root}
-    className="dsh-spatial-grid" compactor={compactor}
+    className="dsh-spatial-grid" compactor={compactor} positionStrategy={positionStrategy}
     gridConfig={{ cols, rowHeight: 44, margin: [12, 12], containerPadding: [0, 0], maxRows: 10003 }}
     dragConfig={{ enabled: editing, handle: '.dsh-widget-grip', cancel: 'button:not(.dsh-widget-grip), input, select, textarea, a', threshold: 5 }}
     resizeConfig={{ enabled: false, handles: [] }}
-    style={{ minHeight: editing ? Math.max(900, dragHeight) : undefined }}
+    style={{ minHeight: editing ? Math.max(EDIT_CANVAS_MIN_HEIGHT, dragHeight, canvasContentHeight(current)) : undefined }}
     onDragStart={(value, _old, item, _placeholder, event, node) => { start(value, item, 'drag', event, node) }}
     onResizeStart={(value, _old, item, _placeholder, event, node) => { start(value, item, 'resize', event, node) }}
     onDrag={update} onResize={update}

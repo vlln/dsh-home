@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildActivity, validateActivityQuery } from '../src/activity.mjs'
 import { foldSession } from '../src/ledger.mjs'
-import { activityWeeks, activityYearWidth, activityLevel, shiftCalendarDay, validateActivityConfig } from '../src/client/activity-model.ts'
+import { activityWeeks, activityYearWidth, activityLevel, shiftCalendarDay, validateActivityConfig, ACTIVITY_NATURAL_CELL, ACTIVITY_MIN_CELL, ACTIVITY_MAX_CELL } from '../src/client/activity-model.ts'
 const now = Date.parse('2026-11-04T18:00:00Z')
 const user = time => ({ type: 'user/message', time: Date.parse(time), data: { source: { kind: 'user' }, content: [{ type: 'text', text: 'hello' }] } })
 function session(id, events, extra = {}) { return foldSession({ id, createdAt: now - 86400000, cwd: '/project', ...extra }, events, now) }
@@ -52,25 +52,93 @@ test('query rejects invalid time zones, dates and unbounded directories', () => 
   }
   assert.equal(validateActivityQuery({ date: '2024-02-29' }).date, '2024-02-29')
 })
-test('auto year threshold fits the actual fixed square calendar for every weekday and leap year', () => {
+test('auto adds natural full weeks monotonically, fitting intermediate windows before the year cap', () => {
   for (const year of [2024, 2025, 2026]) for (let day = 1; day <= 14; day++) {
     const today = `${year}-01-${String(day).padStart(2, '0')}`
-    const fit = activityYearWidth(today)
-    assert.equal(activityWeeks([], today, fit - 1, 'auto').count, 84)
-    const full = activityWeeks([], today, fit, 'auto')
+    let previous = 0
+    for (let width = 180; width <= 1100; width++) {
+      const grid = activityWeeks([], today, width, 'auto')
+      assert.ok(grid.count >= previous && (previous === 0 || grid.count - previous <= 7))
+      assert.ok(grid.chartWidth + 6 <= width + 0.0001)
+      assert.ok(grid.cellSize >= ACTIVITY_MIN_CELL && grid.cellSize <= ACTIVITY_MAX_CELL)
+      assert.equal(grid.weeks.flat().filter(Boolean).length, grid.count)
+      if (grid.count < 365) assert.equal(new Date(`${grid.first}T12:00:00Z`).getUTCDay(), 1)
+      previous = grid.count
+    }
+    const full = activityWeeks([], today, activityYearWidth(today, ACTIVITY_NATURAL_CELL), 'auto')
     assert.equal(full.count, 365)
-    assert.equal(full.weeks.length * 12 + (full.weeks.length - 1) * 3 + 6, fit)
-    assert.equal(activityWeeks([], today, 200, 'year').count, 365)
+    const natural = activityWeeks([], today, 766, 'auto')
+    assert.ok(natural.count > 84 && natural.count < 365)
+    const explicitYear = activityWeeks([], today, 200, 'year')
+    assert.equal(explicitYear.count, 365)
+    assert.equal(explicitYear.cellSize, ACTIVITY_MIN_CELL)
+    assert.equal(explicitYear.chartWidth + 6, activityYearWidth(today))
+    assert.ok(explicitYear.chartWidth > 200, 'explicit year keeps local scrolling rather than shrinking cells')
   }
 })
-test('calendar windows retain Monday rows, leap days, compact auto and explicit scrollable year', () => {
+test('quarter uses three chronological 28-day blocks with exact boundaries and Monday weekday padding', () => {
+  for (let day = 1; day <= 14; day++) {
+    const today = `2026-11-${String(day).padStart(2, '0')}`
+    const grid = activityWeeks([], today, 766, 'quarter')
+    assert.equal(grid.count, 84)
+    assert.equal(grid.blocks.length, 3)
+    assert.equal(grid.sidebar, true)
+    assert.ok(grid.cellSize >= 23 && grid.cellSize <= ACTIVITY_MAX_CELL)
+    assert.ok(grid.chartWidth > 0.75 * 766 && grid.chartWidth + 156 + 6 <= 766)
+    const keys = []
+    for (const block of grid.blocks) {
+      const entries = block.weeks.flat().filter(Boolean)
+      assert.equal(entries.length, 28)
+      assert.equal(entries[0].key, block.first)
+      assert.equal(entries.at(-1).key, block.last)
+      for (const week of block.weeks) week.forEach((entry, i) => {
+        if (entry) assert.equal((new Date(`${entry.key}T12:00:00Z`).getUTCDay() + 6) % 7, i)
+      })
+      keys.push(...entries.map(entry => entry.key))
+    }
+    assert.equal(new Set(keys).size, 84)
+    assert.deepEqual(keys, Array.from({ length: 84 }, (_, i) => shiftCalendarDay(today, i - 83)))
+    const narrow = activityWeeks([], today, 300, 'quarter')
+    assert.equal(narrow.blocks.length, 0)
+    assert.equal(narrow.weeks.flat().filter(Boolean).length, 84)
+    assert.ok(narrow.chartWidth + 6 <= 300)
+  }
+})
+test('height bounds keep default cards compact without changing date range or square readability', () => {
+  for (const range of ['auto', 'quarter', 'year']) for (const width of [300, 540, 766, 1200]) {
+    const wide = activityWeeks([], '2026-11-04', width, range)
+    const bounded = activityWeeks([], '2026-11-04', width, range, 254)
+    // Explicit ranges stay exact. Auto may add weeks when the height cap shrinks
+    // cells, so it fills the width instead of leaving a blank tail; never > 365.
+    if (range === 'auto') { assert.ok(bounded.count >= wide.count); assert.ok(bounded.count <= 365) }
+    else assert.equal(bounded.count, wide.count)
+    assert.ok(bounded.cellSize <= wide.cellSize)
+    assert.ok(bounded.cellSize >= ACTIVITY_MIN_CELL)
+    const rows = bounded.blocks.length ? Math.max(...bounded.blocks.map(block => block.weeks.length)) : 7
+    const chrome = bounded.blocks.length ? (bounded.sidebar ? 120 : 160) : 140
+    assert.ok(rows * bounded.cellSize + (rows - 1) * 3 + chrome <= 254)
+    // Auto never overflows horizontally: weeks still fit the available width.
+    if (range === 'auto') assert.ok(bounded.chartWidth <= width - 6 + 0.5, `auto ${width}: ${bounded.chartWidth}`)
+  }
+  assert.equal(activityWeeks([], '2026-11-04', 766, 'quarter', 80).cellSize, ACTIVITY_MIN_CELL)
+})
+test('calendar retains leap days, exact explicit ranges and values without mutating or inventing counts', () => {
   assert.equal(shiftCalendarDay('2024-02-28', 1), '2024-02-29')
   assert.equal(shiftCalendarDay('2026-11-01', 1), '2026-11-02')
-  for (const [width, range, count] of [[300,'auto',84],[640,'auto',84],[820,'auto',365],[300,'year',365],[820,'quarter',84]]) {
-    const grid = activityWeeks([], '2026-11-04', width, range)
+  const recorded = { key: '2026-11-04', messages: 7, sessions: 2 }
+  const input = [recorded]
+  for (const [width, range, count] of [[300,'auto',101],[640,'auto',227],[820,'auto',297],[300,'year',365],[820,'quarter',84]]) {
+    const grid = activityWeeks(input, '2026-11-04', width, range)
     assert.equal(grid.count, count)
     assert.equal(grid.weeks.flat().filter(Boolean).length, count)
     assert.ok(grid.weeks.every(w => w.length === 7))
+    assert.equal(grid.weeks.flat().find(day => day?.key === recorded.key), recorded)
+    assert.equal(grid.weeks.flat().filter(Boolean).reduce((sum, day) => sum + day.messages, 0), 7)
+  }
+  assert.deepEqual(input, [recorded])
+  for (const width of [0, -1, NaN, Infinity]) {
+    const grid = activityWeeks([], '2026-11-04', width, 'auto')
+    assert.ok(grid.count > 0 && Number.isFinite(grid.chartWidth))
   }
   assert.deepEqual([0,1,2,3,5,6,10,11].map(activityLevel), [0,1,1,2,2,3,3,4])
   assert.equal(validateActivityConfig({ cwd: '', range: 'auto' }), true)

@@ -32,7 +32,7 @@ DSH 的"首页"其实是一次空白会话：logo + 一句标语 + 输入框。�
 
 ## 安装
 
-在 Web GUI 侧栏 **Plugins → 添加插件** 输入插件来源。下面的 Git 来源需已包含对应构建产物；**本文组件库、固定尺寸及原生置顶会话组件及丰富视觉对应本地开发版 0.21.3，不表示该版本已发布到 npm 或远端源码已更新**。
+在 Web GUI 侧栏 **Plugins → 添加插件** 输入插件来源。下面的 Git 来源需已包含对应构建产物；**本文组件库、固定尺寸及原生置顶会话组件及丰富视觉对应本地开发版 0.22.3，不表示该版本已发布到 npm 或远端源码已更新**。
 
 ```sh
 dsh plugin --profile web add "github:vlln/dsh-home"
@@ -45,7 +45,7 @@ dsh plugin --profile web add "github:vlln/dsh-home"
 ```sh
 pnpm run build
 pnpm pack
-DSH_HOME=<isolated-home> dsh plugin --profile web add ./vlln-dsh-home-0.21.3.tgz
+DSH_HOME=<isolated-home> dsh plugin --profile web add ./vlln-dsh-home-0.22.3.tgz
 ```
 
 ## 用起来

@@ -35,7 +35,17 @@ try {
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
     const cell = await page.locator('[data-widget-id="visual-activity"] .dsh-activity-cell[data-date]').first().boundingBox()
     assert(Math.abs(cell.width - cell.height) < .2, `square heatmap cells at ${width}: ${cell.width}x${cell.height}`)
-    assert(cell.width >= 12 && cell.width <= 16)
+    assert(cell.width >= 12 && cell.width <= 24)
+    const headerSurface = await page.evaluate(() => ({ canvas: getComputedStyle(document.querySelector('.dsh-home')).backgroundColor, header: getComputedStyle(document.querySelector('.dsh-home-head')).backgroundColor }))
+    assert.equal(headerSurface.header, headerSurface.canvas, 'sticky heading must share canvas paint, not a white square')
+    const heatmap = await page.locator('[data-widget-id="visual-activity"] .dsh-activity-scroll').evaluate(el => {
+      const chart = el.firstElementChild.getBoundingClientRect(); const viewport = el.getBoundingClientRect()
+      return { ratio: chart.width / viewport.width, offset: chart.left - viewport.left, remainder: viewport.right - chart.right, sidebar: el.closest('.dsh-activity').dataset.activitySidebar === 'true' }
+    })
+    if (width === 1600 || width === 900) {
+      assert(heatmap.ratio >= .6, `quarter chart must use wide cards: ${JSON.stringify(heatmap)}`)
+      assert(heatmap.sidebar || Math.abs(heatmap.offset - heatmap.remainder) <= 8, 'bounded calendar content must be balanced, not left-stranded')
+    }
     assert.equal(await page.locator('.dsh-directory-badge:not([aria-hidden="true"])').count(), 0)
     assert.equal(await page.locator('.dsh-day-dial animate,.dsh-day-dial animateTransform').count(), 0)
     const motion = await page.locator('.dsh-home-widget .dsh-row').evaluateAll(nodes => nodes.map(el => getComputedStyle(el).transitionDuration))

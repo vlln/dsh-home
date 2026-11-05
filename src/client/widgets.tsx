@@ -159,7 +159,7 @@ function DayDial({ segments, nowFraction, start, end }: { segments: readonly { l
   </svg>
 }
 
-function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
+function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
   const { start, end } = localDayWindow(now)
   const dayMs = end - start
   const segments: { left: number; width: number; live: boolean; label: string }[] = []
@@ -187,7 +187,7 @@ function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
     return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.today.empty', { shortcut: shortcutHint() })}</Empty>
   }
   return (
-    <div className="dsh-today-content">
+    <div className="dsh-today-content" data-roomy={(height ?? 0) >= 190}>
       <div className="dsh-today-hero">
         <div className="dsh-metric">
           <span className="dsh-number">{formatDuration(active, t)}</span>
@@ -195,7 +195,7 @@ function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
         </div>
         <DayDial segments={segments} nowFraction={nowFraction} start={start} end={end} />
       </div>
-      {hasActivity ? (
+      <div className="dsh-today-timeline">{hasActivity ? (
         <>
           <div className="dsh-band-track" aria-label={`${t('aria.band')}: ${segments.map(segment => segment.label).join('; ')}`} role="img">
             {segments.map((segment, index) => (
@@ -217,7 +217,7 @@ function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
         <Empty action={<StartAction t={t} actions={actions} />}>
           {t('widget.today.empty', { shortcut: shortcutHint() })}
         </Empty>
-      )}
+      )}</div>
       <div className="dsh-today-stats">
         <span><strong>{data?.today.sessions ?? 0}</strong><span>{t('widget.today.sessionsLabel')}</span></span>
         <span><strong>{data?.today.turns ?? 0}</strong><span>{t('widget.today.turnsLabel')}</span></span>

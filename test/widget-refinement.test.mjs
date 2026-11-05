@@ -4,13 +4,21 @@ import { readFile } from 'node:fs/promises'
 import { activityStyles } from '../src/client/activity-styles.ts'
 import { widgetRefinementStyles } from '../src/client/widget-refinement-styles.ts'
 import { zhActivity, enActivity } from '../src/client/activity-locales.ts'
-test('activity summary uses only actual observed counts and fixed square calendar cells', async () => {
+test('activity summary uses observed counts with bounded responsive square calendars', async () => {
   const activity = await readFile(new URL('../src/client/activity-widget.tsx', import.meta.url), 'utf8')
   assert.match(activity, /className="dsh-activity-number">\{active\}/)
   assert.match(activity, /activity.messages', \{ count: messages \}/)
   assert.match(activity, /gridTemplateColumns: `repeat\(\$\{weeks.length\}, var\(--dsh-activity-cell-size\)\)`/)
   assert.match(activityStyles, /width:var\(--dsh-activity-cell-size\); height:var\(--dsh-activity-cell-size\)/)
-  assert.match(activityStyles, /data-activity-range="year".*12px/)
+  assert.match(activity, /'--dsh-activity-cell-size': `\$\{cellSize\}px`/)
+  assert.match(activity, /data-activity-layout=\{blocks.length \? 'blocks' : 'weeks'\}/)
+  assert.match(activity, /block.weeks.flat\(\).map\(cell\)/)
+  assert.match(activity, /if \(!preview\) setDate\(day.key\)/)
+  assert.match(activity, /data-unknown=\{!result.complete && day.messages === 0\}/)
+  assert.match(activity, /detailReady/)
+  assert.match(activity, /post<ActivitySnapshot>\('activity', \{ cwd, timeZone: zone/)
+  assert.match(activityStyles, /margin-inline:auto/)
+  assert.match(activityStyles, /dsh-activity-caption.*justify-content:space-between/s)
   assert.match(activityStyles, /overflow-x:auto/)
   assert.deepEqual(Object.keys(zhActivity).sort(), Object.keys(enActivity).sort())
 })

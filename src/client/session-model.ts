@@ -141,8 +141,8 @@ export function recentPageSize(size: WidgetSize): number {
  * the list stays scrollable for larger fonts/long metadata and Show more. */
 export function recentViewportPageSize(size: WidgetSize, width?: number, height?: number): number {
   if (!Number.isFinite(height) || !Number.isFinite(width) || height! <= 0 || width! <= 0) return recentPageSize(size)
-  const controls = width! < 400 ? 118 : 74
-  const row = width! < 400 ? 76 : 64
+  const controls = width! < 400 ? 110 : 64
+  const row = width! < 400 ? 72 : 56
   return Math.max(1, Math.min(20, Math.floor((height! - controls) / row)))
 }
 

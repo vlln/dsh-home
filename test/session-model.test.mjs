@@ -142,10 +142,10 @@ test('size pages and short IDs do not lose canonical identity', () => {
 
 test('recent capacity follows measured height and reserves wrapped narrow controls', () => {
   assert.equal(recentViewportPageSize('m'), 6)
-  assert.equal(recentViewportPageSize('s', 800, 400), 5)
-  assert.equal(recentViewportPageSize('l', 800, 400), 5)
-  assert.equal(recentViewportPageSize('s', 800, 600), 8)
-  assert.equal(recentViewportPageSize('s', 300, 400), 3)
+  assert.equal(recentViewportPageSize('s', 800, 400), 6)
+  assert.equal(recentViewportPageSize('l', 800, 400), 6)
+  assert.equal(recentViewportPageSize('s', 800, 600), 9)
+  assert.equal(recentViewportPageSize('s', 300, 400), 4)
   assert.equal(recentViewportPageSize('s', 200, 30), 1)
   assert.equal(recentViewportPageSize('s', 800, 100000), 20)
   assert.equal(recentViewportPageSize('m', NaN, 400), 6)

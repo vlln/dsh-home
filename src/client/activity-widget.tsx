@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { post } from './api.ts'
 import { useBuiltin } from './builtin-registration.tsx'
-import { activityLevel, activityWeeks, shiftCalendarDay, validateActivityConfig, type ActivityConfig, type ActivitySnapshot } from './activity-model.ts'
-import type { WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
+import { activityLevel, activityPreviewSnapshot, activityWeeks, validateActivityConfig, type ActivityConfig, type ActivitySnapshot } from './activity-model.ts'
+import type { JsonValue, WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { Translate } from './format.ts'
 import { WidgetConfigEditor } from './widget-settings.tsx'
@@ -61,7 +61,7 @@ function ActivityContent(props: WidgetContentProps<ActivityConfig>) {
   return <ActivityBody {...props} editor={<WidgetConfigEditor t={t} widgetProps={props} title={t('activity.title')} label={t('activity.edit')}
     Fields={ActivitySettings} validate={validateActivityConfig} />} />
 }
-function ActivityBody({ config, width, preview, editor }: WidgetContentProps<ActivityConfig> & { editor?: ReactNode }) {
+function ActivityBody({ config, width, height, preview, editor }: WidgetContentProps<ActivityConfig> & { editor?: ReactNode }) {
   const { t, state, actions } = useBuiltin()
   const [date, setDate] = useState<string>()
   const { result, error, loading, detailReady, retry } = useActivity(config.cwd, date, preview)
@@ -77,29 +77,36 @@ function ActivityBody({ config, width, preview, editor }: WidgetContentProps<Act
   if (!result && error) return <><div className="dsh-empty" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>{editor}</>
   if (!result) return <><div className="dsh-empty" role="status">{t('activity.loading')}</div>{editor}</>
   if (!result.available) return <><div className="dsh-empty">{t('activity.unavailable')}</div>{editor}</>
-  const { weeks, count, first } = activityWeeks(result.days, result.today, width, config.range)
-  const days = result.days.filter(day => day.key >= first)
+  const { weeks, count, first, cellSize, chartWidth, blocks, sidebar } = activityWeeks(result.days, result.today, width, config.range, height)
+  const days = result.days.filter(day => day.key >= first && day.key <= result.today)
   const active = days.filter(day => day.messages > 0).length
   const messages = days.reduce((n, day) => n + day.messages, 0)
   const dayLabel = (day: {key: string; messages: number; sessions: number}) => t(result.complete ? 'activity.day' : 'activity.partialDay', { date: day.key, messages: day.messages, sessions: day.sessions })
-  return <div className="dsh-activity" data-activity-complete={result.complete} data-activity-range={count === 365 ? 'year' : 'quarter'}>
+  const cell = (day: (typeof weeks)[number][number], index: number) => day ? <button type="button" className="dsh-activity-cell" key={day.key}
+    data-date={day.key} data-level={activityLevel(day.messages)} data-selected={date === day.key} data-unknown={!result.complete && day.messages === 0}
+    aria-label={dayLabel(day)} aria-pressed={date === day.key} title={dayLabel(day)} onClick={() => { if (!preview) setDate(day.key) }} />
+    : <span className="dsh-activity-cell dsh-activity-spacer" key={`pad${index}`} />
+  const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+  return <div className="dsh-activity" data-activity-complete={result.complete} data-activity-range={config.range} data-activity-layout={blocks.length ? 'blocks' : 'weeks'} data-activity-sidebar={sidebar}
+    style={{ '--dsh-activity-cell-size': `${cellSize}px`, '--dsh-activity-chart-width': `${chartWidth}px` } as CSSProperties}>
     <div className="dsh-activity-summary" aria-label={t('activity.summary', { days: count, active, messages })}>
       <div className="dsh-activity-primary"><strong className="dsh-activity-number">{active}</strong><span>{t('activity.activeDays')}</span></div>
       <div className="dsh-activity-secondary"><span>{t('activity.period', { days: count })}</span><span>{t('activity.messages', { count: messages })}</span></div>
     </div>
     {error && <div className="dsh-muted" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>}
     <div ref={calendar} className="dsh-activity-scroll" tabIndex={0} aria-label={t('activity.metric')}>
-      <div className="dsh-activity-grid" style={{ gridTemplateColumns: `repeat(${weeks.length}, var(--dsh-activity-cell-size))` }}>
+      {blocks.length ? <div className="dsh-activity-blocks">{blocks.map(block => <section className="dsh-activity-block" key={block.first} aria-label={t('activity.block', { first: block.first, last: block.last })}>
+        <div className="dsh-activity-block-label" title={`${block.first} – ${block.last}`}>{block.first.slice(5)} – {block.last.slice(5)}</div>
+        <div className="dsh-activity-weekdays" aria-hidden="true">{weekdays.map(day => <span key={day}>{t(`activity.${day}`)}</span>)}</div>
+        <div className="dsh-activity-block-days">{block.weeks.flat().map(cell)}</div>
+      </section>)}</div> : <div className="dsh-activity-grid" style={{ gridTemplateColumns: `repeat(${weeks.length}, var(--dsh-activity-cell-size))` }}>
         {weeks.map((week, i) => <div className="dsh-activity-week" key={i}>
           <span className="dsh-activity-month" aria-hidden="true">{week.find(day => day?.key.endsWith('-01'))?.key.slice(5, 7) ?? ''}</span>
-          {week.map((day, j) => day ? <button type="button" className="dsh-activity-cell" key={day.key}
-            data-date={day.key} data-level={activityLevel(day.messages)} data-selected={date === day.key} data-unknown={!result.complete && day.messages === 0}
-            aria-label={dayLabel(day)} aria-pressed={date === day.key} title={dayLabel(day)} onClick={() => setDate(day.key)} />
-            : <span className="dsh-activity-cell dsh-activity-spacer" key={`pad${j}`} />)}
+          {week.map(cell)}
         </div>)}
-      </div>
+      </div>}
     </div>
-    <div className="dsh-activity-legend"><span>{t('activity.less')}</span>{[0,1,2,3,4].map(level => <span key={level} className="dsh-activity-cell" data-level={level} />)}<span>{t('activity.more')}</span></div>
+    <div className="dsh-activity-caption"><span>{first} – {result.today}</span><div className="dsh-activity-legend"><span>{t('activity.less')}</span>{[0,1,2,3,4].map(level => <span key={level} className="dsh-activity-cell" data-level={level} />)}<span>{t('activity.more')}</span></div></div>
     {!result.complete && <p className="dsh-muted" role="status">{t(result.scanning ? 'activity.partial' : 'activity.incomplete', result.progress)}</p>}
     {result.complete && messages === 0 && <p className="dsh-muted">{t('activity.empty')}</p>}
     <div className="dsh-activity-footer"><span className="dsh-muted">{t('activity.zone', { zone: result.timeZone })}</span>{editor}</div>
@@ -133,12 +140,7 @@ function ActivitySettings({ config, onConfigChange }: WidgetSettingsProps<Activi
 export function registerActivityWidget(registry: HomeWidgetRegistry, t: Translate) {
   return registry.register<ActivityConfig>({ typeId: '@vlln/dsh-home:activity', apiVersion: 1,
     title: () => t('activity.title'), description: () => t('activity.description'), source: '@vlln/dsh-home',
-    preview: { data: {
-      generatedAt: Date.UTC(2026, 9, 20, 10, 24), timeZone: 'UTC', today: '2026-10-20',
-      days: Array.from({ length: 84 }, (_, i) => ({ key: shiftCalendarDay('2026-10-20', i - 83), messages: (i * 7 + Math.floor(i / 9)) % 15, sessions: i % 3 })),
-      workspaces: [], available: true, complete: true, failed: 0, scanError: false, scanning: false,
-      progress: { done: 3, total: 3 }, sessions: [], matchedSessions: 0,
-    } }, sizing: { default: {w:8,h:6}, supported: [{w:4,h:8},{w:8,h:6},{w:8,h:9},{w:12,h:6}] }, configVersion: 1,
+    preview: { data: activityPreviewSnapshot() as unknown as JsonValue }, sizing: { default: {w:8,h:6}, supported: [{w:4,h:8},{w:8,h:6},{w:8,h:9},{w:12,h:6}] }, configVersion: 1,
     defaultConfig: () => ({ cwd: '', range: 'auto' }), validateConfig: validateActivityConfig,
     Content: ActivityContent })
 }
