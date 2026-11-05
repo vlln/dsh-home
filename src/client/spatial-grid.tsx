@@ -1,5 +1,6 @@
 /** RGL supplies pixel dragging/resize; a snapshot-based compactor previews local displacement. */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { observeDragRelease } from './drag-release.ts'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { LibraryDrag } from './library-drag-model.ts'
@@ -63,6 +64,9 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const refreshStationary = useRef<() => void>(() => {})
   const refreshLibrary = useRef<() => void>(() => {})
+  const desktopRelease = useRef<(() => void) | null>(null)
+  const desktopFinish = useRef<() => void>(() => {})
+  const cancelGesture = useRef<() => void>(() => {})
   const updateLibraryTransaction = useRef<() => void>(() => {})
   const clearHover = (): void => {
     if (hoverTimer.current !== null) clearTimeout(hoverTimer.current)
@@ -72,6 +76,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
   useEffect(() => { if (!active.current) setCurrent(layout) }, [layout])
   useEffect(() => {
     clearHover()
+    desktopRelease.current?.()
     active.current = false
     cancelled.current = true
     gesture.current = null
@@ -83,6 +88,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     onActive(false)
     return () => {
       clearHover()
+      desktopRelease.current?.()
       active.current = false
       cancelled.current = true
       gesture.current = null
@@ -92,23 +98,29 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     // A breakpoint change owns a new transaction; normal geometry updates sync above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cols, onActive])
+  cancelGesture.current = () => {
+    if (!active.current) return
+    clearHover()
+    desktopRelease.current?.()
+    cancelled.current = true
+    active.current = false
+    gesture.current = null
+    pointer.current = null
+    if (root.current) root.current.style.paddingBottom = ''
+    setCurrent(original.current)
+    setDragHeight(0)
+    setEpoch(i => i + 1)
+    setLibraryVisual(null)
+    setLibraryOutline(null)
+    document.body.classList.remove('dsh-home-dragging')
+    onActive(false)
+    if (libraryRef.current) libraryHandlers.current.onLibraryEnd?.()
+  }
   useEffect(() => {
     const cancel = (event: Event): void => {
       if (!active.current || (event.type === 'keydown' && (event as KeyboardEvent).key !== 'Escape')) return
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      clearHover()
-      cancelled.current = true
-      active.current = false
-      gesture.current = null
-      pointer.current = null
-      if (root.current) root.current.style.paddingBottom = ''
-      setCurrent(original.current)
-      setDragHeight(0)
-      setEpoch(i => i + 1)
-      if (libraryRef.current) { setLibraryVisual(null); libraryHandlers.current.onLibraryEnd?.() }
-      document.body.classList.remove('dsh-home-dragging')
-      onActive(false)
+      if (event.type === 'keydown') { event.preventDefault(); event.stopImmediatePropagation() }
+      cancelGesture.current()
     }
     window.addEventListener('keydown', cancel, true)
     window.addEventListener('touchcancel', cancel, true)
@@ -178,6 +190,20 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     if (Number.isFinite(mouse.clientX)) pointer.current = { x: mouse.clientX, y: mouse.clientY, touch: touch !== undefined }
     setDragHeight(root.current?.getBoundingClientRect().height ?? 0)
     document.body.classList.add('dsh-home-dragging')
+    const session = gesture.current
+    desktopRelease.current?.()
+    desktopRelease.current = observeDragRelease({ window, document, documentElement: document.documentElement }, {
+      transport: touch ? 'touch' : 'mouse',
+      onRelease: () => {
+        // RGL/react-draggable normally stops at document capture. Let it run first;
+        // if a downstream listener swallowed release, settle our existing preview and
+        // remount the engine to remove its document listeners and pixel-drag state.
+        setTimeout(() => {
+          if (active.current && gesture.current === session) desktopFinish.current()
+        }, 0)
+      },
+      onCancel: () => cancelGesture.current(),
+    })
     onActive(true)
   }
   const update = (_value: EngineLayout, _old: LayoutItem | null, item: LayoutItem | null, placeholder: LayoutItem | null, _event: Event, node: HTMLElement | null): void => {
@@ -259,7 +285,8 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     },
   }), [])
   const stop = (value: EngineLayout): void => {
-    if (cancelled.current) return
+    if (cancelled.current || !active.current || !gesture.current) return
+    desktopRelease.current?.()
     const session = gesture.current
     const result = session?.preview ?? items(value, cols)
     const restoreEngine = session?.pending || session?.rejected
@@ -274,6 +301,10 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     onActive(false)
     document.body.classList.remove('dsh-home-dragging')
     onCommit(result)
+  }
+  desktopFinish.current = () => {
+    stop(original.current)
+    setEpoch(i => i + 1)
   }
   updateLibraryTransaction.current = () => {
     const drag = libraryRef.current, session = gesture.current, p = pointer.current, grid = root.current?.getBoundingClientRect()
@@ -291,7 +322,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     setLibraryOutline({x:grid.left+session.candidate.x*((width+12)/cols),y:grid.top+session.candidate.y*56,w,h,pending:session.pending||session.rejected})
   }
   refreshLibrary.current = () => updateLibraryTransaction.current()
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!libraryDrag || !editing) return
     const drag = libraryDrag
     const snapshot = [...layout.map(item=>({...item})), {...drag.item}]
@@ -308,21 +339,23 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
       pointer.current={x:event.clientX,y:event.clientY,touch:event.pointerType==='touch'}
       updateLibraryTransaction.current()
     }
-    const finish=(event:PointerEvent) => {
-      if(!active.current || cancelled.current || event.pointerId !== drag.pointerId)return
-      pointer.current={x:event.clientX,y:event.clientY,touch:event.pointerType==='touch'}
+    const finish=(event:MouseEvent | PointerEvent) => {
+      if(!active.current || cancelled.current || ('pointerId' in event && event.pointerId !== drag.pointerId))return
+      pointer.current={x:event.clientX,y:event.clientY,touch:'pointerType' in event&&event.pointerType==='touch'}
       updateLibraryTransaction.current()
       const s=gesture.current,grid=root.current?.getBoundingClientRect()
       const inside=grid&&libraryPointerInside(pointer.current,grid)&&!document.elementFromPoint(event.clientX,event.clientY)?.closest('.dsh-library-panel')
       const accepted=inside&&s&&!s.pending&&!s.rejected&&placementAccepted(s.preview,drag.id,s.candidate)
       clearHover(); active.current=false; gesture.current=null; pointer.current=null
-      setCurrent(layout);setLibraryVisual(null);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false)
+      if(root.current)root.current.style.paddingBottom=''
+      setCurrent(latestLayout.current);setLibraryVisual(null);setLibraryOutline(null);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false)
       if(accepted&&s)libraryHandlers.current.onLibraryDrop?.(drag,s.preview)
       libraryHandlers.current.onLibraryEnd?.()
     }
-    const cancel=() => { clearHover();active.current=false;gesture.current=null;pointer.current=null;setCurrent(layout);setLibraryVisual(null);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false);libraryHandlers.current.onLibraryEnd?.() }
-    window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',finish);window.addEventListener('pointercancel',cancel)
-    return()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',cancel);clearHover();active.current=false;gesture.current=null;setLibraryVisual(null);setCurrent(latestLayout.current);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false)}
+    const release=observeDragRelease({window,document,documentElement:document.documentElement},{transport:'pointer',pointerId:drag.pointerId,touch:drag.touch,
+      onRelease:event=>finish(event as MouseEvent | PointerEvent),onCancel:()=>cancelGesture.current()})
+    window.addEventListener('pointermove',move,{capture:true,passive:false})
+    return()=>{release();window.removeEventListener('pointermove',move,true);clearHover();active.current=false;gesture.current=null;pointer.current=null;if(root.current)root.current.style.paddingBottom='';setLibraryVisual(null);setLibraryOutline(null);setCurrent(latestLayout.current);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false)}
     // A library gesture captures one immutable peer snapshot and uses the ordinary update() solver.
   },[libraryDrag?.id,cols,editing])
   const constrained = useMemo(() => current.map(item => ({ ...item, maxH: item.maxH ?? 30 })), [current])

@@ -229,7 +229,7 @@ export function HomePage(props: HomePageProps): ReactNode {
               data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
               <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!writable || busy || interacting}
                 icon={definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition}/></CardBoundary>}
-                onDelete={() => { setTrayOpen(false); setManagementError(false); setConfirmDelete(instance.instanceId) }} onNudge={key => nudge(instance.instanceId,key)}/>
+                onDelete={() => { setManagementError(false); setConfirmDelete(instance.instanceId) }} onNudge={key => nudge(instance.instanceId,key)}/>
               <div className="dsh-w-body dsh-home-widget-content" inert={editing || undefined}>
                 {definition === undefined ? <div className="dsh-empty" role="status">{t('widget.unavailable', { typeId: instance.typeId })}</div>
                   : <CardBoundary key={renderKey(instance, definition)} fallback={<div className="dsh-error" role="alert">{t('error.card')}</div>}>

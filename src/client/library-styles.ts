@@ -6,10 +6,6 @@ export const libraryStyles=`
 .dsh-library-panel .dsh-widget-directory { display:flex; flex-direction:column; gap:12px; max-height:none; overflow-y:auto; min-height:0; padding:2px 6px 8px 2px; }
 .dsh-library-panel .dsh-directory-item { flex:none; padding:12px; height:220px; overflow:visible; background:var(--dsw-alias-settings-card-fill); transition:box-shadow 120ms ease; }
 .dsh-library-panel .dsh-directory-item:hover,.dsh-library-panel .dsh-directory-item:focus-within { box-shadow:var(--dsw-shadow-lv2); border-color:var(--dsw-alias-border-l4); }
-.dsh-library-tooltip {display:none;position:absolute;bottom:calc(100% + 6px);left:0;right:0;z-index:5;padding:8px 12px;border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-tooltip-bg);color:var(--dsw-alias-label-primary-foreground);font:var(--dsw-font-xs-13);pointer-events:none;box-shadow:var(--dsw-shadow-lv2)}
-.dsh-library-tooltip small{display:block;margin-top:4px;font:var(--dsw-font-xxxs-11)}
-.dsh-directory-item:hover>.dsh-library-tooltip,.dsh-directory-item:focus-within>.dsh-library-tooltip{display:block}
-body.dsh-home-dragging .dsh-library-tooltip{display:none}
 .dsh-library-panel .dsh-w-head { touch-action:none; cursor:grab; flex:none; }
 .dsh-library-panel .dsh-w-title { flex:1; }
 .dsh-library-preview { position:relative; width:100%; flex:1; min-height:0; overflow:hidden; margin-top:8px; pointer-events:none; }
