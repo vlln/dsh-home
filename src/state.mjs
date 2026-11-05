@@ -10,12 +10,28 @@
  * @module @vlln/dsh-home/state
  */
 
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { constants, copyFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { initialInstances, validateWorkbench, validateWorkbenchLayout, widgetStateError } from './widget-state.mjs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 
-/** 状态文档版本：形状变了就 +1（旧文档按空状态读，不做迁移）。 */
-export const STATE_VERSION = 2
+/** v3 adds durable instances; v2 is migrated in memory until the next normal commit. */
+export const STATE_VERSION = 3
+
+// Diagnostics are not document fields and cannot accidentally be persisted.
+const storageMetadata = new WeakMap()
+export function stateStorage(state) {
+  return storageMetadata.get(state) ?? { writable: true, status: 'ready', error: null }
+}
+function withStorage(state, storage) {
+  storageMetadata.set(state, storage)
+  return state
+}
+export function readOnlyState(error) {
+  return withStorage(emptyState(), { writable: false, status: 'read-only', error: {
+    code: error?.code ?? 'state-read-error', message: error?.message ?? 'Cannot read saved workbench',
+  } })
+}
 
 /** 账本文档版本。 */
 export const LEDGER_VERSION = 1
@@ -72,29 +88,56 @@ export function emptyPrefs() {
 
 /** 空状态文档。 */
 export function emptyState() {
-  return { version: STATE_VERSION, layout: null, prefs: emptyPrefs() }
+  return { version: STATE_VERSION, layout: null, instances: initialInstances(), prefs: emptyPrefs() }
 }
 
-/**
- * 读状态；文件缺失/损坏/版本不符都退回空状态（不抛，首页永远能打开）。
- * @returns 状态文档
- */
+/** Read failures become a visible read-only diagnostic, never a writable reset. */
 export function loadState() {
-  const parsed = readJson(stateFile())
-  if (parsed?.version !== STATE_VERSION) return emptyState()
-  return {
-    version: STATE_VERSION,
-    layout: normalizeLayout(parsed.layout),
-    prefs: normalizePrefs(parsed.prefs),
+  let text
+  try {
+    text = readFileSync(stateFile(), 'utf8')
+  } catch (error) {
+    if (error.code === 'ENOENT') return emptyState()
+    return readOnlyState(widgetStateError('Cannot read saved workbench', 'state-read-error'))
+  }
+  try {
+    if (Buffer.byteLength(text) > 512 * 1024) throw widgetStateError('Saved workbench exceeds document limit', 'state-corrupt')
+    const parsed = JSON.parse(text)
+    if (parsed?.version !== 2 && parsed?.version !== STATE_VERSION) {
+      throw widgetStateError('Saved workbench version is unsupported; original file retained', 'state-version')
+    }
+    if (!parsed.prefs || typeof parsed.prefs !== 'object' || Array.isArray(parsed.prefs)) throw widgetStateError('Saved preferences are corrupt', 'state-corrupt')
+    const normalizedPrefs = normalizePrefs(parsed.prefs)
+    if (Object.hasOwn(parsed.prefs, 'lastSeenAt') && parsed.prefs.lastSeenAt !== normalizedPrefs.lastSeenAt) throw widgetStateError('Saved preferences are corrupt', 'state-corrupt')
+    if (Object.hasOwn(parsed.prefs, 'dismissed') && JSON.stringify(parsed.prefs.dismissed) !== JSON.stringify(normalizedPrefs.dismissed)) throw widgetStateError('Saved preferences are corrupt', 'state-corrupt')
+    const layout = validateWorkbenchLayout(parsed.layout, normalizeLayout)
+    // Keep original layout and prefs JSON: migration is lossless, including optional fields.
+    const workbench = parsed.version === 2
+      ? { layout: parsed.layout, instances: initialInstances(layout) }
+      : { layout: parsed.layout, instances: validateWorkbench({ layout, instances: parsed.instances }, normalizeLayout).instances }
+    const state = { ...parsed, ...workbench, version: STATE_VERSION }
+    return withStorage(state, { writable: true, status: parsed.version === 2 ? 'migrated' : 'ready', error: null })
+  } catch (error) {
+    return readOnlyState(widgetStateError(error.code === 'state-version' ? error.message : 'Saved workbench is corrupt or cannot migrate safely; original file retained', error.code === 'state-version' ? 'state-version' : 'state-corrupt'))
   }
 }
 
-/**
- * 原子写状态（只有布局与偏好，几十字节到几 KB）。
- * @param state 状态文档
- */
+/** Atomic commit. Recheck disk to protect future/corrupt files introduced since load. */
 export function saveState(state) {
-  writeJson(stateFile(), state)
+  if (!stateStorage(state).writable) throw widgetStateError('Saved workbench is read-only', 'state-read-only')
+  const current = loadState()
+  if (!stateStorage(current).writable) throw widgetStateError('Saved workbench is read-only; original file retained', 'state-read-only')
+  const validated = validateWorkbench(state, normalizeLayout)
+  const next = { ...state, version: STATE_VERSION, instances: validated.instances }
+  if (Buffer.byteLength(JSON.stringify(next)) + 1 > 512 * 1024) throw widgetStateError('Saved document exceeds 512 KiB', 'state-write-error')
+  if (stateStorage(current).status === 'migrated') {
+    try {
+      copyFileSync(stateFile(), `${stateFile()}.v2.bak`, constants.COPYFILE_EXCL)
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error
+    }
+  }
+  writeJson(stateFile(), next)
 }
 
 /** 空账本。 */
@@ -144,7 +187,7 @@ export function normalizeLayout(raw) {
   if (raw.size !== null && typeof raw.size === 'object' && !Array.isArray(raw.size)) {
     for (const [id, value] of Object.entries(raw.size)) {
       if (!isWidgetId(id) || !WIDGET_SIZES.includes(value)) continue
-      size[id] = value
+      Object.defineProperty(size, id, { value, enumerable: true, configurable: true, writable: true })
     }
   }
   const uniqueOrder = []
@@ -152,7 +195,26 @@ export function normalizeLayout(raw) {
   const focusOrder = Array.isArray(raw.focusOrder) ? raw.focusOrder.filter(isWidgetId).slice(0, MAX_ENTRIES) : []
   const uniqueFocus = []
   for (const id of focusOrder) if (!uniqueFocus.includes(id)) uniqueFocus.push(id)
-  return { order: uniqueOrder, focusOrder: uniqueFocus, size, hidden: [...new Set(hidden)] }
+  const layout = { order: uniqueOrder, focusOrder: uniqueFocus, size, hidden: [...new Set(hidden)] }
+  if (typeof raw.instanceLayout === 'boolean') layout.instanceLayout = raw.instanceLayout
+  if (raw.positions !== null && typeof raw.positions === 'object' && !Array.isArray(raw.positions)) {
+    const positions = {}
+    for (const columns of [12, 6, 2]) {
+      const rows = raw.positions[String(columns)]
+      if (rows === null || typeof rows !== 'object' || Array.isArray(rows)) continue
+      const valid = {}
+      for (const [id, rect] of Object.entries(rows).slice(0, MAX_ENTRIES)) {
+        if (!isWidgetId(id) || rect === null || typeof rect !== 'object') continue
+        const { x, y, w, h } = rect
+        if (![x, y, w, h].every(Number.isInteger) || x < 0 || y < 0 || y > 10000
+          || w < 1 || w > columns || x + w > columns || h < 3 || h > 30) continue
+        Object.defineProperty(valid, id, { value: { x, y, w, h }, enumerable: true, configurable: true, writable: true })
+      }
+      positions[String(columns)] = valid
+    }
+    layout.positions = positions
+  }
+  return layout
 }
 
 /**
@@ -167,7 +229,7 @@ export function normalizePrefs(raw) {
   if (raw.dismissed !== null && typeof raw.dismissed === 'object' && !Array.isArray(raw.dismissed)) {
     for (const [id, at] of Object.entries(raw.dismissed)) {
       if (!isWidgetId(id) || typeof at !== 'number' || !Number.isFinite(at)) continue
-      prefs.dismissed[id] = at
+      Object.defineProperty(prefs.dismissed, id, { value: at, enumerable: true, configurable: true, writable: true })
     }
   }
   return prefs

@@ -8,9 +8,13 @@
  * @module @vlln/dsh-home/client/store
  */
 
+import { homeOrder } from './layout-model.ts'
+import type { JsonValue, WidgetDefinition, WidgetInstance } from './widget-contract.ts'
+import { HomeWidgetRegistry, migrateWidgetInstance, validateWidgetConfig } from './widget-registry.ts'
+import { buildSpatialLayout, canPlace, findSpatialSpace, mergeSpatialPositions, type SpatialItem } from './spatial-model.ts'
 import {
-  emptyLayout, emptyPrefs, fetchLayout, fetchPrefs, fetchSnapshot, saveLayout, savePrefs,
-  type Layout, type LedgerSnapshot, type Prefs, type WidgetSize,
+  emptyLayout, emptyPrefs, fetchWorkbench, fetchPrefs, fetchSnapshot, saveWorkbench, savePrefs, HomeApiError,
+  type Layout, type LedgerSnapshot, type Prefs, type WidgetSize, type StorageStatus,
 } from './api.ts'
 
 /** 客户端会话目录里首页需要的那几个字段。 */
@@ -21,6 +25,8 @@ export interface SessionMeta {
   running?: boolean
   cwd?: string
   updatedAt?: number
+  parentSessionId?: string
+  origin?: string
 }
 
 /** 首页状态。 */
@@ -28,7 +34,15 @@ export interface HomeState {
   ledger: LedgerSnapshot | null
   layout: Layout
   prefs: Prefs
+  /** Preference writes are forbidden until the saved preferences were read successfully. */
+  prefsLoaded: boolean
+  instances: WidgetInstance[]
+  workbenchLoaded: boolean
+  workbenchBusy: boolean
+  storage: StorageStatus
   sessions: Record<string, SessionMeta>
+  /** Optional navigation services changed; keeps action consumers reactive. */
+  actionRevision: number
   loading: boolean
   refreshing: boolean
   error: string | null
@@ -48,7 +62,13 @@ export class HomeStore {
     ledger: null,
     layout: emptyLayout(),
     prefs: emptyPrefs(),
+    prefsLoaded: false,
+    instances: [],
+    workbenchLoaded: false,
+    workbenchBusy: false,
+    storage: { writable: false, status: 'read-only', error: null },
     sessions: {},
+    actionRevision: 0,
     loading: true,
     refreshing: false,
     error: null,
@@ -72,6 +92,53 @@ export class HomeStore {
   private sessionOff: (() => void) | null = null
 
   private disposed = false
+  private writeQueue: Promise<unknown> = Promise.resolve()
+  private migrationRegistry: HomeWidgetRegistry | null = null
+
+  private assertEditable(): void {
+    if (!this.state.workbenchLoaded || !this.state.storage.writable || this.state.workbenchBusy) {
+      throw new Error(this.state.storage.error?.message ?? 'Workbench is not editable')
+    }
+  }
+
+  private canWritePrefs(): boolean {
+    return !this.disposed && this.state.prefsLoaded && this.state.workbenchLoaded && this.state.storage.writable
+  }
+
+  private recordWriteError(error: unknown): void {
+    const diagnostic = error instanceof HomeApiError ? error.storage : undefined
+    const readonly = diagnostic?.writable === false || (error instanceof HomeApiError && error.code === 'state-read-only')
+    const storage: StorageStatus = readonly ? { writable: false, status: 'read-only', error: diagnostic?.error ?? {
+      code: 'state-read-only', message: error instanceof Error ? error.message : String(error),
+    } } : diagnostic ?? { writable: true, status: 'write-error', error: {
+      code: error instanceof HomeApiError ? error.code : 'write-error', message: error instanceof Error ? error.message : String(error),
+    } }
+    if (!storage.writable) {
+      if (this.layoutTimer !== null) clearTimeout(this.layoutTimer)
+      if (this.prefsTimer !== null) clearTimeout(this.prefsTimer)
+      this.layoutTimer = null
+      this.prefsTimer = null
+    }
+    this.set({ storage })
+  }
+
+  /** Serialize complete document writes; a failed write never poisons later retries. */
+  private persistDocument(layout = this.state.layout, instances = this.state.instances): Promise<void> {
+    const document = structuredClone({ layout, instances })
+    const operation = this.writeQueue.catch(() => {}).then(async () => {
+      if (this.disposed) return
+      if (!this.state.storage.writable) throw new HomeApiError(this.state.storage.error?.message ?? 'Saved workbench is read-only', 'state-read-only', this.state.storage)
+      try {
+        const saved = await saveWorkbench(document.layout, document.instances)
+        if (this.state.storage.status === 'write-error') this.set({ storage: saved.storage })
+      } catch (error) {
+        this.recordWriteError(error)
+        throw error
+      }
+    })
+    this.writeQueue = operation
+    return operation
+  }
 
   constructor() {
     void this.refresh()
@@ -106,8 +173,14 @@ export class HomeStore {
     for (const listener of this.listeners) listener()
   }
 
+  /** Notify consumers when optional navigation capabilities arrive or disappear. */
+  notifyActionsChanged(): void {
+    this.set({ actionRevision: this.state.actionRevision + 1 })
+  }
+
   /** 接上官方会话目录（标题 / 运行态 / 空白态）。 */
   attachSessions(list: { getSnapshot: () => any; subscribe: (fn: () => void) => () => void }): void {
+    this.sessionOff?.()
     const sync = (): void => {
       const snapshot = list.getSnapshot()
       const sessions: Record<string, SessionMeta> = {}
@@ -120,6 +193,9 @@ export class HomeStore {
           ...(typeof item.running === 'boolean' ? { running: item.running } : {}),
           ...(typeof item.cwd === 'string' ? { cwd: item.cwd } : {}),
           ...(typeof item.updatedAt === 'number' ? { updatedAt: item.updatedAt } : {}),
+          ...(typeof item.parentId === 'string' ? { parentSessionId: item.parentId }
+            : typeof item.parentSessionId === 'string' ? { parentSessionId: item.parentSessionId } : {}),
+          ...(typeof item.origin === 'string' ? { origin: item.origin } : {}),
         }
       }
       this.set({ sessions })
@@ -128,12 +204,19 @@ export class HomeStore {
     this.sessionOff = list.subscribe(sync)
   }
 
+  /** Release the optional catalog when its service scope is unloaded. */
+  detachSessions(): void {
+    this.sessionOff?.()
+    this.sessionOff = null
+  }
+
   /** 拉一次账本快照。 */
   async refresh(): Promise<void> {
     if (this.state.refreshing) return
     this.set({ refreshing: true })
     try {
       const ledger = await fetchSnapshot()
+      if (this.disposed) return
       this.set({ ledger, loading: false, refreshing: false, error: null, lastLoadedAt: Date.now(), now: Date.now() })
       if (ledger.scanning || ledger.scannedAt === null) {
         if (this.followUp !== null) clearTimeout(this.followUp)
@@ -147,14 +230,16 @@ export class HomeStore {
   /** 拉首页偏好。 */
   async loadPrefs(): Promise<void> {
     try {
-      this.set({ prefs: await fetchPrefs() })
+      this.set({ prefs: await fetchPrefs(), prefsLoaded: true })
     } catch {
-      // 偏好拿不到就退回空偏好：不影响阅读。
+      // Keep defaults read-only: never persist an unread preference document.
+      this.set({ prefsLoaded: false })
     }
   }
 
   /** 记下"这次看到了"，下次进首页就能算"自上次以来"。 */
   markSeen(): void {
+    if (!this.canWritePrefs()) return
     if (this.state.prefs.lastSeenAt !== null
       && Date.now() - this.state.prefs.lastSeenAt < 60_000) return
     this.set({ prefs: { ...this.state.prefs, lastSeenAt: Date.now() } })
@@ -163,25 +248,113 @@ export class HomeStore {
 
   /** "这条我看过了"：记下时间；会话有新活动后会重新出现。 */
   dismiss(id: string): void {
+    if (!this.canWritePrefs()) return
     this.set({ prefs: { ...this.state.prefs, dismissed: { ...this.state.prefs.dismissed, [id]: Date.now() } } })
     this.persistPrefsSoon()
   }
 
   private persistPrefsSoon(): void {
+    if (!this.canWritePrefs()) return
     if (this.prefsTimer !== null) clearTimeout(this.prefsTimer)
     this.prefsTimer = setTimeout(() => {
       this.prefsTimer = null
-      savePrefs(this.state.prefs).catch(() => {})
+      if (!this.canWritePrefs()) return
+      savePrefs(this.state.prefs).catch(error => { this.recordWriteError(error) })
     }, SAVE_DEBOUNCE_MS)
   }
 
-  /** 拉用户布局（失败就用默认布局，不拦页面）。 */
+  /** Load instances and geometry together. Failure never enables a default overwrite. */
   async loadLayout(): Promise<void> {
     try {
-      const layout = await fetchLayout()
-      if (layout !== null) this.set({ layout })
-    } catch {
-      // 布局拿不到不是错误：默认排布照常工作。
+      const document = await fetchWorkbench()
+      this.set({ layout: document.layout ?? emptyLayout(), instances: document.instances,
+        storage: document.storage, workbenchLoaded: true })
+      if (this.migrationRegistry) this.reconcileDefinitions(this.migrationRegistry)
+    } catch (error) {
+      this.set({ workbenchLoaded: true, storage: { writable: false, status: 'read-only',
+        error: { code: 'load-error', message: error instanceof Error ? error.message : String(error) } } })
+    }
+  }
+
+  /** Migrate only available definitions; preserve raw instances on any failure. */
+  reconcileDefinitions(registry: HomeWidgetRegistry): void {
+    this.migrationRegistry = registry
+    if (!this.state.workbenchLoaded || !this.state.storage.writable || this.state.workbenchBusy) return
+    let changed = false
+    const instances = this.state.instances.map(instance => {
+      const definition = registry.get(instance.typeId)
+      if (!definition || definition.configVersion === instance.configVersion) return instance
+      const result = migrateWidgetInstance(definition, instance)
+      if (!result.ok) return instance
+      changed = true
+      return result.instance
+    })
+    if (changed) { this.set({ instances }); this.persistSoon() }
+  }
+
+  addInstance(definition: WidgetDefinition, current: SpatialItem[], cols: number): void {
+    this.assertEditable()
+    if (this.state.instances.length >= 64) throw new Error('Workbench instance limit reached')
+    const registry = new HomeWidgetRegistry()
+    registry.register(definition, definition.typeId.startsWith('legacy:') ? { internalLegacyTypeId: true } : undefined)
+    const instance = registry.createInstance(definition.typeId, crypto.randomUUID())
+    this.insertInstance(instance, definition, current, cols)
+  }
+
+  duplicateInstance(id: string, definition: WidgetDefinition, current: SpatialItem[], cols: number): void {
+    this.assertEditable()
+    if (this.state.instances.length >= 64) throw new Error('Workbench instance limit reached')
+    const original = this.state.instances.find(instance => instance.instanceId === id)
+    if (!original || original.typeId !== definition.typeId) throw new Error('Unknown widget instance or mismatched definition')
+    const instance = { ...structuredClone(original), instanceId: crypto.randomUUID() }
+    this.insertInstance(instance, definition, current, cols)
+  }
+
+  private insertInstance(instance: WidgetInstance, definition: WidgetDefinition, current: SpatialItem[], cols: number): void {
+    const defaults = definition.defaults
+    const meta = { id: instance.instanceId, defaultSize: defaults?.size ?? 'm',
+      defaultHeight: defaults?.height ?? 4, minWidth: defaults?.minWidth, minHeight: defaults?.minHeight,
+      maxWidth: defaults?.maxWidth, maxHeight: defaults?.maxHeight }
+    const layout = mergeSpatialPositions(this.state.layout, current, cols)
+    const shape = buildSpatialLayout(emptyLayout(), [meta], cols)[0]
+    const rect = shape && findSpatialSpace(current, shape, cols)
+    if (!rect) throw new Error('No space available for this widget')
+    const next = mergeSpatialPositions(layout, [{ ...shape, ...rect }], cols)
+    next.order = [...(layout.instanceLayout ? [...new Set([...layout.order, ...this.state.instances.map(item => item.instanceId)])]
+      : homeOrder(layout, this.state.instances.map(item => item.instanceId))), instance.instanceId]
+    next.instanceLayout = true
+    this.set({ instances: [...this.state.instances, instance], layout: next })
+    this.persistSoon()
+  }
+
+  removeInstance(id: string): void {
+    this.assertEditable()
+    const layout = structuredClone(this.state.layout)
+    layout.order = layout.order.filter(value => value !== id)
+    layout.focusOrder = layout.focusOrder.filter(value => value !== id)
+    layout.hidden = layout.hidden.filter(value => value !== id)
+    delete layout.size[id]
+    for (const rows of Object.values(layout.positions ?? {})) delete rows[id]
+    this.set({ layout, instances: this.state.instances.filter(instance => instance.instanceId !== id) })
+    this.persistSoon()
+  }
+
+  async saveInstanceConfig(id: string, definition: WidgetDefinition, config: JsonValue): Promise<void> {
+    this.assertEditable()
+    const original = this.state.instances.find(instance => instance.instanceId === id)
+    if (!original || original.typeId !== definition.typeId) throw new Error('Unknown widget instance or mismatched definition')
+    const draft = validateWidgetConfig(definition, config)
+    const instances = this.state.instances.map(instance => instance.instanceId === id
+      ? { ...instance, config: draft, configVersion: definition.configVersion } : instance)
+    if (this.layoutTimer !== null) clearTimeout(this.layoutTimer)
+    this.layoutTimer = null
+    this.set({ workbenchBusy: true })
+    try {
+      await this.persistDocument(this.state.layout, instances)
+      this.set({ instances })
+    } finally {
+      this.set({ workbenchBusy: false })
+      if (!this.disposed && this.migrationRegistry) this.reconcileDefinitions(this.migrationRegistry)
     }
   }
 
@@ -232,6 +405,52 @@ export class HomeStore {
     this.persistSoon()
   }
 
+  /** Unified surface ordering, migrating the legacy two-section layout on first edit. */
+  moveHomeRelative(id: string, target: string, side: 'before' | 'after', fallback: string[]): void {
+    if (id === target) return
+    const all = homeOrder(this.state.layout, fallback)
+    if (!all.includes(id) || !all.includes(target)) return
+    const order = all.filter(item => item !== id)
+    const index = order.indexOf(target)
+    order.splice(side === 'before' ? index : index + 1, 0, id)
+    this.set({ layout: { ...this.state.layout, order } })
+    this.persistSoon()
+  }
+
+  /** Persist only the active breakpoint, retaining hidden and absent plugin positions. */
+  setSpatialLayout(items: SpatialItem[], cols: number): void {
+    this.assertEditable()
+    this.set({ layout: mergeSpatialPositions(this.state.layout, items, cols) })
+    this.persistSoon()
+  }
+
+  /** Restoring one card finds a free slot without moving any existing widgets. */
+  toggleSpatialHidden(id: string, current: SpatialItem[], metas: { id: string; defaultSize: WidgetSize }[], cols: number): void {
+    this.assertEditable()
+    if (!this.state.layout.hidden.includes(id)) { this.hide(id); return }
+    const layout = mergeSpatialPositions(this.state.layout, current, cols)
+    const unhidden = { ...layout, hidden: layout.hidden.filter(item => item !== id) }
+    const candidate = buildSpatialLayout(unhidden, metas, cols).find(item => item.i === id)
+    if (candidate !== undefined) {
+      const saved = layout.positions?.[String(cols)]?.[id]
+      const rect = saved !== undefined && canPlace(current, id, saved, cols)
+        ? saved : findSpatialSpace(current, candidate, cols)
+      if (rect !== null) {
+        unhidden.positions = { ...layout.positions, [String(cols)]: { ...layout.positions?.[String(cols)], [id]: rect } }
+      }
+    }
+    this.set({ layout: unhidden })
+    this.persistSoon()
+  }
+
+  /** Done waits for a durable write; failures leave the editor open for retry. */
+  async flushLayout(): Promise<void> {
+    if (this.layoutTimer !== null) clearTimeout(this.layoutTimer)
+    this.layoutTimer = null
+    this.assertEditable()
+    await this.persistDocument()
+  }
+
   /** 显示/隐藏一张卡（编辑态的小组件清单用）。 */
   toggleHidden(id: string): void {
     const hidden = this.state.layout.hidden
@@ -246,6 +465,7 @@ export class HomeStore {
   }
 
   hide(id: string): void {
+    this.assertEditable()
     const hidden = this.state.layout.hidden.includes(id)
       ? this.state.layout.hidden
       : [...this.state.layout.hidden, id]
@@ -259,7 +479,8 @@ export class HomeStore {
   }
 
   reset(): void {
-    this.set({ layout: emptyLayout() })
+    this.assertEditable()
+    this.set({ layout: { ...emptyLayout(), instanceLayout: true } })
     this.persistSoon()
   }
 
@@ -267,9 +488,7 @@ export class HomeStore {
     if (this.layoutTimer !== null) clearTimeout(this.layoutTimer)
     this.layoutTimer = setTimeout(() => {
       this.layoutTimer = null
-      saveLayout(this.state.layout).catch(() => {
-        // 落盘失败不回滚 UI：下一次改动会再写一遍。
-      })
+      if (this.state.storage.writable) void this.persistDocument().catch(() => {})
     }, SAVE_DEBOUNCE_MS)
   }
 
@@ -280,7 +499,7 @@ export class HomeStore {
     if (this.followUp !== null) clearTimeout(this.followUp)
     if (this.layoutTimer !== null) clearTimeout(this.layoutTimer)
     if (this.prefsTimer !== null) clearTimeout(this.prefsTimer)
-    this.sessionOff?.()
+    this.detachSessions()
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibility)
     this.listeners.clear()
   }

@@ -21,7 +21,7 @@ export const IDLE_GAP_MS = 5 * 60_000
  * 账本里每个会话记着它被折时的版本，版本不一致就重折——否则修了口径之后，
  * revision 没变的旧聚合会永远留着错数。
  */
-export const FOLD_VERSION = 2
+export const FOLD_VERSION = 3
 
 /** 「回到现场」显示的原文截断长度。 */
 const SNIPPET_LENGTH = 160
@@ -90,6 +90,8 @@ export function foldSession(header, events, now = Date.now()) {
   const clusters = []
   const openSteps = new Map()
   let lastUserText
+  // UTC-minute buckets preserve browser-zone dates without retaining message text.
+  const humanMinutes = {}
   let turns = 0
   let runMs = 0
   let activeMs = 0
@@ -97,12 +99,16 @@ export function foldSession(header, events, now = Date.now()) {
 
   for (const event of events) {
     const time = typeof event?.time === 'number' ? event.time : undefined
-    if (time === undefined) continue
+    if (time === undefined || !Number.isFinite(time) || !Number.isFinite(new Date(time).getTime())) continue
     times.push(time)
     if (event.type === 'user/message') {
       const source = event.data?.source
       const blocks = event.data?.content
       if (source?.kind === 'user' && Array.isArray(blocks)) {
+        if (time >= now - DAY_WINDOW_MS && time <= now) {
+          const minute = Math.floor(time / 60_000)
+          humanMinutes[minute] = (humanMinutes[minute] ?? 0) + 1
+        }
         const text = blocks
           .filter(block => block?.type === 'text' && typeof block.text === 'string')
           .map(block => block.text)
@@ -167,6 +173,7 @@ export function foldSession(header, events, now = Date.now()) {
     runMs,
     activeMs,
     lastUserText,
+    humanMinutes,
     days,
     clusters: clusters.slice(-CLUSTER_LIMIT),
   }

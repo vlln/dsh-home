@@ -1,7 +1,7 @@
 /**
  * 首页的"三件事"：回到现场 / 在等我 / 今天。
  *
- * 这三块是产品本身（固定、不可拖拽、不可隐藏）；可编排的小组件网格退到「更多」里
+ * 这三块是产品本身（可排序，不可隐藏）；可编排的小组件网格退到「更多」里
  * （见 page.tsx）。两张卡的记忆由 `prefs.dismissed` 承担：dismiss 记一个时间戳，
  * 会话在那之后有新活动就重新出现——"看过了"不等于"永远别看"。
  *
@@ -16,8 +16,9 @@ import { BUILTIN_WIDGETS, sessionTitle, type WidgetActions, type WidgetProps } f
 
 /** 客户端会话状态（官方 `sessionStatus` 根钩子的快照值）。 */
 export interface SessionStatus {
-  running: boolean
-  pendingInteraction?: 'approval' | 'plan-review' | 'question'
+  running?: boolean
+  /** rc.5 使用对象；保留早期宿主的字符串兼容。 */
+  pendingInteraction?: 'approval' | 'plan-review' | 'question' | { kind: string }
   completionUnread?: boolean
 }
 
@@ -35,6 +36,8 @@ export interface FocusProps {
   actions: WidgetActions
   /** `runtime` = 官方 sessionStatus 钩子到位；`none` = 这个组合没有该钩子。 */
   statusSource: 'runtime' | 'none'
+  /** Shared home widget shell supplies headings and decoration. */
+  embedded?: boolean
 }
 
 function isTopLevel(session: LedgerSession): boolean {
@@ -54,9 +57,11 @@ export function resumeCandidates(data: LedgerSnapshot | null, dismissed: Record<
 }
 
 function interactionText(status: SessionStatus | undefined, t: Translate): string | undefined {
-  if (status?.pendingInteraction === 'approval') return t('queue.approval')
-  if (status?.pendingInteraction === 'plan-review') return t('queue.plan')
-  if (status?.pendingInteraction === 'question') return t('queue.question')
+  const interaction = typeof status?.pendingInteraction === 'string'
+    ? status.pendingInteraction : status?.pendingInteraction?.kind
+  if (interaction === 'approval') return t('queue.approval')
+  if (interaction === 'plan-review') return t('queue.plan')
+  if (interaction === 'question') return t('queue.question')
   if (status?.completionUnread === true) return t('queue.done')
   return undefined
 }
@@ -75,7 +80,7 @@ export function FocusResume(props: FocusProps & {
   if (candidate === undefined) {
     return (
       <section className="dsh-focus dsh-focus-empty" aria-label={t('aria.resume')}>
-        <span className="dsh-focus-eyebrow">{t('resume.eyebrow')}</span>
+        {!props.embedded && <span className="dsh-focus-eyebrow">{t('resume.eyebrow')}</span>}
         <p className="dsh-focus-empty-text">{t('resume.empty')}</p>
         <button type="button" className="dsh-focus-primary" onClick={() => { actions.startSession() }}>
           {t('resume.emptyAction')}
@@ -89,7 +94,7 @@ export function FocusResume(props: FocusProps & {
   return (
     <section className="dsh-focus" aria-label={t('aria.resume')}>
       <div className="dsh-focus-eyebrow-row">
-        <span className="dsh-focus-eyebrow">{t('resume.eyebrow')}</span>
+        {!props.embedded && <span className="dsh-focus-eyebrow">{t('resume.eyebrow')}</span>}
         {handle}
         <button
           type="button"
@@ -168,12 +173,12 @@ export function FocusQueue(props: FocusProps & { onDismiss: (id: string) => void
       aria-label={t('aria.queue')}
       data-status-source={props.statusSource}
     >
-      <div className="dsh-w-head">
+      {!props.embedded && <div className="dsh-w-head">
         <QueueGlyph />
         <h2 className="dsh-w-title">{t('queue.title')}</h2>
         {items.length > 0 && <span className="dsh-w-extra">{items.length}</span>}
         {handle}
-      </div>
+      </div>}
       <div className="dsh-w-body">
         {items.length === 0 ? (
           <p className="dsh-muted dsh-queue-empty">{t('queue.empty')}</p>

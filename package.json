@@ -1,7 +1,7 @@
 {
   "name": "@vlln/dsh-home",
-  "description": "把 DSH 首页换成可自排的小组件仪表盘：最近活跃会话、今日时间带、在跑/在等、节律。",
-  "version": "0.3.2",
+  "description": "DSH 任务工作台：跨工作目录的最近会话、常用任务草稿、在跑与待处理、可编排小组件。",
+  "version": "0.12.1",
   "type": "module",
   "main": "lib/index.mjs",
   "icon": "./icon.svg",
@@ -12,7 +12,9 @@
     "icon.svg",
     "README.md",
     "LICENSE",
-    "docs"
+    "THIRD_PARTY_NOTICES.md",
+    "docs",
+    "examples/widget-counter"
   ],
   "publishConfig": {
     "access": "public"
@@ -22,6 +24,7 @@
       "default": "./lib/index.mjs"
     },
     "./client": "./lib/client.js",
+    "./widgets": { "types": "./lib/types/widget-contract.d.ts" },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
@@ -42,12 +45,25 @@
     "dsh": ">=0.2.0"
   },
   "scripts": {
-    "build": "tsdown --config ./tsdown.config.ts",
-    "test": "node --test",
+    "build": "tsdown --config ./tsdown.config.ts && tsc -p tsconfig.widgets.json",
+    "test": "node --experimental-strip-types --test",
+    "typecheck": "tsc --noEmit",
+    "test:host": "node scripts/verify-host.mjs --run",
     "prepublishOnly": "npm run build && npm test"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-api-workspace-controller": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-layout": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-workspace": "0.2.1-rc.5",
     "@types/react": "^19.3.0",
+    "playwright": "1.58.2",
+    "react-grid-layout": "2.2.3",
     "tsdown": "0.22.2",
     "typescript": "^5.9.3"
   },

@@ -9,6 +9,11 @@
  * @module @vlln/dsh-home/client/styles
  */
 
+import { activityStyles } from './activity-styles.ts'
+import { personalStyles } from './personal-styles.ts'
+import { quickStyles } from './quick-styles.ts'
+import { galleryStyles } from './gallery-styles.ts'
+
 /** 样式表元素 id（重复挂载时复用同一份）。 */
 export const STYLE_ID = 'dsh-home-styles'
 
@@ -30,7 +35,7 @@ export const CSS = `
   scrollbar-color: var(--dsw-alias-scrollbar-thumb, var(--dsw-alias-border-l3)) transparent;
 }
 .dsh-home * { box-sizing: border-box; }
-.dsh-home-inner { width: 100%; max-width: 1180px; min-width: 0; }
+.dsh-home-inner { width: 100%; max-width: none; min-width: 0; flex: none; }
 
 .dsh-home-head {
   display: flex;
@@ -476,6 +481,121 @@ export const CSS = `
 }
 
 
+/* Registry directory, instance management and host-owned settings drafts. */
+.dsh-workbench-notice {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0;
+  padding: 12px 14px; border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-alias-state-warn-tertiary); color: var(--dsw-alias-label-secondary);
+  font-size: var(--dsh-content-font-size-secondary, 13px); line-height: 1.6;
+}
+.dsh-workbench-notice > span { overflow-wrap: anywhere; }
+.dsh-manager-heading { margin: 14px 0 8px; font: var(--dsw-font-s-strong-14); color: var(--dsw-alias-label-primary); }
+.dsh-widget-directory, .dsh-instance-list { display: flex; flex-direction: column; }
+.dsh-directory-item, .dsh-instance-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 0; border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+}
+.dsh-manager-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 160px; overflow-wrap: anywhere; }
+.dsh-manager-info > strong { font: var(--dsw-font-xs-strong-13); }
+.dsh-manager-description { color: var(--dsw-alias-label-secondary); font-size: var(--dsh-content-font-size-secondary, 13px); line-height: 1.6; }
+.dsh-manager-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.dsh-delete-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--dsw-alias-state-error-primary); font-size: var(--dsh-content-font-size-secondary, 13px); }
+.dsh-widget-settings { margin-top: 16px; padding-top: 4px; border-top: 0.5px solid var(--dsw-alias-border-l3); }
+.dsh-settings-fields { margin: 12px 0; min-width: 0; }
+/* Fill only the content flex box, excluding the shell header and padding. The
+   observer reports this available viewport, independent of overflowing children. */
+.dsh-widget-viewport { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; }
+.dsh-widget-settings > .dsh-manager-actions { justify-content: flex-end; }
+.dsh-home [inert] { cursor: default; }
+.dsh-home .dsh-tool:disabled { opacity: 0.4; cursor: default; }
+
+/* ---- 工作台：原生搜索 / 目录选择，继承宿主语义 token ---- */
+.dsh-recent, .dsh-tasks { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.dsh-recent-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.dsh-recent-search, .dsh-recent-cwd, .dsh-home-select {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-md);
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-specific-input-major);
+  font: inherit;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+}
+.dsh-recent-search { flex: 2 1 180px; }
+.dsh-recent-cwd { flex: 1 1 140px; }
+.dsh-recent-search::placeholder { color: var(--dsw-alias-label-tertiary); }
+.dsh-recent-search:focus-visible, .dsh-recent-cwd:focus-visible, .dsh-home-select:focus-visible {
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+.dsh-recent-row { gap: 6px; padding-top: 10px; padding-bottom: 10px; }
+.dsh-recent-row .dsh-row-top { justify-content: space-between; }
+.dsh-recent-row .dsh-chip { display: inline-flex; align-items: center; cursor: inherit; flex: none; white-space: nowrap; }
+.dsh-recent-meta { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+.dsh-recent-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.dsh-recent-id { font-family: var(--ds-font-family-code); }
+.dsh-recent-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+.dsh-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dsh-task-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.dsh-tasks p { margin: 0; }
+.dsh-task-preview { font-size: var(--dsh-content-font-size-secondary, 13px); line-height: 1.6; color: var(--dsw-alias-label-secondary); }
+.dsh-task-error { color: var(--dsw-alias-state-error-primary); font-size: 12px; }
+.dsh-home-grid + .dsh-focus-stack { margin-top: 20px; }
+.dsh-home-grid > .dsh-w + .dsh-w { margin-top: 0; }
+
+/* Unified mobile-widget editing surface. Only the editing shell owns gestures. */
+.dsh-home-head { position: sticky; top: 0; z-index: 8; background: var(--dsw-alias-bg-base); padding: 8px 0 12px; }
+.dsh-home-widget { min-width: 0; }
+.dsh-home-widget .dsh-focus, .dsh-home-widget .dsh-queue {
+  border: 0; background: transparent; padding: 0; border-radius: 0; animation: none; margin: 0;
+}
+.dsh-home-widget .dsh-focus-eyebrow-row:empty { display: none; }
+.dsh-home-widget-content { position: relative; }
+.dsh-home[data-editing="true"] .dsh-home-widget { border-style: dashed; border-color: var(--dsw-alias-state-business-primary); animation: none; }
+.dsh-home[data-editing="true"] .dsh-home-widget .dsh-w-head { cursor: grab; touch-action: none; position: relative; z-index: 3; flex-wrap: wrap; }
+.dsh-home[data-editing="true"] .dsh-home-widget .dsh-tools { opacity: 1; }
+.dsh-home[data-editing="true"] .dsh-home-widget-content { opacity: 0.65; pointer-events: none; user-select: none; }
+.dsh-widget-drag-cover { position: absolute; inset: 52px 0 0; z-index: 2; cursor: grab; touch-action: none; border-radius: inherit; }
+.dsh-home-widget[data-dragging="true"] { opacity: 0.5; outline: 2px solid var(--dsw-alias-state-business-primary); }
+.dsh-edit-footnote { margin-top: 16px; }
+.dsh-remove-widget { color: var(--dsw-alias-state-error-primary); }
+.dsh-home[data-editing="false"] .dsh-home-widget .dsh-w-head { cursor: default; }
+
+/* React Grid Layout 2.2.3 / MIT: scoped structural rules adapted from its css/styles.css.
+   Source: https://github.com/react-grid-layout/react-grid-layout (license in THIRD_PARTY_NOTICES). */
+.dsh-spatial-container { width: 100%; min-width: 0; margin-top: 20px; }
+.dsh-home .react-grid-layout { position: relative; transition: height 180ms ease; }
+.dsh-home .react-grid-item { transition: transform 180ms ease, width 180ms ease, height 180ms ease; }
+.dsh-home .react-grid-item.dsh-home-widget { margin: 0; animation: none; overflow: hidden; display: flex; flex-direction: column; }
+.dsh-home .react-grid-item > .dsh-w-head { flex: none; min-height: 28px; }
+.dsh-home .react-grid-item > .dsh-home-widget-content { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.dsh-home .react-grid-item.react-draggable-dragging,
+.dsh-home .react-grid-item.resizing { transition: none; z-index: 10; will-change: transform; }
+.dsh-home .react-grid-item.react-draggable-dragging { box-shadow: var(--dsw-shadow-lv3, 0 8px 24px var(--dsw-alias-border-l3)); border-color: var(--dsw-alias-state-business-primary); opacity: 0.96; }
+.dsh-home .react-grid-item.react-grid-placeholder { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent); border: 2px dashed var(--dsw-alias-state-business-primary); border-radius: var(--dsw-radius-xl); z-index: 1; pointer-events: none; transition: none; }
+.dsh-home .dsh-spatial-grid[data-hover-pending="true"] .react-grid-placeholder {
+  border-color: var(--dsw-alias-label-tertiary);
+  background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 8%, transparent);
+}
+.dsh-home .dsh-spatial-grid[data-drop-rejected="true"] .react-grid-placeholder {
+  border-color: var(--dsw-alias-state-error-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent);
+}
+.dsh-home .react-grid-item > .react-resizable-handle { position: absolute; width: 24px; height: 24px; z-index: 6; touch-action: none; }
+.dsh-home .react-grid-item > .react-resizable-handle-se { bottom: 0; right: 0; cursor: se-resize; }
+.dsh-home .react-grid-item > .react-resizable-handle::after { content: ''; position: absolute; right: 7px; bottom: 7px; width: 7px; height: 7px; border-right: 2px solid var(--dsw-alias-label-tertiary); border-bottom: 2px solid var(--dsw-alias-label-tertiary); }
+.dsh-home .react-resizable-hide > .react-resizable-handle { display: none; }
+.dsh-home[data-editing="true"] .dsh-home-widget { border-style: solid; border-color: var(--dsw-alias-border-l3); }
+.dsh-home[data-editing="true"] .dsh-home-widget-content { opacity: 1; }
+.dsh-home[data-editing="true"] .dsh-widget-grip { touch-action: none; cursor: grab; }
+.dsh-home[data-editing="true"] .dsh-spatial-grid { background-image: radial-gradient(circle, var(--dsw-alias-border-l3) 1px, transparent 1px); background-size: 16px 16px; }
+.dsh-home .dsh-tools { background: transparent; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .dsh-home .react-grid-layout, .dsh-home .react-grid-item { transition: none; } }
+
 /* ---- 三件事（默认视图） ---- */
 .dsh-focus-stack { display: flex; flex-direction: column; gap: 12px; }
 .dsh-home-head + .dsh-focus,
@@ -650,7 +770,7 @@ export function injectStyles(): () => void {
   if (existing !== null) return () => {}
   const element = document.createElement('style')
   element.id = STYLE_ID
-  element.textContent = CSS
+  element.textContent = CSS + activityStyles + personalStyles + quickStyles + galleryStyles
   document.head.append(element)
   return () => { element.remove() }
 }

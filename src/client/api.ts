@@ -11,13 +11,37 @@ export const API_PATH = '/plugins/dsh-home/api'
 /** 卡片尺寸档。 */
 export type WidgetSize = 's' | 'm' | 'l'
 
+/** A widget's durable grid coordinates within one viewport breakpoint. */
+export interface GridRect { x: number; y: number; w: number; h: number }
+
 /** 用户布局（只存覆盖，默认值在页面侧合并）。 */
 export interface Layout {
   order: string[]
+  /** Instance layouts use generic ordering; absent means legacy split-order migration. */
+  instanceLayout?: boolean
   /** 「三件事」的纵向顺序（卡片 id：resume / queue / today）。 */
   focusOrder: string[]
   size: Record<string, WidgetSize>
   hidden: string[]
+  /** Column-count keyed spatial layouts; absent means migrate legacy order/size. */
+  positions?: Record<string, Record<string, GridRect>>
+}
+
+export interface StorageStatus {
+  writable: boolean
+  status: 'ready' | 'migrated' | 'read-only' | 'write-error'
+  error: null | { code: string; message: string }
+}
+export interface WorkbenchDocument {
+  layout: Layout | null
+  instances: import('./widget-contract.ts').WidgetInstance[]
+  storage: StorageStatus
+}
+export function fetchWorkbench(): Promise<WorkbenchDocument> {
+  return post<WorkbenchDocument>('workbench.get')
+}
+export function saveWorkbench(layout: Layout, instances: import('./widget-contract.ts').WidgetInstance[]): Promise<WorkbenchDocument> {
+  return post<WorkbenchDocument>('workbench.set', { layout, instances })
 }
 
 /** 一天的天桶（宿主本机时区）。 */
@@ -66,15 +90,36 @@ interface Envelope<T> {
   ok: boolean
   value?: T
   error?: { code: string; message: string }
+  storage?: StorageStatus
+}
+
+/** Keep server diagnostics on failed writes (especially a newly read-only document). */
+export class HomeApiError extends Error {
+  readonly code: string
+  readonly storage?: StorageStatus
+  constructor(message: string, code: string, storage?: StorageStatus) {
+    super(message)
+    this.name = 'HomeApiError'
+    this.code = code
+    this.storage = storage
+  }
+}
+function storageStatus(value: unknown): StorageStatus | undefined {
+  if (value === null || typeof value !== 'object') return undefined
+  const item = value as StorageStatus
+  if (typeof item.writable !== 'boolean' || !['ready', 'migrated', 'read-only', 'write-error'].includes(item.status)) return undefined
+  if (item.error !== null && (item.error === undefined || typeof item.error.code !== 'string' || typeof item.error.message !== 'string')) return undefined
+  return { writable: item.writable, status: item.status, error: item.error === null ? null : { ...item.error } }
 }
 
 /** 发一条 op；失败抛带 code 的 Error。 */
-export async function post<T>(op: string, extra: Record<string, unknown> = {}): Promise<T> {
+export async function post<T>(op: string, extra: Record<string, unknown> = {}, signal?: AbortSignal): Promise<T> {
   const response = await fetch(API_PATH, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     credentials: 'same-origin',
     cache: 'no-store',
+    signal,
     body: JSON.stringify({ op, ...extra }),
   })
   let envelope: Envelope<T>
@@ -84,7 +129,7 @@ export async function post<T>(op: string, extra: Record<string, unknown> = {}): 
     throw new Error(`home api: HTTP ${response.status} without JSON`)
   }
   if (!response.ok || envelope.ok !== true) {
-    throw new Error(envelope.error?.message ?? `home api: HTTP ${response.status}`)
+    throw new HomeApiError(envelope.error?.message ?? `home api: HTTP ${response.status}`, envelope.error?.code ?? 'http-error', storageStatus(envelope.storage))
   }
   return envelope.value as T
 }
@@ -124,7 +169,13 @@ export function saveLayout(layout: Layout): Promise<Layout> {
 /** 取首页偏好。 */
 export async function fetchPrefs(): Promise<Prefs> {
   const value = await post<{ prefs: Prefs }>('prefs.get')
-  return value.prefs
+  const prefs = value?.prefs
+  if (!prefs || (prefs.lastSeenAt !== null && (typeof prefs.lastSeenAt !== 'number' || !Number.isFinite(prefs.lastSeenAt)))
+    || prefs.dismissed === null || typeof prefs.dismissed !== 'object' || Array.isArray(prefs.dismissed)
+    || Object.values(prefs.dismissed).some(at => typeof at !== 'number' || !Number.isFinite(at))) {
+    throw new HomeApiError('Invalid saved preferences response', 'bad-prefs-response')
+  }
+  return prefs
 }
 
 /** 写首页偏好。 */

@@ -1,0 +1,3 @@
+- insert:
+    - id: home-example-counter
+      name: '@vlln/dsh-home-example-counter'

@@ -15,11 +15,20 @@
  * @module @vlln/dsh-home/client
  */
 
+import { createContext, useContext } from 'react'
+import type { ReactNode } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
-import { HomePage, type WidgetMeta, type WidgetSource } from './page.tsx'
+import { HomePage } from './page.tsx'
+import { HomeWidgetRegistry } from './widget-registry.ts'
+import { BuiltinProvider, registerBuiltins } from './builtin-registration.tsx'
+import type { WidgetContentProps } from './widget-contract.ts'
 import { HomeStore } from './store.ts'
 import { injectStyles } from './styles.ts'
 import { en, zh, type HomeLocaleKey } from './locales.ts'
@@ -72,44 +81,38 @@ function labelText(label: SlotLabel | undefined, fallback: string): string {
   return fallback
 }
 
-/** 外部 widget 列表：随 `home.widget` 槽的注册变化。 */
-function createWidgetSource(ctx: Context): WidgetSource {
-  let snapshot: WidgetMeta[] = []
-  const listeners = new Set<() => void>()
-  const same = (left: WidgetMeta[], right: WidgetMeta[]): boolean =>
-    left.length === right.length
-    && left.every((item, index) => item.id === right[index]?.id
-      && item.order === right[index]?.order
-      && item.title === right[index]?.title)
-
+type LegacyRenderer = (name: string, props?: Record<string, unknown>, options?: Record<string, unknown>) => ReactNode
+const LegacyRenderContext = createContext<LegacyRenderer>(() => null)
+/** Compatibility bridge only; v1 extensions register through the injected homeWidgets service. */
+function bridgeLegacySlots(ctx: Context, registry: HomeWidgetRegistry): () => void {
+  const entries = new Map<string, { entry: unknown; off: () => void }>()
   const sync = (): void => {
-    const next: WidgetMeta[] = []
+    const present = new Set<string>()
     for (const entry of ctx.slots.entries('home.widget')) {
       const id = entry.options.id
-      if (typeof id !== 'string' || id === '') continue
-      next.push({
-        id,
-        order: entry.options.order ?? 100,
-        defaultSize: 'm',
-        title: labelText(entry.options.label, id),
-      })
+      if (typeof id !== 'string' || id === '' || registry.get(`@vlln/dsh-home:${id}`)) continue
+      present.add(id)
+      if (entries.has(id)) continue
+      const typeId = `legacy:${id}`
+      const Content = ({ size }: WidgetContentProps) => {
+        const renderSlot = useContext(LegacyRenderContext)
+        return renderSlot('home.widget', { size }, { only: id })
+      }
+      try {
+        const off = registry.register({ typeId, apiVersion: 1,
+          title: () => labelText(entry.options.label, id), source: 'home.widget (legacy)',
+          configVersion: 1, defaultConfig: () => ({}), validateConfig: () => true, Content,
+        }, { internalLegacyTypeId: true })
+        entries.set(id, { entry, off })
+      } catch (error) {
+        console.error('[dsh-home] legacy widget registration failed', id, error)
+      }
     }
-    next.sort((left, right) => left.order - right.order)
-    if (same(snapshot, next)) return
-    snapshot = next
-    for (const listener of listeners) listener()
+    for (const [id, record] of entries) if (!present.has(id)) { record.off(); entries.delete(id) }
   }
-
-  ctx.effect(() => ctx.slots.subscribe('home.widget', sync), 'dsh-home: widget ledger')
+  const off = ctx.slots.subscribe('home.widget', sync)
   sync()
-
-  return {
-    getSnapshot: () => snapshot,
-    subscribe: (listener) => {
-      listeners.add(listener)
-      return () => { listeners.delete(listener) }
-    },
-  }
+  return () => { off(); for (const record of entries.values()) record.off(); entries.clear() }
 }
 
 /**
@@ -167,6 +170,31 @@ export function apply(ctx: Context): void {
     if (workspace === undefined) return
     navigation.openSession = id => workspace.openSession(id)
     navigation.startSession = () => workspace.startSession()
+    scoped.effect(() => () => {
+      navigation.openSession = () => {}
+      navigation.startSession = () => {}
+      store.notifyActionsChanged()
+    }, 'dsh-home: release navigation')
+  })
+
+  ctx.inject(['uiWorkspace', 'workspaces'], (scoped) => {
+    const workspace = scoped.get('uiWorkspace')
+    const workspaces = scoped.get('workspaces')
+    if (workspace === undefined || workspaces === undefined) return
+    let active = true
+    actions.pickDirectory = () => workspace.pickDirectory()
+    actions.startTask = async ({ cwd, prompt, signal }) => {
+      const target = cwd === undefined ? undefined : await workspaces.create({ path: cwd })
+      if (!active || signal?.aborted) return
+      workspace.startSession(target?.workspaceId, { prompt, whenDraftExists: 'append' })
+    }
+    store.notifyActionsChanged()
+    scoped.effect(() => () => {
+      active = false
+      delete actions.startTask
+      delete actions.pickDirectory
+      store.notifyActionsChanged()
+    }, 'dsh-home: task navigation')
   })
 
   ctx.inject(['sessions'], (scoped) => {
@@ -174,11 +202,23 @@ export function apply(ctx: Context): void {
     if (sessions === undefined) return
     scoped.effect(() => {
       store.attachSessions(sessions.list)
-      return () => {}
+      return () => { store.detachSessions() }
     }, 'dsh-home: session catalog')
   })
 
-  const widgets = createWidgetSource(ctx)
+  const registry = new HomeWidgetRegistry()
+  ctx.provide('homeWidgets', registry)
+  ctx.effect(() => registerBuiltins(registry, (key, params) => ctx.locale.bind(NS)(key as HomeLocaleKey, params)), 'dsh-home: builtins')
+  ctx.effect(() => bridgeLegacySlots(ctx, registry), 'dsh-home: legacy widget bridge')
+  ctx.effect(() => registry.subscribe(() => store.reconcileDefinitions(registry)), 'dsh-home: config migration')
+  store.reconcileDefinitions(registry)
+  function Page(pageProps: Parameters<typeof HomePage>[0] & { renderSlot: LegacyRenderer }) {
+    return <LegacyRenderContext.Provider value={pageProps.renderSlot}>
+      <BuiltinProvider store={store} t={pageProps.t} actions={actions} useSessionStatus={pageProps.useSessionStatus}>
+        <HomePage {...pageProps} />
+      </BuiltinProvider>
+    </LegacyRenderContext.Provider>
+  }
 
   ctx.slots.inject('main', () => ctx.slots.register({
     name: 'main',
@@ -189,12 +229,12 @@ export function apply(ctx: Context): void {
     },
     inject: () => ({
       store,
-      widgets,
+      registry,
       actions,
       locale: () => ctx.locale.getSnapshot().active,
       rescan: () => { void requestRescan().then(() => store.refresh()).catch(() => {}) },
     }),
-  }, HomePage as never))
+  }, Page as never))
 
   ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
     name: 'sidebar.panellist',

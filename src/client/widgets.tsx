@@ -1,6 +1,6 @@
 /**
- * 首页的内置小组件（六张卡）。每张卡只画「卡片内部」，卡片外壳（圆角/描边/标题行/
- * 编辑工具）由 page.tsx 统一提供——第三方经 `home.widget` 槽贡献的组件同样复用这层外壳。
+ * 首页的数据型内置小组件。每张卡只画「卡片内部」，卡片外壳（圆角/描边/标题行/
+ * 编辑工具）由 page.tsx 统一提供；专用个人组件与外部组件经公开注册表复用同一外壳。
  *
  * 口径提醒：数字全部来自宿主账本（`activeMs` 在场时长 = 事件簇跨度求和；
  * `runMs` = step 墙钟；`turns` = turn 数），标题/运行态来自官方会话目录。
@@ -12,11 +12,17 @@ import type { ReactNode } from 'react'
 import type { LedgerSession, LedgerSnapshot, WidgetSize } from './api.ts'
 import type { SessionMeta } from './store.ts'
 import { formatAgo, formatDuration, hhmm, shortcutHint, shortDay, type Translate } from './format.ts'
+import { RecentBody } from './recent.tsx'
+import { TasksBody } from './tasks.tsx'
+import type { SessionStatusMap } from './focus.tsx'
 
 /** 导航动作（由 index.tsx 接到官方 `uiWorkspace` 上）。 */
 export interface WidgetActions {
   openSession: (id: string) => void
   startSession: () => void
+  /** Prepare only: no submission or model call; existing drafts are appended to. */
+  startTask?: (input: { cwd?: string; prompt: string; signal?: AbortSignal }) => Promise<void>
+  pickDirectory?: () => Promise<string | null>
   /** 回到当前会话（`layout.selectPanel(null)`）。 */
   leave: () => void
 }
@@ -29,6 +35,10 @@ export interface WidgetProps {
   now: number
   actions: WidgetActions
   size: WidgetSize
+  statuses?: SessionStatusMap
+  statusSource?: 'runtime' | 'none'
+  loading?: boolean
+  loadError?: boolean
 }
 
 /** 内置小组件描述。 */
@@ -36,6 +46,7 @@ export interface BuiltinWidget {
   id: string
   order: number
   defaultSize: WidgetSize
+  defaultHeight: number
   title: (t: Translate) => string
   Glyph: () => ReactNode
   body: (props: WidgetProps) => ReactNode
@@ -117,11 +128,6 @@ export function sessionTitle(
     if (base !== undefined && base !== '') return base
   }
   return t('widget.unknown')
-}
-
-/** 顶层会话（排除子代理会话）。 */
-function topLevel(data: LedgerSnapshot | null): LedgerSession[] {
-  return (data?.sessions ?? []).filter(session => session.parentSessionId === undefined && session.origin !== 'subagent')
 }
 
 /** 今天 0 点（本地时区，与宿主的分日口径一致）。 */
@@ -347,45 +353,30 @@ function RhythmBody({ t, data }: WidgetProps) {
   )
 }
 
-function QuickBody({ t, data, now, actions }: WidgetProps) {
-  const last = topLevel(data).find(session => session.turns > 0)
-  return (
-    <div className="dsh-quick">
-      <button type="button" className="dsh-quick-button dsh-quick-primary" onClick={() => { actions.startSession() }}>
-        <span>{t('widget.quick.new')}</span>
-        <span className="dsh-key">{shortcutHint()}</span>
-      </button>
-      {last !== undefined && (
-        <button type="button" className="dsh-quick-button" onClick={() => { actions.openSession(last.id) }}>
-          <span>{t('widget.quick.resume')}</span>
-          <span className="dsh-key">{formatAgo(last.lastAt, now, t)}</span>
-        </button>
-      )}
-      <span className="dsh-muted">{t('widget.quick.hint')}</span>
-    </div>
-  )
-}
-
 /** 内置小组件表：顺序即默认排布。 */
 export const BUILTIN_WIDGETS: readonly BuiltinWidget[] = [
   {
-    id: 'today', order: 20, defaultSize: 'm', Glyph: IconToday,
+    id: 'recent', order: 0, defaultSize: 'm', defaultHeight: 7, Glyph: IconSessions,
+    title: t => t('widget.recent.title'), body: RecentBody,
+  },
+  {
+    id: 'tasks', order: 10, defaultSize: 's', defaultHeight: 8, Glyph: IconQuick,
+    title: t => t('widget.tasks.title'), body: TasksBody,
+  },
+  {
+    id: 'today', order: 20, defaultSize: 'm', defaultHeight: 4, Glyph: IconToday,
     title: t => t('widget.today.title'), body: TodayBody,
   },
   {
-    id: 'running', order: 30, defaultSize: 's', Glyph: IconRunning,
+    id: 'running', order: 30, defaultSize: 's', defaultHeight: 4, Glyph: IconRunning,
     title: t => t('widget.running.title'), body: RunningBody,
   },
   {
-    id: 'areas', order: 40, defaultSize: 's', Glyph: IconSessions,
+    id: 'areas', order: 40, defaultSize: 's', defaultHeight: 4, Glyph: IconSessions,
     title: t => t('widget.areas.title'), body: AreasBody,
   },
   {
-    id: 'rhythm', order: 50, defaultSize: 'm', Glyph: IconRhythm,
+    id: 'rhythm', order: 50, defaultSize: 'm', defaultHeight: 4, Glyph: IconRhythm,
     title: t => t('widget.rhythm.title'), body: RhythmBody,
-  },
-  {
-    id: 'quick', order: 60, defaultSize: 's', Glyph: IconQuick,
-    title: t => t('widget.quick.title'), body: QuickBody,
   },
 ]

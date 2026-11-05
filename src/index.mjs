@@ -20,8 +20,10 @@
  */
 
 import { isSameOrigin } from './trust.mjs'
+import { buildActivity, validateActivityQuery } from './activity.mjs'
 import { buildSnapshot, foldSession, FOLD_VERSION } from './ledger.mjs'
-import { loadLedger, loadState, normalizeLayout, normalizePrefs, saveLedger, saveState } from './state.mjs'
+import { loadLedger, loadState, normalizeLayout, normalizePrefs, readOnlyState, saveLedger, saveState, stateStorage } from './state.mjs'
+import { BUILTIN_WIDGET_IDS, layoutInstanceIds, validateWorkbench, widgetStateError } from './widget-state.mjs'
 
 /** bundle 条目 id（= cordis.patch.yml 的 insert id）。 */
 export const PLUGIN_ID = 'dsh-home'
@@ -29,8 +31,8 @@ export const PLUGIN_ID = 'dsh-home'
 /** 前端取数路由（与 client/index.tsx 的 API_PATH 同源）。 */
 export const API_PATH = '/plugins/dsh-home/api'
 
-/** 路由体上限：只有 op、一份布局或偏好，32 KiB 足够。 */
-const BODY_LIMIT = 32 * 1024
+/** Bounded workbench envelope (64 instances, bounded configs and geometry). */
+const BODY_LIMIT = 256 * 1024
 
 /** 快照触发的重扫阈值：60 秒内刚扫过就不再扫。 */
 const SCAN_TTL_MS = 60_000
@@ -81,8 +83,12 @@ function send(res, status, body) {
  * @param ctx cordis 上下文（宿主半边）
  * @param options 注入点（日志；测试可替换持久化实现）
  */
-export function createHomeService(ctx, { log = () => {} } = {}) {
-  const state = loadState()
+export function createHomeService(ctx, { log = () => {}, load = loadState, save = saveState } = {}) {
+  let state
+  try { state = load() } catch (error) { state = readOnlyState(error) }
+  // A broken loader must not remove the route or make a fallback writable.
+  if (state === undefined || state === null) state = readOnlyState(widgetStateError('State loader returned no document', 'state-read-error'))
+  let storage = stateStorage(state)
   const ledger = loadLedger()
   if (ledger.foldVersion !== FOLD_VERSION) {
     // 口径升级：清空旧聚合与 scannedAt，下次快照就触发整份重折
@@ -94,15 +100,29 @@ export function createHomeService(ctx, { log = () => {} } = {}) {
   /** @type {object | undefined} */
   let persistence
   let scanning = false
+  let scanError = false
   let inflight = null
   let progress = { done: 0, total: 0 }
+  // Small bounded query cache; scan mutations invalidate it, and live counts expire in 30 seconds.
+  const activityCache = new Map()
+  const invalidateActivity = () => activityCache.clear()
 
-  const persistState = () => {
+  const clone = value => structuredClone(value)
+  // No await between staging, saving and commit: concurrent route handlers serialize here.
+  const persistState = (next) => {
+    if (!storage.writable) throw widgetStateError(storage.error?.message ?? 'Saved workbench is read-only', 'state-read-only')
     try {
-      saveState(state)
+      save(next)
     } catch (error) {
+      const code = error?.code === 'state-read-only' ? 'state-read-only' : 'state-write-error'
+      storage = { writable: code !== 'state-read-only', status: code === 'state-read-only' ? 'read-only' : 'write-error', error: {
+        code, message: code === 'state-read-only' ? 'Saved workbench is read-only; original file retained' : 'Cannot save workbench; previous state retained',
+      } }
       log(`state write failed: ${error?.message ?? error}`)
+      throw widgetStateError(storage.error.message, code)
     }
+    state = next
+    storage = { writable: true, status: 'ready', error: null }
   }
 
   const persistLedger = () => {
@@ -135,6 +155,8 @@ export function createHomeService(ctx, { log = () => {} } = {}) {
     if (persistence === undefined) return
     if (inflight !== null) return inflight
     scanning = true
+    invalidateActivity()
+    scanError = false
     inflight = (async () => {
       try {
         const snapshots = await persistence.list()
@@ -147,6 +169,7 @@ export function createHomeService(ctx, { log = () => {} } = {}) {
         for (let index = 0; index < pending.length; index += SCAN_CONCURRENCY) {
           const batch = pending.slice(index, index + SCAN_CONCURRENCY)
           await Promise.all(batch.map(snapshot => foldOne(snapshot)))
+          invalidateActivity()
           progress = { done: Math.min(pending.length, index + batch.length), total: pending.length }
           if (Date.now() - lastPersist > PERSIST_INTERVAL_MS) {
             lastPersist = Date.now()
@@ -162,9 +185,11 @@ export function createHomeService(ctx, { log = () => {} } = {}) {
         ledger.scannedAt = Date.now()
         ledger.foldVersion = FOLD_VERSION
       } catch (error) {
+        scanError = true
         log(`scan failed: ${error?.message ?? error}`)
       } finally {
         scanning = false
+        invalidateActivity()
         inflight = null
         persistLedger()
       }
@@ -186,23 +211,52 @@ export function createHomeService(ctx, { log = () => {} } = {}) {
     },
     scan,
     snapshot,
-    get state() { return state },
+    activity(raw) {
+      const query = validateActivityQuery(raw)
+      snapshot() // Reuse the existing bounded scanner and refresh TTL.
+      const key = JSON.stringify(query)
+      const cached = activityCache.get(key)
+      if (cached && Date.now() - cached.at < 30_000) return clone(cached.value)
+      const value = buildActivity({ ...ledger, scanning, progress }, query, { available: persistence !== undefined, scanError })
+      if (activityCache.size >= 24) activityCache.delete(activityCache.keys().next().value)
+      activityCache.set(key, { at: Date.now(), value })
+      return clone(value)
+    },
+    get state() { return clone(state) },
     get ledger() { return ledger },
-    setLayout(layout) {
-      state.layout = layout
-      persistState()
-      return state.layout
+    getStorage() { return clone(storage) },
+    getWorkbench() {
+      return clone({ layout: state.layout, instances: state.instances, storage })
+    },
+    setWorkbench(workbench) {
+      const validated = validateWorkbench(workbench, normalizeLayout)
+      persistState({ ...state, ...validated })
+      return this.getWorkbench()
+    },
+    setLayout(raw) {
+      const layout = normalizeLayout(raw)
+      if (layout === null) throw widgetStateError('layout must be an object', 'bad-layout')
+      // Old clients can introduce legacy slots, but cannot erase configured instances.
+      const instances = clone(state.instances)
+      const ids = new Set(instances.map(instance => instance.instanceId))
+      const missing = new Set(layoutInstanceIds(layout).filter(id => !ids.has(id)))
+      instances.push(...[...missing].map(instanceId => ({ instanceId,
+        typeId: BUILTIN_WIDGET_IDS.includes(instanceId) ? `@vlln/dsh-home:${instanceId}` : `legacy:${instanceId}`,
+        configVersion: 1, config: {},
+      })))
+      const validated = validateWorkbench({ layout, instances }, normalizeLayout)
+      persistState({ ...state, ...validated })
+      return clone(state.layout)
     },
     getLayout() {
-      return state.layout
+      return clone(state.layout)
     },
     setPrefs(prefs) {
-      state.prefs = prefs
-      persistState()
-      return state.prefs
+      persistState({ ...state, prefs: { ...state.prefs, ...normalizePrefs(prefs) } })
+      return clone(state.prefs)
     },
     getPrefs() {
-      return state.prefs
+      return clone(state.prefs)
     },
   }
 }
@@ -260,8 +314,20 @@ export function apply(ctx) {
           send(res, 200, { ok: true, value: service.snapshot() })
           return
         }
+        if (op === 'activity') {
+          send(res, 200, { ok: true, value: service.activity({ timeZone: body.timeZone, cwd: body.cwd, date: body.date }) })
+          return
+        }
+        if (op === 'workbench.get') {
+          send(res, 200, { ok: true, value: service.getWorkbench() })
+          return
+        }
+        if (op === 'workbench.set') {
+          send(res, 200, { ok: true, value: service.setWorkbench({ layout: body.layout, instances: body.instances }) })
+          return
+        }
         if (op === 'layout.get') {
-          send(res, 200, { ok: true, value: { layout: service.getLayout() } })
+          send(res, 200, { ok: true, value: { layout: service.getLayout(), storage: service.getStorage() } })
           return
         }
         if (op === 'layout.set') {
@@ -274,7 +340,7 @@ export function apply(ctx) {
           return
         }
         if (op === 'prefs.get') {
-          send(res, 200, { ok: true, value: { prefs: service.getPrefs() } })
+          send(res, 200, { ok: true, value: { prefs: service.getPrefs(), storage: service.getStorage() } })
           return
         }
         if (op === 'prefs.set') {
@@ -288,7 +354,10 @@ export function apply(ctx) {
         }
         send(res, 400, { ok: false, error: { code: 'unknown-op', message: `unknown op: ${String(op)}` } })
       } catch (error) {
-        send(res, 500, { ok: false, error: { code: 'internal', message: error?.message ?? String(error) } })
+        const code = error?.code
+        const status = code === 'bad-workbench' || code === 'bad-layout' || code === 'bad-activity-query' ? 400 : code === 'state-read-only' ? 409 : 500
+        const safeCode = ['bad-workbench', 'bad-layout', 'bad-activity-query', 'state-read-only', 'state-write-error'].includes(code) ? code : 'internal'
+        send(res, status, { ok: false, error: { code: safeCode, message: safeCode === 'internal' ? 'Workbench operation failed' : error.message }, storage: service.getStorage() })
       }
     },
   }), 'dsh-home: api route')

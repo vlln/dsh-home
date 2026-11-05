@@ -1,547 +1,282 @@
-/**
- * 首页面板（`main` 槽，key = `home`）。
- *
- * 两块，都可排序（拖拽自 `reorder.tsx`，window 级监听 + 保留落点 + 边缘自动滚动）：
- * - **三件事**（`focus.tsx`）：回到现场 / 在等我 / 今天，纵向排列，顺序存在 `layout.focusOrder`；
- * - **更多数据与小组件**（opt-in）：网格，顺序/尺寸/隐藏存在 `layout` 的其余字段。
- *
- * 拖拽在阅读态就能用（把手常显），编辑态只负责尺寸 / 隐藏 / 清单 / 重置。
- * 记忆放在 `prefs`：`lastSeenAt` 支持"自上次以来"，`dismissed` 让"看过了"不等于
- * "永远别看"（会话有新活动就复活）。
- *
- * @module @vlln/dsh-home/client/page
- */
-
+/** Registry-driven widget instances. The page owns layout, not widget business logic. */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import { formatAgo, formatDay, formatDuration, type Translate } from './format.ts'
-import { BUILTIN_WIDGETS, type WidgetActions, type WidgetProps } from './widgets.tsx'
-import { FocusQueue, FocusResume, FocusToday, type SessionStatusMap } from './focus.tsx'
+import { formatAgo, formatDay, type Translate } from './format.ts'
+import type { WidgetActions } from './widgets.tsx'
+import type { SessionStatusMap } from './focus.tsx'
 import { CardBoundary } from './boundary.tsx'
-import { DragHandle, useReorder } from './reorder.tsx'
+import { useContainerWidth } from 'react-grid-layout'
+import { SpatialGrid } from './spatial-grid.tsx'
+import { buildSpatialLayout, moveSpatialItem, sizeFromRect, SPATIAL_GAP, SPATIAL_ROW_HEIGHT, type SpatialItem } from './spatial-model.ts'
 import type { HomeStore } from './store.ts'
-import type { WidgetSize } from './api.ts'
+import type { HomeWidgets, RegisteredWidgetDefinition, WidgetContentProps, WidgetInstance } from './widget-contract.ts'
+import { widgetText, WidgetSettingsPanel } from './widget-settings.tsx'
+import { validateWidgetConfig } from './widget-registry.ts'
+import { WidgetGallery } from './widget-gallery.tsx'
 
-/** 一个 widget 的元信息（内置或外部贡献）。 */
-export interface WidgetMeta {
-  id: string
-  order: number
-  defaultSize: WidgetSize
-  title: string
-  Glyph?: () => ReactNode
-  builtin?: (typeof BUILTIN_WIDGETS)[number]
-}
-
-/** 外部 widget 列表的可订阅来源（槽注册会实时变化）。 */
-export interface WidgetSource {
-  getSnapshot: () => WidgetMeta[]
-  subscribe: (listener: () => void) => () => void
-}
-
-/** 面板组件 props。 */
 export interface HomePageProps {
   t: Translate
-  renderSlot: (name: string, props?: Record<string, unknown>, options?: Record<string, unknown>) => ReactNode
   store: HomeStore
-  widgets: WidgetSource
+  registry: HomeWidgets
   actions: WidgetActions
   locale: () => string
-  rescan: () => void
-  /** 官方 sessionStatus 根钩子（缺席时队列为空）。 */
+  rescan?: () => void
+  /** Consumed by the private builtin context wrapper, never by the generic page. */
   useSessionStatus?: (selector: (snapshot: SessionStatusMap) => unknown) => unknown
 }
 
-const EMPTY_STATUSES: SessionStatusMap = new Map()
-
-/** 「三件事」的固定成员与默认顺序。 */
-const FOCUS_FALLBACK = ['resume', 'queue', 'today']
-
-/** 固定在三件事里、不进网格的内置卡。 */
-const FOCUS_IDS = new Set(['today'])
-
-function sizeLabel(size: WidgetSize, t: Translate): string {
-  return t(`edit.size.${size}`)
+function WidgetBody({ definition, widgetProps, onDimensions }: { definition: RegisteredWidgetDefinition; widgetProps: WidgetContentProps; onDimensions: (id: string, width: number, height: number) => void }): ReactNode {
+  const viewport = useRef<HTMLDivElement>(null)
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  useEffect(() => {
+    const node = viewport.current
+    if (node === null) return
+    const measure = (): void => {
+      const style = getComputedStyle(node)
+      const width = Math.max(0, node.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight))
+      const height = Math.max(0, node.clientHeight - Number.parseFloat(style.paddingTop) - Number.parseFloat(style.paddingBottom))
+      setDimensions(previous => previous.width === width && previous.height === height ? previous : { width, height })
+      onDimensions(widgetProps.instance.instanceId, width, height)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => { observer.disconnect() }
+  }, [onDimensions, widgetProps.instance.instanceId])
+  // Validation/migration errors stay inside this instance's boundary, not the page render.
+  if (widgetProps.instance.configVersion !== definition.configVersion) throw new Error('Widget config version unavailable')
+  const config = validateWidgetConfig(definition, widgetProps.config)
+  const Content = definition.Content
+  return <div ref={viewport} className="dsh-widget-viewport">
+    {dimensions.width > 0 && <Content {...widgetProps} {...dimensions} instance={{ ...widgetProps.instance, config }} config={config} />}
+  </div>
+}
+function WidgetIcon({ definition }: { definition: RegisteredWidgetDefinition }): ReactNode {
+  const Icon = definition.icon
+  return Icon === undefined ? null : <Icon size={14} />
+}
+function boundaryKey(instance: WidgetInstance, definition: RegisteredWidgetDefinition | undefined): string {
+  return `${instance.instanceId}:${instance.typeId}:${instance.configVersion}:${definition?.configVersion ?? 'missing'}:${JSON.stringify(instance.config)}`
+}
+function contentProps(instance: WidgetInstance, rect: SpatialItem | undefined, width: number, cols: number, editing: boolean, visible: boolean): WidgetContentProps {
+  return {
+    instance, config: instance.config, size: rect === undefined ? 'm' : sizeFromRect(rect, cols),
+    width: rect === undefined ? width : (width - SPATIAL_GAP * (cols - 1)) / cols * rect.w + SPATIAL_GAP * (rect.w - 1),
+    height: rect === undefined ? 4 * SPATIAL_ROW_HEIGHT + 3 * SPATIAL_GAP : rect.h * SPATIAL_ROW_HEIGHT + (rect.h - 1) * SPATIAL_GAP,
+    editing, visible,
+  }
 }
 
-function RefreshGlyph({ spinning }: { spinning: boolean }) {
-  return (
-    <svg className={spinning ? 'dsh-spin' : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M13 8a5 5 0 1 1-1.5-3.57M13 3v2.6h-2.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"
-      style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 160ms ease-out' }}
-    >
-      <path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function FocusSkeleton() {
-  return (
-    <div className="dsh-focus-stack" aria-hidden="true">
-      <div className="dsh-focus dsh-w-skeleton">
-        <div className="dsh-skeleton" style={{ width: '18%' }} />
-        <div className="dsh-skeleton" style={{ width: '52%', height: 24 }} />
-        <div className="dsh-skeleton" style={{ width: '76%' }} />
-      </div>
-      <div className="dsh-w dsh-w-skeleton">
-        <div className="dsh-skeleton" style={{ width: '26%' }} />
-        <div className="dsh-skeleton" style={{ width: '64%' }} />
-      </div>
-    </div>
-  )
-}
-
-/** 一张卡的正文：必须作为**子组件**渲染，错误边界才捕得到。 */
-function WidgetBody({ meta, widgetProps, renderSlot, size }: {
-  meta: WidgetMeta
-  widgetProps: WidgetProps
-  renderSlot: HomePageProps['renderSlot']
-  size: WidgetSize
-}): ReactNode {
-  if (meta.builtin === undefined) return renderSlot('home.widget', { size }, { only: meta.id })
-  const Body = meta.builtin.body
-  return <Body {...widgetProps} />
-}
-
-/**
- * 渲染首页。
- * @param props 面板 props
- */
 export function HomePage(props: HomePageProps): ReactNode {
-  const { t, store, renderSlot, widgets, actions, locale, rescan } = props
+  const { t, store, registry, actions, locale } = props
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
-  const external = useSyncExternalStore(widgets.subscribe, widgets.getSnapshot, widgets.getSnapshot)
-
-  // 官方根钩子：待审批 / 跑完没看。缺席时用常量 Map 兜底（同一个调用点，不条件调用）。
-  const readStatus = props.useSessionStatus
-    ?? ((selector: (snapshot: SessionStatusMap) => unknown) => selector(EMPTY_STATUSES))
-  const statuses = readStatus(snapshot => snapshot) as SessionStatusMap
-
-  const [expanded, setExpanded] = useState(false)
+  const definitions = useSyncExternalStore(registry.subscribe, registry.getSnapshot, registry.getSnapshot)
   const [editing, setEditing] = useState(false)
   const [trayOpen, setTrayOpen] = useState(false)
+  const [managerView, setManagerView] = useState<'add' | 'desktop'>('add')
   const [confirmReset, setConfirmReset] = useState(false)
-  const [resumeIndex, setResumeIndex] = useState(0)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [settingsId, setSettingsId] = useState<string | null>(null)
   const [sinceCount, setSinceCount] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(false)
+  const [managementError, setManagementError] = useState(false)
+  const [interacting, setInteracting] = useState(false)
+  const [bodyDimensions, setBodyDimensions] = useState<Record<string, { width: number; height: number }>>({})
+  const measureBody = useCallback((id: string, width: number, height: number): void => {
+    setBodyDimensions(previous => previous[id]?.width === width && previous[id]?.height === height
+      ? previous : { ...previous, [id]: { width, height } })
+  }, [])
   const seenRef = useRef(false)
-
+  const writable = state.workbenchLoaded && state.storage.writable
+  const busy = saving || state.workbenchBusy
+  const editable = editing && writable && !busy && settingsId === null
   useEffect(() => { void store.refresh() }, [store])
-
-  // "自上次以来"：只在拿到偏好与数据后算一次，然后把这次看到的时间记下来。
   useEffect(() => {
-    if (seenRef.current || state.ledger === null) return
+    if (seenRef.current || state.ledger === null || !state.prefsLoaded || !writable) return
     const previous = state.prefs.lastSeenAt
-    if (previous !== null) {
-      const count = state.ledger.sessions.filter(session => (
-        session.parentSessionId === undefined && session.turns > 0 && session.lastAt > previous
-      )).length
-      setSinceCount(count)
-    }
+    if (previous !== null) setSinceCount(state.ledger.sessions.filter(session => (
+      session.parentSessionId === undefined && session.turns > 0 && session.lastAt > previous
+    )).length)
     seenRef.current = true
     store.markSeen()
-  }, [state.ledger, state.prefs.lastSeenAt, store])
-
+  }, [state.ledger, state.prefs.lastSeenAt, state.prefsLoaded, writable, store])
   useEffect(() => {
     if (!confirmReset) return
     const timer = setTimeout(() => { setConfirmReset(false) }, 4000)
     return () => { clearTimeout(timer) }
   }, [confirmReset])
 
-  const gridMetas = useMemo(() => {
-    const list: WidgetMeta[] = BUILTIN_WIDGETS
-      .filter(widget => !FOCUS_IDS.has(widget.id))
-      .map(widget => ({
-        id: widget.id,
-        order: widget.order,
-        defaultSize: widget.defaultSize,
-        title: widget.title(t),
-        Glyph: widget.Glyph,
-        builtin: widget,
-      }))
-    for (const widget of external) {
-      if (list.some(meta => meta.id === widget.id)) continue
-      list.push({ ...widget, title: widget.title === '' ? t('widget.unknown') : widget.title })
+  // Re-registering the same type/version must recover a previous render error too.
+  const definitionIds = useRef(new WeakMap<RegisteredWidgetDefinition, number>())
+  const nextDefinitionId = useRef(0)
+  for (const definition of definitions) if (!definitionIds.current.has(definition)) definitionIds.current.set(definition, ++nextDefinitionId.current)
+  const renderKey = (instance: WidgetInstance, definition: RegisteredWidgetDefinition | undefined): string => `${boundaryKey(instance, definition)}:${definition === undefined ? 0 : definitionIds.current.get(definition)}`
+  const byType = useMemo(() => new Map(definitions.map(definition => [definition.typeId, definition])), [definitions])
+  const metas = useMemo(() => state.instances.map(instance => {
+    const defaults = byType.get(instance.typeId)?.defaults
+    return {
+      id: instance.instanceId, defaultSize: defaults?.size ?? 'm' as const,
+      defaultHeight: defaults?.height ?? 4,
+      ...(defaults === undefined ? {} : { minWidth: defaults.minWidth, maxWidth: defaults.maxWidth, minHeight: defaults.minHeight, maxHeight: defaults.maxHeight }),
     }
-    return list.sort((left, right) => left.order - right.order)
-  }, [external, t])
-
-  const fallbackOrder = useMemo(() => gridMetas.map(meta => meta.id), [gridMetas])
-  const order = store.ordered(fallbackOrder)
-  const visible = order.filter(id => !state.layout.hidden.includes(id))
-  const hiddenCount = order.length - visible.length
-  const focusOrder = store.orderedFocus(FOCUS_FALLBACK)
-
-  const commitGrid = useCallback((id: string, target: string, side: 'before' | 'after') => {
-    store.moveRelative(id, target, side, fallbackOrder)
-  }, [fallbackOrder, store])
-  const commitFocus = useCallback((id: string, target: string, side: 'before' | 'after') => {
-    store.moveFocusRelative(id, target, side, FOCUS_FALLBACK)
-  }, [store])
-
-  const gridDrag = useReorder('data-widget-id', commitGrid)
-  const focusDrag = useReorder('data-focus-id', commitFocus)
-
-  const nudge = useCallback((id: string, delta: number, focus: boolean) => {
-    const current = focus ? store.orderedFocus(FOCUS_FALLBACK) : store.ordered(fallbackOrder)
-    const index = current.indexOf(id)
-    const target = current[index + delta]
-    if (target === undefined) return
-    const after = current[index + delta + 1]
-    if (focus) {
-      store.moveFocusRelative(id, delta < 0 ? target : after ?? target, delta < 0 || after !== undefined ? 'before' : 'after', FOCUS_FALLBACK)
-      return
-    }
-    store.moveBefore(id, delta < 0 ? target : after, fallbackOrder)
-  }, [fallbackOrder, store])
-
+  }), [state.instances, byType])
+  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true, initialWidth: 1100 })
+  const cols = width >= 950 ? 12 : width >= 580 ? 6 : 2
+  const geometry = useMemo(() => state.workbenchLoaded ? buildSpatialLayout(state.layout, metas, cols) : [], [state.workbenchLoaded, state.layout, metas, cols])
+  const instancesById = useMemo(() => new Map(state.instances.map(instance => [instance.instanceId, instance])), [state.instances])
+  const activeChanged = useCallback((value: boolean) => { setInteracting(value) }, [])
+  const commit = useCallback((value: typeof geometry) => {
+    if (editable) store.setSpatialLayout(value, cols)
+  }, [editable, store, cols])
+  const finish = useCallback(async () => {
+    if (interacting || busy || !writable || settingsId !== null) return
+    setSaving(true)
+    setSaveError(false)
+    try {
+      store.setSpatialLayout(geometry, cols)
+      await store.flushLayout()
+      setEditing(false)
+      setTrayOpen(false)
+      setConfirmReset(false)
+      setConfirmDelete(null)
+    } catch { setSaveError(true) }
+    finally { setSaving(false) }
+  }, [geometry, cols, interacting, busy, writable, settingsId, store])
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') return
-      if (gridDrag.dragging !== null) { gridDrag.cancel(); return }
-      if (focusDrag.dragging !== null) { focusDrag.cancel(); return }
-      if (trayOpen) { setTrayOpen(false); return }
-      if (editing) { setEditing(false); setConfirmReset(false); return }
-      if (expanded) setExpanded(false)
+    const keydown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape' || interacting || busy) return
+      if (settingsId !== null) { event.preventDefault(); setSettingsId(null); return }
+      if (confirmDelete !== null) { event.preventDefault(); setConfirmDelete(null); return }
+      if (trayOpen) { event.preventDefault(); setTrayOpen(false); return }
+      if (editing) { event.preventDefault(); void finish() }
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => { window.removeEventListener('keydown', onKeyDown) }
-  }, [editing, expanded, focusDrag, gridDrag, trayOpen])
-
-  const data = state.ledger
-  const focusProps = {
-    t,
-    data,
-    sessions: state.sessions,
-    statuses,
-    dismissed: state.prefs.dismissed,
-    now: state.now,
-    actions,
-    statusSource: props.useSessionStatus === undefined ? 'none' as const : 'runtime' as const,
+    window.addEventListener('keydown', keydown)
+    return () => { window.removeEventListener('keydown', keydown) }
+  }, [editing, finish, busy, trayOpen, interacting, settingsId, confirmDelete])
+  const nudge = (id: string, key: string): void => {
+    if (!editable || interacting) return
+    const dx = key === 'ArrowLeft' ? -1 : key === 'ArrowRight' ? 1 : 0
+    const dy = key === 'ArrowUp' ? -1 : key === 'ArrowDown' ? 1 : 0
+    const next = moveSpatialItem(geometry, id, dx, dy, cols)
+    if (next !== geometry) commit(next)
   }
-  const showSkeleton = data === null && state.loading && state.error === null
-  const todayLabel = data === null
-    ? undefined
-    : (data.today.activeMs === 0 ? t('panel.notStarted') : t('panel.today', { dur: formatDuration(data.today.activeMs, t) }))
-
-  const dismiss = useCallback((id: string) => { store.dismiss(id) }, [store])
-
-  const focusHandle = (id: string): ReactNode => (
-    <DragHandle
-      label={t('edit.drag')}
-      onPointerDown={(event) => {
-        if (event.button !== 0) return
-        event.preventDefault()
-        focusDrag.begin(id)
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'ArrowUp') { event.preventDefault(); nudge(id, -1, true) }
-        if (event.key === 'ArrowDown') { event.preventDefault(); nudge(id, 1, true) }
-      }}
-    />
-  )
-
+  const manage = (change: () => void): void => {
+    if (!editable || interacting) return
+    setManagementError(false)
+    try { change() } catch { setManagementError(true) }
+  }
+  const settingsInstance = settingsId === null ? undefined : instancesById.get(settingsId)
+  const settingsDefinition = settingsInstance === undefined ? undefined : byType.get(settingsInstance.typeId)
   return (
-    <div className="dsh-home">
+    <div className="dsh-home" data-editing={editing ? 'true' : 'false'}>
       <div className="dsh-home-inner">
-        <div className="dsh-home-head">
-          <div className="dsh-home-heading">
+        <header className="dsh-home-head">
+          <div>
             <div className="dsh-home-title-row">
               <h1 className="dsh-home-title">{t('panel.title')}</h1>
-              <button
-                type="button"
-                className="dsh-icon-button"
-                aria-label={t('action.refresh')}
-                title={t('action.refresh')}
-                onClick={() => { void store.refresh() }}
-              >
-                <RefreshGlyph spinning={state.refreshing} />
-              </button>
-              <span className="dsh-home-updated">
-                {state.lastLoadedAt === null
-                  ? t('summary.scanning')
-                  : t('summary.updated', { time: formatAgo(state.lastLoadedAt, state.now, t) })}
-              </span>
+              {!editing && <Button variant="ghost" size="sm" aria-label={t('action.refresh')} onClick={() => { void store.refresh() }}>↻</Button>}
+              <span className="dsh-home-updated">{editing ? t('edit.mode') : state.lastLoadedAt === null ? t('summary.scanning') : t('summary.updated', { time: formatAgo(state.lastLoadedAt, state.now, t) })}</span>
             </div>
-            <div className="dsh-home-sub" aria-live="polite">
+            <div className="dsh-home-sub">
               <span>{formatDay(state.now, locale())}</span>
-              {todayLabel !== undefined && (
-                <>
-                  <span className="dsh-home-dot" aria-hidden="true" />
-                  <span>{todayLabel}</span>
-                </>
-              )}
-              {sinceCount !== null && sinceCount > 0 && (
-                <>
-                  <span className="dsh-home-dot" aria-hidden="true" />
-                  <span>{t('panel.since', { count: sinceCount })}</span>
-                </>
-              )}
+              {!editing && sinceCount !== null && sinceCount > 0 && <span>{t('panel.since', { count: sinceCount })}</span>}
             </div>
           </div>
           <div className="dsh-home-actions" role="group" aria-label={t('aria.actions')}>
-            <Button variant="primary" size="sm" onClick={() => { actions.startSession() }}>
-              {t('action.newSession')}
+            <Button variant={editing ? 'primary' : 'outline'} size="sm" disabled={!writable || busy || interacting || settingsId !== null} aria-pressed={editing}
+              onClick={() => { if (editing) void finish(); else { setEditing(true); setSaveError(false) } }}>
+              {t(saving ? 'edit.saving' : editing ? 'action.done' : 'action.edit')}
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => { actions.leave() }}>
-              {t('action.back')}
-            </Button>
+            {!editing && <>
+              <Button variant="primary" size="sm" onClick={() => { actions.startSession() }}>{t('action.newSession')}</Button>
+              <Button variant="ghost" size="sm" onClick={() => { actions.leave() }}>{t('action.back')}</Button>
+            </>}
           </div>
-        </div>
-
-        {state.error !== null && (
-          <div className="dsh-error" role="alert">
-            <span>{t('error.load')}</span>
-            <Button variant="ghost" size="sm" onClick={() => { void store.refresh() }}>
-              {t('error.retry')}
-            </Button>
+        </header>
+        {!state.workbenchLoaded && <p className="dsh-workbench-notice" role="status">{t('workbench.loading')}</p>}
+        {state.workbenchLoaded && !state.storage.writable && <div className="dsh-workbench-notice" role="alert">{t('workbench.readOnly')}{state.storage.error !== null && <span>{state.storage.error.message}</span>}</div>}
+        {state.storage.status === 'write-error' && <div className="dsh-error" role="alert">{t('workbench.writeError')}</div>}
+        {editing && <div className="dsh-edit-bar" inert={!editable || interacting || undefined} role="region" aria-label={t('edit.mode')}>
+          <span className="dsh-edit-hint">{t('edit.hint')}</span>
+          <div className="dsh-edit-actions">
+            <Button variant="outline" size="sm" aria-expanded={trayOpen} onClick={() => { setTrayOpen(!trayOpen) }}>{t('action.widgets')}</Button>
+            <Button variant="ghost" size="sm" onClick={() => { if (!confirmReset) setConfirmReset(true); else manage(() => { store.reset(); setConfirmReset(false) }) }}>{t(confirmReset ? 'action.resetConfirm' : 'action.reset')}</Button>
           </div>
-        )}
-
-        {showSkeleton ? <FocusSkeleton /> : (
-          <div className="dsh-focus-stack">
-            {focusOrder.map((id) => {
-              const dragging = focusDrag.dragging === id
-              const drop = focusDrag.dropTarget === id ? focusDrag.dropSide ?? 'true' : 'false'
-              const common = {
-                key: id,
-                className: 'dsh-focus-item',
-                'data-focus-id': id,
-                'data-dragging': dragging ? 'true' : 'false',
-                'data-drop': drop,
-                onPointerDown: (event: { button: number; target: EventTarget | null; preventDefault: () => void }) => {
-                  if (event.button !== 0) return
-                  const target = event.target as Element | null
-                  if (target === null) return
-                  if (target.closest('button, a, input, textarea') !== null) return
-                  if (target.closest('.dsh-w-head, .dsh-focus-eyebrow-row, .dsh-focus-title') === null) return
-                  event.preventDefault()
-                  focusDrag.begin(id)
-                },
-              } as const
-              if (id === 'resume') {
-                return (
-                  <div {...common}>
-                    <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
-                      <FocusResume
-                        {...focusProps}
-                        index={resumeIndex}
-                        onNext={() => { setResumeIndex(index => index + 1) }}
-                        onDismiss={dismiss}
-                        handle={focusHandle(id)}
-                      />
-                    </CardBoundary>
-                  </div>
-                )
-              }
-              if (id === 'queue') {
-                return (
-                  <div {...common}>
-                    <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
-                      <FocusQueue {...focusProps} onDismiss={dismiss} handle={focusHandle(id)} />
-                    </CardBoundary>
-                  </div>
-                )
-              }
-              if (id === 'today') {
-                return (
-                  <div {...common}>
-                    <CardBoundary fallback={<div className="dsh-error">{t('error.card')}</div>}>
-                      <FocusToday {...focusProps} handle={focusHandle(id)} />
-                    </CardBoundary>
-                  </div>
-                )
-              }
-              return null
-            })}
-          </div>
-        )}
-
-        <button
-          type="button"
-          className="dsh-expand"
-          aria-expanded={expanded}
-          onClick={() => {
-            setExpanded(!expanded)
-            if (expanded) { setEditing(false); setTrayOpen(false) }
-          }}
-        >
-          <span>{expanded ? t('expand.hide') : t('expand.show', { count: Math.max(0, gridMetas.length - hiddenCount) })}</span>
-          <Chevron open={expanded} />
-        </button>
-
-        {expanded && (
-          <>
-            <div className="dsh-edit-bar">
-              <span className="dsh-edit-hint">{t('edit.hint')}</span>
-              <div className="dsh-edit-actions">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  aria-pressed={editing}
-                  onClick={() => {
-                    setEditing(!editing)
-                    if (editing) { setTrayOpen(false); setConfirmReset(false) }
-                  }}
-                >
-                  {editing ? t('action.done') : t('action.edit')}
-                </Button>
-                {editing && (
-                  <>
-                    <Button
-                      variant={trayOpen ? 'outline' : 'ghost'}
-                      size="sm"
-                      aria-expanded={trayOpen}
-                      onClick={() => { setTrayOpen(!trayOpen) }}
-                    >
-                      {hiddenCount > 0 ? t('action.widgetsCount', { count: hiddenCount }) : t('action.widgets')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      style={confirmReset ? { color: 'var(--dsw-alias-state-error-primary)' } : undefined}
-                      onClick={() => {
-                        if (!confirmReset) { setConfirmReset(true); return }
-                        store.reset()
-                        setConfirmReset(false)
-                      }}
-                    >
-                      {confirmReset ? t('action.resetConfirm') : t('action.reset')}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={rescan}>{t('action.rescan')}</Button>
-                  </>
-                )}
-              </div>
+        </div>}
+        {saveError && <div className="dsh-error" role="alert">{t('edit.saveError')}</div>}
+        {managementError && <div className="dsh-error" role="alert">{t('manager.error')}</div>}
+        {state.error !== null && <div className="dsh-error" role="alert">
+          <span>{t('error.load')}</span><Button variant="ghost" size="sm" onClick={() => { void store.refresh() }}>{t('error.retry')}</Button>
+        </div>}
+        {editing && trayOpen && <section className="dsh-tray" aria-label={t('tray.title')}>
+          <div inert={!editable || interacting || undefined}>
+            <div className="dsh-manager-nav" role="group" aria-label={t('tray.title')}>
+              <Button variant={managerView === 'add' ? 'outline' : 'ghost'} aria-pressed={managerView === 'add'} onClick={() => setManagerView('add')}>{t('gallery.addTab')}</Button>
+              <Button aria-label={t('gallery.desktopTab')} variant={managerView === 'desktop' ? 'outline' : 'ghost'} aria-pressed={managerView === 'desktop'} onClick={() => setManagerView('desktop')}>{t('gallery.desktopTab')} · {state.instances.length}</Button>
             </div>
-
-            {editing && trayOpen && (
-              <section className="dsh-tray" aria-label={t('tray.title')}>
-                <div className="dsh-tray-head">
-                  <span className="dsh-tray-title">{t('tray.title')}</span>
-                  <span className="dsh-muted">{t('tray.hint')}</span>
+            {managerView === 'add' && <><p className="dsh-gallery-hint">{t('gallery.hint')}</p>
+              <WidgetGallery definitions={definitions} t={t} disabled={!editable || interacting} onAdd={definition => { manage(() => { store.addInstance(definition, geometry, cols) }) }} />
+            </>}
+            {managerView === 'desktop' && <><h2 className="dsh-manager-heading">{t('manager.instances')}</h2>
+            <div className="dsh-instance-list">{state.instances.map(instance => {
+              const definition = byType.get(instance.typeId)
+              const hidden = state.layout.hidden.includes(instance.instanceId)
+              const title = widgetText(definition?.title, instance.typeId)
+              return <div className="dsh-instance-item" key={instance.instanceId} data-instance-id={instance.instanceId} data-hidden={String(hidden)}>
+                <div className="dsh-manager-info"><strong>{title}</strong><span className="dsh-muted">{instance.instanceId}</span>{definition === undefined && <span className="dsh-muted">{t('widget.unavailable', { typeId: instance.typeId })}</span>}</div>
+                <div className="dsh-manager-actions">
+                  <Button variant="ghost" size="sm" aria-pressed={!hidden} onClick={() => { manage(() => { store.toggleSpatialHidden(instance.instanceId, geometry, metas, cols) }) }}>{t(hidden ? 'tray.show' : 'tray.hide')}</Button>
+                  <Button variant="ghost" size="sm" disabled={definition === undefined} onClick={() => { if (definition !== undefined) manage(() => { store.duplicateInstance(instance.instanceId, definition, geometry, cols) }) }}>{t('manager.duplicate')}</Button>
+                  {definition?.Settings !== undefined && <Button variant="ghost" size="sm" onClick={() => { setSettingsId(instance.instanceId); setConfirmDelete(null) }}>{t('manager.settings')}</Button>}
+                  {confirmDelete !== instance.instanceId && <Button variant="ghost" size="sm" onClick={() => { setConfirmDelete(instance.instanceId) }}>{t('manager.delete')}</Button>}
+                  {confirmDelete === instance.instanceId && <div className="dsh-delete-confirm" role="group" aria-label={t('manager.deleteConfirm', { title })}>
+                    <span>{t('manager.deleteConfirm', { title })}</span>
+                    <Button variant="outline" size="sm" onClick={() => { setConfirmDelete(null) }}>{t('settings.cancel')}</Button>
+                    <Button variant="outline" size="sm" onClick={() => { manage(() => { store.removeInstance(instance.instanceId); setConfirmDelete(null) }) }}>{t('manager.confirmDelete')}</Button>
+                  </div>}
                 </div>
-                <div className="dsh-tray-list">
-                  {gridMetas.map((meta) => {
-                    const hidden = state.layout.hidden.includes(meta.id)
-                    return (
-                      <button
-                        key={meta.id}
-                        type="button"
-                        className="dsh-tray-item"
-                        data-hidden={hidden ? 'true' : 'false'}
-                        aria-pressed={!hidden}
-                        onClick={() => { store.toggleHidden(meta.id) }}
-                      >
-                        <span className="dsh-tray-glyph">{meta.Glyph !== undefined ? <meta.Glyph /> : null}</span>
-                        <span className="dsh-tray-name">{meta.title}</span>
-                        <span className="dsh-tray-state">{hidden ? t('tray.show') : t('tray.hide')}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            )}
-
-            {visible.length === 0 ? (
-              <div className="dsh-empty">
-                <span>{t('empty.noWidgets')}</span>
-                <Button variant="ghost" size="sm" onClick={() => { store.showAll(); setTrayOpen(false) }}>
-                  {t('empty.restore')}
-                </Button>
               </div>
-            ) : (
-              <div className="dsh-home-grid">
-                {visible.map((id) => {
-                  const meta = gridMetas.find(item => item.id === id)
-                  if (meta === undefined) return null
-                  const size = state.layout.size[id] ?? meta.defaultSize
-                  const widgetProps: WidgetProps = {
-                    t,
-                    data,
-                    sessions: state.sessions,
-                    now: state.now,
-                    actions,
-                    size,
-                  }
-                  return (
-                    <CardBoundary key={id} fallback={<div className="dsh-w dsh-error">{t('error.card')}</div>}>
-                      <section
-                        className="dsh-w"
-                        data-widget-id={id}
-                        data-size={size}
-                        data-dragging={gridDrag.dragging === id ? 'true' : 'false'}
-                        data-drop={gridDrag.dropTarget === id ? gridDrag.dropSide ?? 'true' : 'false'}
-                        data-editing={editing ? 'true' : 'false'}
-                        aria-label={t('aria.widget', { title: meta.title })}
-                      >
-                        <div
-                          className="dsh-w-head dsh-drag-surface"
-                          onPointerDown={(event) => {
-                            if (event.button !== 0) return
-                            if ((event.target as Element).closest('button, a, input, textarea') !== null) return
-                            event.preventDefault()
-                            gridDrag.begin(id)
-                          }}
-                        >
-                          {meta.Glyph !== undefined && <meta.Glyph />}
-                          <h2 className="dsh-w-title">{meta.title}</h2>
-                          <div className="dsh-tools">
-                            <DragHandle
-                              label={t('edit.drag')}
-                              onPointerDown={(event) => {
-                                if (event.button !== 0) return
-                                event.preventDefault()
-                                gridDrag.begin(id)
-                              }}
-                              onKeyDown={(event) => {
-                                if (event.key === 'ArrowLeft') { event.preventDefault(); nudge(id, -1, false) }
-                                if (event.key === 'ArrowRight') { event.preventDefault(); nudge(id, 1, false) }
-                              }}
-                            />
-                            {editing && (['s', 'm', 'l'] as const).map(option => (
-                              <button
-                                key={option}
-                                type="button"
-                                className="dsh-tool"
-                                data-active={size === option ? 'true' : 'false'}
-                                aria-label={t('edit.size', { size: sizeLabel(option, t) })}
-                                aria-pressed={size === option}
-                                onClick={() => { store.setSize(id, option) }}
-                              >
-                                {sizeLabel(option, t)}
-                              </button>
-                            ))}
-                            {editing && (
-                              <button
-                                type="button"
-                                className="dsh-tool"
-                                aria-label={t('edit.hide')}
-                                title={t('edit.hide')}
-                                onClick={() => { store.hide(id) }}
-                              >
-                                ×
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <div className="dsh-w-body">
-                          <WidgetBody meta={meta} widgetProps={widgetProps} renderSlot={renderSlot} size={size} />
-                        </div>
-                      </section>
-                    </CardBoundary>
-                  )
-                })}
+            })}</div></>}
+          </div>
+          {settingsInstance !== undefined && settingsDefinition?.Settings !== undefined && <WidgetSettingsPanel key={renderKey(settingsInstance, settingsDefinition)}
+            t={t} store={store} definition={settingsDefinition} disabled={!writable || busy}
+            widgetProps={{ ...contentProps(settingsInstance, geometry.find(rect => rect.i === settingsInstance.instanceId), width, cols, true, !state.layout.hidden.includes(settingsInstance.instanceId)), ...(bodyDimensions[settingsInstance.instanceId] ?? {}) }}
+            onClose={() => { setSettingsId(null) }} />}
+          {settingsId !== null && (settingsInstance === undefined || settingsDefinition?.Settings === undefined) && <div className="dsh-workbench-notice" role="alert"><span>{t('settings.unavailable')}</span><Button variant="outline" size="sm" disabled={busy} onClick={() => { setSettingsId(null) }}>{t('settings.cancel')}</Button></div>}
+        </section>}
+        <div ref={containerRef} className="dsh-spatial-container" data-layout-surface="spatial" data-cols={cols}>
+          {state.workbenchLoaded && mounted && width > 0 && <SpatialGrid width={width} cols={cols} layout={geometry} editing={editable} onCommit={commit} onActive={activeChanged}>
+          {geometry.map(rect => {
+            const instance = instancesById.get(rect.i)
+            if (instance === undefined) return null
+            const definition = byType.get(instance.typeId)
+            const title = widgetText(definition?.title, instance.typeId)
+            const widgetProps = contentProps(instance, rect, width, cols, editing, true)
+            return <section key={instance.instanceId} className="dsh-w dsh-home-widget" data-widget-id={instance.instanceId} data-widget-type={instance.typeId} data-size={widgetProps.size}
+              data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
+              <div className={`dsh-w-head${editable ? ' dsh-widget-grip' : ''}`}>
+                {definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition} /></CardBoundary>}
+                <h2 className="dsh-w-title">{title}</h2>
+                {editing && <div className="dsh-tools" inert={!editable || interacting || undefined}>
+                  <button type="button" className="dsh-tool dsh-widget-grip" disabled={!editable} aria-label={t('edit.drag')} title={t('edit.drag')}
+                    onKeyDown={event => { if (event.key.startsWith('Arrow')) { event.preventDefault(); nudge(instance.instanceId, event.key) } }}>⠿</button>
+                  <button type="button" className="dsh-tool dsh-remove-widget" disabled={!editable} aria-label={t('edit.hide')} title={t('edit.hide')} onClick={() => { manage(() => { store.hide(instance.instanceId) }) }}>−</button>
+                </div>}
               </div>
-            )}
-          </>
-        )}
+              <div className="dsh-w-body dsh-home-widget-content" inert={editing || undefined}>
+                {definition === undefined ? <div className="dsh-empty" role="status">{t('widget.unavailable', { typeId: instance.typeId })}</div>
+                  : <CardBoundary key={renderKey(instance, definition)} fallback={<div className="dsh-error" role="alert">{t('error.card')}</div>}>
+                    <WidgetBody definition={definition} widgetProps={widgetProps} onDimensions={measureBody} />
+                  </CardBoundary>}
+              </div>
+            </section>
+          })}
+          </SpatialGrid>}
+        </div>
+        {state.workbenchLoaded && geometry.length === 0 && <div className="dsh-empty"><span>{t('empty.noWidgets')}</span><Button variant="outline" size="sm" disabled={!writable || busy} onClick={() => { setEditing(true); setTrayOpen(true) }}>{t('action.widgets')}</Button></div>}
+        {editing && <p className="dsh-muted dsh-edit-footnote">{t('edit.keyboard')}</p>}
       </div>
     </div>
   )

@@ -1,0 +1,229 @@
+/** Pure, non-compacting home geometry; no React or react-grid-layout runtime dependency. */
+import type { GridRect, Layout, WidgetSize } from './api.ts'
+import { homeOrder, legacySpatialHeight } from './layout-model.ts'
+
+export interface SpatialMeta {
+  id: string
+  defaultSize: WidgetSize
+  defaultHeight?: number
+  minWidth?: number
+  maxWidth?: number
+  minHeight?: number
+  maxHeight?: number
+}
+
+export interface SpatialItem extends GridRect {
+  i: string
+  minW: number
+  minH: number
+  maxW?: number
+  maxH?: number
+  /** Actual breakpoint when a widget-specific maxW is narrower than the viewport. */
+  viewportCols?: number
+}
+
+/** A row is 44px of content plus the grid's 12px gap. */
+export const SPATIAL_ROW_HEIGHT = 44
+export const SPATIAL_GAP = 12
+export const SPATIAL_MAX_Y = 10_000
+export const SPATIAL_MAX_H = 30
+export const SPATIAL_MIN_H = 3
+
+function columns(cols: number): number {
+  // The public breakpoints are 12/6/2; keep defensive callers bounded as well.
+  return Number.isInteger(cols) && cols >= 1 && cols <= 12 ? cols : 12
+}
+
+function record(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isRect(value: unknown, cols: number): value is GridRect {
+  if (!record(value)) return false
+  const { x, y, w, h } = value
+  return typeof x === 'number' && Number.isInteger(x) && x >= 0
+    && typeof y === 'number' && Number.isInteger(y) && y >= 0 && y <= SPATIAL_MAX_Y
+    && typeof w === 'number' && Number.isInteger(w) && w >= Math.min(3, cols) && w <= cols
+    && typeof h === 'number' && Number.isInteger(h) && h >= SPATIAL_MIN_H && h <= SPATIAL_MAX_H
+    && x + w <= cols
+}
+
+function overlaps(a: GridRect, b: GridRect): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+}
+
+function bounded(value: unknown, fallback: number, min: number, max: number): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(min, Math.min(max, Math.round(value)))
+    : fallback
+}
+
+/** Legacy width buckets: 12 -> 4/8/12, 6 -> 3/6/6, 2 -> 2/2/2. */
+export function widthFromSize(size: WidgetSize, cols: number): number {
+  cols = columns(cols)
+  if (cols <= 2) return cols
+  if (cols <= 6) return size === 's' ? Math.min(3, cols) : cols
+  return size === 's' ? 4 : size === 'l' ? cols : Math.min(8, cols)
+}
+
+/** Width-only compatibility bucket (6-column m/l and all 2-column sizes coincide). */
+export function sizeFromRect(rect: Pick<GridRect, 'w'>, cols: number): WidgetSize {
+  cols = columns(cols)
+  if (cols <= 2 || rect.w <= widthFromSize('s', cols)) return 's'
+  return rect.w <= widthFromSize('m', cols) ? 'm' : 'l'
+}
+
+export function defaultSpatialHeight(id: string): number {
+  return legacySpatialHeight(id)
+}
+
+/**
+ * Test an exact rectangle, excluding id itself. Edges may touch. Invalid, out of
+ * bounds or overlapping proposals fail; no item is pushed or compacted.
+ */
+export function canPlace(
+  geometry: readonly SpatialItem[], id: string, rect: GridRect, cols = 12,
+): boolean {
+  cols = columns(cols)
+  return isRect(rect, cols) && geometry.every(item => item.i === id || !overlaps(rect, item))
+}
+
+/**
+ * Find the first row-major empty slot for the requested width/height. Its x/y
+ * are deliberately ignored. Returns null only if the bounded grid is full.
+ */
+export function findSpatialSpace(
+  geometry: readonly SpatialItem[], rect: GridRect, cols: number,
+): GridRect | null {
+  cols = columns(cols)
+  const shape = { x: 0, y: 0, w: rect.w, h: rect.h }
+  if (!isRect(shape, cols)) return null
+  for (let y = 0; y <= SPATIAL_MAX_Y; y++) {
+    for (let x = 0; x <= cols - shape.w; x++) {
+      const candidate = { ...shape, x, y }
+      if (geometry.every(item => !overlaps(candidate, item))) return candidate
+    }
+  }
+  return null
+}
+
+/**
+ * Project registered, visible cards in homeOrder order, without mutating layout.
+ * All legal saved rectangles are reserved before missing/invalid cards are
+ * first-fit placed, so migration cannot steal a later card's saved position.
+ * For conflicting saved data, the earlier ordered card wins; only the loser is
+ * relocated. Hidden/unregistered cards never collide and their data is untouched.
+ * Each breakpoint is independent: missing breakpoint data uses legacy first-fit,
+ * never a write or a compaction of another breakpoint. viewportCols distinguishes
+ * widget resize bounds from the actual viewport for implicit keyboard movement.
+ */
+export function buildSpatialLayout(
+  layout: Layout, metas: readonly SpatialMeta[], cols: number,
+): SpatialItem[] {
+  cols = columns(cols)
+  const byId = new Map<string, SpatialMeta>()
+  for (const meta of metas) if (!byId.has(meta.id)) byId.set(meta.id, meta)
+  const hidden = new Set(layout.hidden)
+  const available = [...byId.keys()]
+  const order = (layout.instanceLayout
+    ? [...new Set([...layout.order, ...available])].filter(id => byId.has(id))
+    : homeOrder(layout, available)).filter(id => !hidden.has(id))
+  const breakpoint = layout.positions?.[String(cols)]
+  const saved: Record<string, unknown> = record(breakpoint) ? breakpoint : {}
+  const occupied: SpatialItem[] = []
+  const items = new Map<string, SpatialItem>()
+  const itemFrom = (id: string, rect: GridRect): SpatialItem => {
+    const meta = byId.get(id)!
+    return {
+      i: id, x: rect.x, y: rect.y, w: rect.w, h: rect.h,
+      minW: Math.min(meta.minWidth ?? 3, cols), minH: meta.minHeight ?? SPATIAL_MIN_H,
+      maxW: Math.min(meta.maxWidth ?? cols, cols),
+      ...((meta.maxWidth ?? cols) < cols ? { viewportCols: cols } : {}),
+      ...(meta.maxHeight === undefined ? {} : { maxH: meta.maxHeight }),
+    }
+  }
+
+  for (const id of order) {
+    const rect = Object.hasOwn(saved, id) ? saved[id] : undefined
+    if (isRect(rect, cols) && canPlace(occupied, id, rect, cols)) {
+      const item = itemFrom(id, rect)
+      occupied.push(item)
+      items.set(id, item)
+    }
+  }
+  for (const id of order) {
+    if (items.has(id)) continue
+    const override = Object.hasOwn(layout.size, id) ? layout.size[id] : undefined
+    const size = override === 's' || override === 'm' || override === 'l'
+      ? override : byId.get(id)!.defaultSize
+    const raw = Object.hasOwn(saved, id) && record(saved[id]) ? saved[id] : {}
+    const meta = byId.get(id)!
+    const minW = Math.min(meta.minWidth ?? 3, cols)
+    const maxW = Math.min(meta.maxWidth ?? cols, cols)
+    const minH = meta.minHeight ?? SPATIAL_MIN_H
+    const maxH = meta.maxHeight ?? SPATIAL_MAX_H
+    const shape = {
+      x: 0, y: 0,
+      w: bounded(raw.w, Math.max(minW, Math.min(maxW, widthFromSize(size, cols))), minW, maxW),
+      h: bounded(raw.h, meta.defaultHeight ?? legacySpatialHeight(id), minH, maxH),
+    }
+    const rect = findSpatialSpace(occupied, shape, cols)
+    // Finite grid capacity is intentionally bounded; never emit an overlap.
+    if (rect === null) continue
+    const item = itemFrom(id, rect)
+    occupied.push(item)
+    items.set(id, item)
+  }
+  return order.flatMap(id => {
+    const item = items.get(id)
+    return item ? [item] : []
+  })
+}
+
+/**
+ * Move just one card by integral grid deltas. Blocked/invalid/missing/no-op moves
+ * return the original array (identity is a useful no-change signal). Success
+ * returns a new array with only the moved card copied. Pass cols for hand-built
+ * geometry; buildSpatialLayout carries it in viewportCols or the default maxW.
+ */
+export function moveSpatialItem<T extends SpatialItem>(
+  geometry: T[], id: string, dx: number, dy: number, cols?: number,
+): T[]
+export function moveSpatialItem<T extends SpatialItem>(
+  geometry: readonly T[], id: string, dx: number, dy: number, cols?: number,
+): readonly T[]
+export function moveSpatialItem<T extends SpatialItem>(
+  geometry: readonly T[], id: string, dx: number, dy: number, cols?: number,
+): readonly T[] {
+  const item = geometry.find(entry => entry.i === id)
+  if (!item || !Number.isInteger(dx) || !Number.isInteger(dy) || (dx === 0 && dy === 0)) return geometry
+  const count = columns(cols ?? item.viewportCols ?? item.maxW ?? 12)
+  const moved = { ...item, x: item.x + dx, y: item.y + dy }
+  if (!canPlace(geometry, id, moved, count)) return geometry
+  return geometry.map(entry => entry === item ? moved : entry)
+}
+
+/**
+ * Merge visible geometry into only the current breakpoint. Never replace the
+ * whole positions map: hidden cards, absent external plugins and every other
+ * breakpoint keep their saved data. Invalid proposals are ignored; callers
+ * should validate resize proposals with canPlace before merging.
+ */
+export function mergeSpatialPositions(
+  layout: Layout, geometry: readonly SpatialItem[], cols: number,
+): Layout {
+  cols = columns(cols)
+  const key = String(cols)
+  const current = layout.positions?.[key]
+  const next: Record<string, GridRect> = record(current) ? { ...current } : {}
+  const hidden = new Set(layout.hidden)
+  for (const item of geometry) {
+    if (!hidden.has(item.i) && isRect(item, cols)) {
+      Object.defineProperty(next, item.i, {
+        value: { x: item.x, y: item.y, w: item.w, h: item.h },
+        enumerable: true, configurable: true, writable: true,
+      })
+    }
+  }
+  return { ...layout, positions: { ...layout.positions, [key]: next } }
+}
