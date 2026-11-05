@@ -47,9 +47,9 @@ import type { WidgetDefinition, WidgetContentProps } from '@vlln/dsh-home/widget
 
 No compilation is required for this directly authored JavaScript package. If you add a bundler, externalize `react` and `@deepseek-ai/dsh-client-ui-primitives` (plus any other host modules you actually import), and keep the `window.__ModuleLoader__.load` wrapper.
 
-## Widget-declared finite grid sizes
+## Fixed default size and compatibility metadata
 
-Each widget declares its own finite set of useful grid shapes; Home does not impose or display a shared size catalog. New integrations should use objects, for example:
+New counter instances use a **fixed nominal default of 4×6**, projected to the active breakpoint. Home no longer provides any user resizing: no bottom-right size handle, size dropdown, or keyboard size switching. `sizing.supported` and deprecated `defaults` remain compatibility metadata, not user-selectable sizes. New integrations should use objects, for example:
 
 ```js
 sizing: {
@@ -60,13 +60,13 @@ sizing: {
 
 `w` is an integer from 1 to 12 in the nominal 12-column grid, and `h` is an integer from 3 to 30 rows. Declare 1–16 distinct combinations; `default` must match both `w` and `h` of a supported entry, not its object identity. Home independently clones and deeply freezes the sizing object, default object, supported array and every entry. Do not combine `sizing` with deprecated `defaults`. The older 0.17 string form remains accepted for any legal ASCII `WxH`, not just a fixed list, but is compatibility input rather than the recommended declaration or a user-facing catalog.
 
-New instances use the declared default. In layout-edit mode, drag the **bottom-right size handle**: it snaps to the nearest declared projected shape by pixel distance. There is no size dropdown and no arbitrary continuous resizing. While the mouse remains down, the shape is only a preview and is not persisted; release commits a valid shape. Escape, blur and pointer/touch cancellation restore the starting size without saving. A single-shape widget whose current dimensions already match that shape has no size handle; a different legal saved size can still be explicitly converted. Focus the size handle and use arrow keys to switch combinations; the separate move handle's arrows still move the widget.
+New instances and library drag drafts use only `sizing.default`; the additional 7×9 entry is retained solely as compatibility metadata, not a resize option. Layout editing only moves, deletes, or explicitly arranges widgets. The move handle's arrow keys still move a widget; React Grid Layout resizing stays disabled. There is no conversion control for a different legal saved size.
 
-At 12 columns the width stays `w`; at 6 columns it becomes `w <= 4 ? min(w, 3) : min(w, 6)`; at 2 columns it becomes `min(w, 2)`. Height is unchanged, and duplicate actual shapes merge before snapping or keyboard selection. A size change keeps the widget's top-left position and changes only the active breakpoint; a collision or boundary overflow rejects it without pushing other widgets.
+At 12 columns the width stays `w`; at 6 columns it becomes `w <= 4 ? min(w, 3) : min(w, 6)`; at 2 columns it becomes `min(w, 2)`. Height is unchanged. This breakpoint mapping remains in use for default rectangles and missing-breakpoint projections; already-saved breakpoint rectangles take precedence.
 
-Existing legal saved rectangles retain their exact dimensions, even outside the declared set. Browsing, entering edit mode, moving and arranging do not convert them. Home still persists per-breakpoint `x/y/w/h`, without a new size identifier or a configuration migration; historical size-only layouts keep their old interpretation. Component responsiveness should use the real content `width`/`height` in pixels; the legacy `size: 's' | 'm' | 'l'` prop is only a width bucket, not a shape identity.
+All existing legal saved rectangles retain their exact dimensions, even outside the declared set. Browsing, entering edit mode, moving and explicit arranging do not convert their dimensions; Home does not automatically reset or rearrange them. Home still persists per-breakpoint `x/y/w/h`, without a new size identifier or a configuration migration; historical size-only layouts keep their old interpretation. Component responsiveness should use the real content `width`/`height` in pixels; the legacy `size: 's' | 'm' | 'l'` prop is only a width bucket, not a shape identity.
 
-Older plugins may keep `defaults`: Home validates the original ranges, then uses the width bucket and **exact original height** as a single supported combination. It does not ceil the height or cap it at 12; a height of 5 stays 5 and a height of 30 stays 30. Legacy min/max values do not enable arbitrary resizing. Verify that real content fits every declared shape, including narrow screens and enlarged text. These are contract requirements, not a claim of a new test run; historical 0.17 shared-catalog acceptance does not validate this corrected interaction. See the [public sizing contract](<../../docs/widget-development.md#5-组件声明的有限网格尺寸与配置限制>) for details.
+Older plugins may keep `defaults`: Home validates the original ranges, then uses the width bucket and **exact original height** as a single supported combination. It does not ceil the height or cap it at 12; a height of 5 stays 5 and a height of 30 stays 30. Legacy min/max values do not enable user resizing. Verify that real content fits the default and historical saved dimensions, including narrow screens and enlarged text. These are contract requirements, not a claim of a new test run; the historical 0.17 shared catalog and 0.18 resize handles are both cancelled designs, and their acceptance does not validate the 0.19 no-resize behavior. See the [public sizing contract](<../../docs/widget-development.md#5-组件声明的有限网格尺寸与配置限制>) for details.
 
 ## Development observability
 
