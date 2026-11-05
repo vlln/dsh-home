@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { post } from './api.ts'
 import { useBuiltin } from './builtin-registration.tsx'
@@ -57,13 +58,10 @@ function useActivity(cwd: string, date?: string, preview?: WidgetContentProps['p
 }
 function ActivityContent(props: WidgetContentProps<ActivityConfig>) {
   const { t } = useBuiltin()
-  return <>
-    <ActivityBody {...props} />
-    <WidgetConfigEditor t={t} widgetProps={props} title={t('activity.title')} label={t('activity.edit')}
-      Fields={ActivitySettings} validate={validateActivityConfig} />
-  </>
+  return <ActivityBody {...props} editor={<WidgetConfigEditor t={t} widgetProps={props} title={t('activity.title')} label={t('activity.edit')}
+    Fields={ActivitySettings} validate={validateActivityConfig} />} />
 }
-function ActivityBody({ config, width, preview }: WidgetContentProps<ActivityConfig>) {
+function ActivityBody({ config, width, preview, editor }: WidgetContentProps<ActivityConfig> & { editor?: ReactNode }) {
   const { t, state, actions } = useBuiltin()
   const [date, setDate] = useState<string>()
   const { result, error, loading, detailReady, retry } = useActivity(config.cwd, date, preview)
@@ -75,10 +73,10 @@ function ActivityBody({ config, width, preview }: WidgetContentProps<ActivityCon
     // days rather than hiding all recent activity; ordinary data refreshes keep position.
     const node = calendar.current
     if (ready && node) node.scrollLeft = node.scrollWidth
-  }, [ready, config.cwd, config.range, width, preview])
-  if (!result && error) return <div className="dsh-empty" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>
-  if (!result) return <div className="dsh-empty" role="status">{t('activity.loading')}</div>
-  if (!result.available) return <div className="dsh-empty">{t('activity.unavailable')}</div>
+  }, [ready, config.cwd, config.range, preview])
+  if (!result && error) return <><div className="dsh-empty" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>{editor}</>
+  if (!result) return <><div className="dsh-empty" role="status">{t('activity.loading')}</div>{editor}</>
+  if (!result.available) return <><div className="dsh-empty">{t('activity.unavailable')}</div>{editor}</>
   const { weeks, count, first } = activityWeeks(result.days, result.today, width, config.range)
   const days = result.days.filter(day => day.key >= first)
   const active = days.filter(day => day.messages > 0).length
@@ -104,7 +102,7 @@ function ActivityBody({ config, width, preview }: WidgetContentProps<ActivityCon
     <div className="dsh-activity-legend"><span>{t('activity.less')}</span>{[0,1,2,3,4].map(level => <span key={level} className="dsh-activity-cell" data-level={level} />)}<span>{t('activity.more')}</span></div>
     {!result.complete && <p className="dsh-muted" role="status">{t(result.scanning ? 'activity.partial' : 'activity.incomplete', result.progress)}</p>}
     {result.complete && messages === 0 && <p className="dsh-muted">{t('activity.empty')}</p>}
-    <span className="dsh-muted">{t('activity.zone', { zone: result.timeZone })}</span>
+    <div className="dsh-activity-footer"><span className="dsh-muted">{t('activity.zone', { zone: result.timeZone })}</span>{editor}</div>
     {date && <section className="dsh-activity-detail" aria-label={t('activity.detail', { date })} aria-busy={loading || (!detailReady && !error)}>
       <strong>{t('activity.detail', { date })}</strong>
       {!detailReady ? <p className="dsh-muted" role="status">{t(error ? 'activity.error' : 'activity.loading')}</p>

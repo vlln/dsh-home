@@ -16,9 +16,21 @@ export function shiftCalendarDay(key: string, delta: number): string {
   date.setUTCDate(date.getUTCDate() + delta)
   return date.toISOString().slice(0, 10)
 }
+/** Keep these calendar geometry constants shared with the stylesheet. */
+export const ACTIVITY_YEAR_CELL = 12
+export const ACTIVITY_QUARTER_CELL = 16
+export const ACTIVITY_GAP = 3
+export const ACTIVITY_SCROLL_PADDING = 3
+export function activityYearWidth(today: string): number {
+  const first = shiftCalendarDay(today, 1 - 365)
+  const leading = (new Date(`${first}T12:00:00Z`).getUTCDay() + 6) % 7
+  const columns = Math.ceil((365 + leading) / 7)
+  return columns * ACTIVITY_YEAR_CELL + (columns - 1) * ACTIVITY_GAP + 2 * ACTIVITY_SCROLL_PADDING
+}
 export function activityWeeks(days: ActivityDay[], today: string, width: number, range: ActivityConfig['range']) {
-  // At least ~10px per cell. Explicit year may scroll; auto switches to the readable quarter.
-  const count = range === 'year' || (range === 'auto' && width >= 640) ? 365 : 84
+  // Auto shows a year only if its actual fixed square columns fit. Explicit
+  // year remains intentionally scrollable on narrower cards.
+  const count = range === 'year' || (range === 'auto' && width >= activityYearWidth(today)) ? 365 : 84
   const first = shiftCalendarDay(today, 1 - count)
   const weekday = (new Date(`${first}T12:00:00Z`).getUTCDay() + 6) % 7
   const start = shiftCalendarDay(first, -weekday)

@@ -137,6 +137,15 @@ export function recentPageSize(size: WidgetSize): number {
   return size === 's' ? 3 : size === 'm' ? 6 : 10
 }
 
+/** Content-height capacity, not width buckets. Reserve filters, footer and gaps;
+ * the list stays scrollable for larger fonts/long metadata and Show more. */
+export function recentViewportPageSize(size: WidgetSize, width?: number, height?: number): number {
+  if (!Number.isFinite(height) || !Number.isFinite(width) || height! <= 0 || width! <= 0) return recentPageSize(size)
+  const controls = width! < 400 ? 118 : 74
+  const row = width! < 400 ? 76 : 64
+  return Math.max(1, Math.min(20, Math.floor((height! - controls) / row)))
+}
+
 /** Strip the standard prefix before shortening UUIDs; the full id remains the identity. */
 export function shortSessionId(id: string): string {
   const bare = id.startsWith('session-') ? id.slice('session-'.length) : id

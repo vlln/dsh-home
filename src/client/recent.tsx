@@ -7,7 +7,7 @@ import { formatAgo } from './format.ts'
 import type { WidgetProps } from './widgets.tsx'
 import {
   cwdFilterValue, cwdLabels, filterRecentSessions, mergeRecentSessions, recentEmptyState,
-  recentPageSize, recentSessionStatus, shortSessionId,
+  recentViewportPageSize, recentSessionStatus, shortSessionId,
 } from './session-model.ts'
 
 export interface RecentProps extends WidgetProps {
@@ -16,7 +16,7 @@ export interface RecentProps extends WidgetProps {
 }
 
 /** Body only: registry/page supplies the standard widget shell and heading. */
-export function RecentBody({ t, data, sessions, now, actions, size, statuses, statusSource, loading, loadError }: RecentProps): ReactNode {
+export function RecentBody({ t, data, sessions, now, actions, size, width, height, statuses, statusSource, loading, loadError }: RecentProps): ReactNode {
   const [query, setQuery] = useState('')
   const [directory, setDirectory] = useState('')
   const [extraPages, setExtraPages] = useState(0)
@@ -27,7 +27,7 @@ export function RecentBody({ t, data, sessions, now, actions, size, statuses, st
   )), [labels])
   const hasUnknownCwd = all.some(session => session.cwd === undefined)
   const matched = useMemo(() => filterRecentSessions(all, query, directory), [all, query, directory])
-  const pageSize = recentPageSize(size)
+  const pageSize = recentViewportPageSize(size, width, height)
   const shown = matched.slice(0, pageSize * (1 + extraPages))
   const remaining = matched.length - shown.length
   const indexing = !loadError && (data === null ? loading !== false : data.scanning || data.scannedAt === null)

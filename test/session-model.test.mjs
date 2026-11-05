@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   activityTimestamp, cwdFilterValue, cwdLabels, filterRecentSessions, mergeRecentSessions,
-  recentEmptyState, recentPageSize, recentSessionStatus, shortSessionId,
+  recentEmptyState, recentPageSize, recentViewportPageSize, recentSessionStatus, shortSessionId,
 } from '../src/client/session-model.ts'
 
 function ledger(id, overrides = {}) {
@@ -140,6 +140,16 @@ test('size pages and short IDs do not lose canonical identity', () => {
   assert.equal(shortSessionId('session-'), 'session-')
 })
 
+test('recent capacity follows measured height and reserves wrapped narrow controls', () => {
+  assert.equal(recentViewportPageSize('m'), 6)
+  assert.equal(recentViewportPageSize('s', 800, 400), 5)
+  assert.equal(recentViewportPageSize('l', 800, 400), 5)
+  assert.equal(recentViewportPageSize('s', 800, 600), 8)
+  assert.equal(recentViewportPageSize('s', 300, 400), 3)
+  assert.equal(recentViewportPageSize('s', 200, 30), 1)
+  assert.equal(recentViewportPageSize('s', 800, 100000), 20)
+  assert.equal(recentViewportPageSize('m', NaN, 400), 6)
+})
 test('empty state separates indexing, no sessions, and filtered no match', () => {
   assert.equal(recentEmptyState(0, 0, false), 'empty')
   assert.equal(recentEmptyState(10, 0, false), 'noMatch')

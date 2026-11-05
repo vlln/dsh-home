@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildActivity, validateActivityQuery } from '../src/activity.mjs'
 import { foldSession } from '../src/ledger.mjs'
-import { activityWeeks, activityLevel, shiftCalendarDay, validateActivityConfig } from '../src/client/activity-model.ts'
+import { activityWeeks, activityYearWidth, activityLevel, shiftCalendarDay, validateActivityConfig } from '../src/client/activity-model.ts'
 const now = Date.parse('2026-11-04T18:00:00Z')
 const user = time => ({ type: 'user/message', time: Date.parse(time), data: { source: { kind: 'user' }, content: [{ type: 'text', text: 'hello' }] } })
 function session(id, events, extra = {}) { return foldSession({ id, createdAt: now - 86400000, cwd: '/project', ...extra }, events, now) }
@@ -52,10 +52,21 @@ test('query rejects invalid time zones, dates and unbounded directories', () => 
   }
   assert.equal(validateActivityQuery({ date: '2024-02-29' }).date, '2024-02-29')
 })
+test('auto year threshold fits the actual fixed square calendar for every weekday and leap year', () => {
+  for (const year of [2024, 2025, 2026]) for (let day = 1; day <= 14; day++) {
+    const today = `${year}-01-${String(day).padStart(2, '0')}`
+    const fit = activityYearWidth(today)
+    assert.equal(activityWeeks([], today, fit - 1, 'auto').count, 84)
+    const full = activityWeeks([], today, fit, 'auto')
+    assert.equal(full.count, 365)
+    assert.equal(full.weeks.length * 12 + (full.weeks.length - 1) * 3 + 6, fit)
+    assert.equal(activityWeeks([], today, 200, 'year').count, 365)
+  }
+})
 test('calendar windows retain Monday rows, leap days, compact auto and explicit scrollable year', () => {
   assert.equal(shiftCalendarDay('2024-02-28', 1), '2024-02-29')
   assert.equal(shiftCalendarDay('2026-11-01', 1), '2026-11-02')
-  for (const [width, range, count] of [[300,'auto',84],[800,'auto',365],[300,'year',365],[800,'quarter',84]]) {
+  for (const [width, range, count] of [[300,'auto',84],[640,'auto',84],[820,'auto',365],[300,'year',365],[820,'quarter',84]]) {
     const grid = activityWeeks([], '2026-11-04', width, range)
     assert.equal(grid.count, count)
     assert.equal(grid.weeks.flat().filter(Boolean).length, count)

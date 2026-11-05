@@ -35,6 +35,9 @@ export interface WidgetProps {
   now: number
   actions: WidgetActions
   size: WidgetSize
+  /** Measured content viewport, excluding shell header/padding. */
+  width?: number
+  height?: number
   statuses?: SessionStatusMap
   statusSource?: 'runtime' | 'none'
   loading?: boolean
@@ -165,7 +168,7 @@ function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
     return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.today.empty', { shortcut: shortcutHint() })}</Empty>
   }
   return (
-    <>
+    <div className="dsh-today-content">
       <div className="dsh-metric">
         <span className="dsh-number">{formatDuration(active, t)}</span>
         <span className="dsh-label">{t('widget.today.focused')}</span>
@@ -193,16 +196,13 @@ function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
           {t('widget.today.empty', { shortcut: shortcutHint() })}
         </Empty>
       )}
-      <div className="dsh-w-facts">
-        <span>{t('widget.today.stats', { sessions: data?.today.sessions ?? 0, turns: data?.today.turns ?? 0 })}</span>
-        {longest > 0 && <span>· {t('widget.today.longest', { dur: formatDuration(longest, t) })}</span>}
+      <div className="dsh-today-stats">
+        <span><strong>{data?.today.sessions ?? 0}</strong><span>{t('widget.today.sessionsLabel')}</span></span>
+        <span><strong>{data?.today.turns ?? 0}</strong><span>{t('widget.today.turnsLabel')}</span></span>
+        <span><strong>{formatDuration(run, t)}</strong><span>{t('widget.today.runLabel')}</span></span>
       </div>
-      <span className="dsh-muted">
-        {t('widget.today.run', { dur: formatDuration(run, t) })}
-        {' · '}
-        {t('widget.today.waiting')}
-      </span>
-    </>
+      {longest > 0 && <span className="dsh-muted dsh-today-longest">{t('widget.today.longest', { dur: formatDuration(longest, t) })}</span>}
+    </div>
   )
 }
 
@@ -276,7 +276,7 @@ function AreasBody({ t, data, actions }: WidgetProps) {
   const restMs = rest.reduce((sum, group) => sum + group.ms, 0)
   const restSessions = rest.reduce((sum, group) => sum + group.sessions, 0)
   return (
-    <div className="dsh-rows">
+    <div className="dsh-rows dsh-area-rows">
       {rows.map(group => {
         const meta = (
           <span className="dsh-row-meta">
@@ -286,11 +286,12 @@ function AreasBody({ t, data, actions }: WidgetProps) {
         const title = (
           <span className="dsh-row-top">
             <span className="dsh-row-title">{group.name}</span>
-            {group.topLevelId !== undefined && <span className="dsh-row-arrow" aria-hidden="true">→</span>}
+            <span className="dsh-area-duration">{formatDuration(group.ms, t)}</span>
           </span>
         )
+        const bar = <span className="dsh-area-track" aria-hidden="true"><span style={{ width: `${sorted[0]!.ms > 0 ? group.ms / sorted[0]!.ms * 100 : 0}%` }} /></span>
         return group.topLevelId === undefined
-          ? <div key={group.name} className="dsh-row dsh-row-static">{title}{meta}</div>
+          ? <div key={group.name} className="dsh-row dsh-row-static">{title}{bar}{meta}</div>
           : (
             <button
               key={group.name}
@@ -299,6 +300,7 @@ function AreasBody({ t, data, actions }: WidgetProps) {
               onClick={() => { actions.openSession(group.topLevelId as string) }}
             >
               {title}
+              {bar}
               {meta}
             </button>
           )
@@ -325,7 +327,7 @@ function RhythmBody({ t, data }: WidgetProps) {
   const best = days.reduce((winner, day) => (day.activeMs > winner.activeMs ? day : winner), days[0]!)
   const todayKey = days[days.length - 1]?.key
   return (
-    <>
+    <div className="dsh-rhythm-content">
       <div className="dsh-metric">
         <span className="dsh-number">{formatDuration(total, t)}</span>
         <span className="dsh-label">{t('widget.rhythm.totalLabel')}</span>
@@ -342,14 +344,14 @@ function RhythmBody({ t, data }: WidgetProps) {
         ))}
       </div>
       <div className="dsh-rhythm-days" aria-hidden="true">
-        {days.map((day, index) => (
-          <span key={day.key}>{index === days.length - 1 ? shortDay(day.key) : day.key.slice(8)}</span>
+        {days.map(day => (
+          <span key={day.key}>{day.key.slice(8)}</span>
         ))}
       </div>
       <span className="dsh-muted">
         {t('widget.rhythm.peak', { dur: formatDuration(best.activeMs, t), day: shortDay(best.key) })}
       </span>
-    </>
+    </div>
   )
 }
 

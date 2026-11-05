@@ -105,10 +105,10 @@ function QueueContent() {
 }
 export function registerBuiltins(registry: HomeWidgetRegistry, t: Translate): () => void {
   const disposers = BUILTIN_WIDGETS.map(widget => {
-    function Content({ size }: WidgetContentProps) {
+    function Content({ size, width, height }: WidgetContentProps) {
       const { state, t, actions, statuses, statusSource } = useBuiltin()
       const Body = widget.body
-      const props: WidgetProps = { t, data: state.ledger, sessions: state.sessions, now: state.now, actions, size,
+      const props: WidgetProps = { t, data: state.ledger, sessions: state.sessions, now: state.now, actions, size, width, height,
         statuses, statusSource, loading: state.loading, loadError: state.error !== null }
       return <Body {...props} />
     }
