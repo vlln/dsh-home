@@ -51,9 +51,10 @@ export function WidgetGallery({ definitions, t, disabled, onDrag, onClose }: {
    </div>
    <div className="dsh-widget-directory">{filtered.map(definition=>{
      const title=galleryText(definition.title,definition.typeId),Icon=definition.icon
-     return <Tooltip key={definition.typeId} portal side="left" delayMs={350} maxWidth={300} disabled={disabled || dragSource !== null} label={`${galleryText(definition.description)}\n${definition.source??definition.typeId}`}><article className="dsh-w dsh-directory-item" data-widget-type={definition.typeId}>
-
-       <WidgetFrameHeader title={title} t={t} editing disabled={disabled&&dragSource!==definition.typeId} icon={Icon?<Icon size={14}/>:undefined} onPointerDown={event=>begin(definition,event)}/>
+     return <Tooltip key={definition.typeId} portal side="left" delayMs={350} maxWidth={300} disabled={disabled || dragSource !== null} label={`${galleryText(definition.description)}\n${definition.source??definition.typeId}`}>{/* The whole card is the drag source: the preview is most of its area and
+           users naturally grab it, not only the title strip. */}
+       <article className="dsh-w dsh-directory-item" data-widget-type={definition.typeId} onPointerDown={event=>begin(definition,event)}>
+       <WidgetFrameHeader title={title} t={t} editing disabled={disabled&&dragSource!==definition.typeId} icon={Icon?<Icon size={14}/>:undefined}/>
        <div className="dsh-library-preview" inert><CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><div className="dsh-library-preview-scale"><WidgetPreview definition={definition} t={t} size={definition.defaults.size} width={480} height={260}/></div></CardBoundary></div>
      </article></Tooltip>
    })}</div>

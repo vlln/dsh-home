@@ -27,6 +27,14 @@ try{
  await until(async()=> (await api('workbench.get')).instances.length===before+1)
  const added=(await api('workbench.get')).instances.find(i=>!backup.instances.some(o=>o.instanceId===i.instanceId));assert(added)
  checks.push('ordinary pointer drag creates exactly one instance at accepted grid point')
+ // Regression: users grab the large preview, not only the title strip. The body must
+ // start the same drag; a tap on it still creates nothing. Escape keeps the count stable.
+ const body=await source.locator('.dsh-library-preview').boundingBox();assert(body)
+ const bodyStart={x:body.x+body.width/2,y:body.y+body.height/2},countBody=(await api('workbench.get')).instances.length
+ await p.mouse.click(bodyStart.x,bodyStart.y);assert.equal((await api('workbench.get')).instances.length,countBody)
+ await p.mouse.move(bodyStart.x,bodyStart.y);await p.mouse.down();await p.mouse.move(bodyStart.x-20,bodyStart.y+10,{steps:4});await p.locator('.dsh-library-ghost').waitFor();await p.keyboard.press('Escape');await p.mouse.up();await until(async()=>await p.locator('.dsh-library-ghost').count()===0)
+ assert.equal((await api('workbench.get')).instances.length,countBody)
+ checks.push('grabbing the preview body starts the same drag; tap and Escape create nothing')
  // Cancel a pending collision before the500ms dwell; no peers or instances persist.
  const earlySource=await grip.boundingBox(),earlyPeer=await p.locator(`[data-widget-id="${added.instanceId}"]`).boundingBox();assert(earlySource&&earlyPeer)
  const earlyState=await api('workbench.get');await p.mouse.move(earlySource.x+70,earlySource.y+10);await p.mouse.down();await p.mouse.move(earlySource.x+40,earlySource.y+20,{steps:3});await p.mouse.move(earlyPeer.x+90,earlyPeer.y+20,{steps:3});await p.mouse.up();assert.deepEqual((await api('workbench.get')).instances,earlyState.instances);checks.push('release before collision confirmation cancels creation')

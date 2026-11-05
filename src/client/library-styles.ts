@@ -4,7 +4,7 @@ export const libraryStyles=`
 .dsh-library-heading h2 { font:var(--dsw-font-s-strong-14); margin:0 0 8px; }
 .dsh-library-panel .dsh-gallery-toolbar { flex-direction:column; align-items:stretch; gap:8px; }
 .dsh-library-panel .dsh-widget-directory { display:flex; flex-direction:column; gap:12px; max-height:none; overflow-y:auto; min-height:0; padding:2px 6px 8px 2px; }
-.dsh-library-panel .dsh-directory-item { flex:none; padding:12px; height:220px; overflow:visible; background:var(--dsw-alias-settings-card-fill); transition:box-shadow 120ms ease; }
+.dsh-library-panel .dsh-directory-item { flex:none; padding:12px; height:220px; overflow:visible; background:var(--dsw-alias-settings-card-fill); transition:box-shadow 120ms ease; cursor:grab; touch-action:none; user-select:none; }
 .dsh-library-panel .dsh-directory-item:hover,.dsh-library-panel .dsh-directory-item:focus-within { box-shadow:var(--dsw-shadow-lv2); border-color:var(--dsw-alias-border-l4); }
 .dsh-library-panel .dsh-w-head { touch-action:none; cursor:grab; flex:none; }
 .dsh-library-panel .dsh-w-title { flex:1; }
