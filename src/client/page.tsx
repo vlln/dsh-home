@@ -17,8 +17,8 @@ import { WidgetGallery } from './widget-gallery.tsx'
 import { WidgetPreview } from './widget-preview.tsx'
 import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
-import { legacyInstanceProjection, projectedWidgetPresets } from './widget-sizing.ts'
-import type { WidgetPreset } from './widget-contract.ts'
+import { legacyInstanceProjection } from './widget-sizing.ts'
+import { WidgetResizeHandle } from './widget-resize.tsx'
 
 export interface HomePageProps {
   t: Translate
@@ -85,6 +85,7 @@ export function HomePage(props: HomePageProps): ReactNode {
   const [saveError, setSaveError] = useState(false)
   const [managementError, setManagementError] = useState(false)
   const [sizeError, setSizeError] = useState(false)
+  const [resizePreview, setResizePreview] = useState<SpatialItem | null>(null)
   const [interacting, setInteracting] = useState(false)
   const seenRef = useRef(false)
   const writable = state.workbenchLoaded && state.storage.writable
@@ -214,7 +215,7 @@ export function HomePage(props: HomePageProps): ReactNode {
             } catch {setManagementError(true)}
           }} />}
         <div ref={containerRef} className="dsh-spatial-container" data-layout-surface="spatial" data-cols={cols}>
-          {state.workbenchLoaded && mounted && width > 0 && <SpatialGrid width={width} cols={cols} layout={geometry} editing={editable} onCommit={commit} onActive={activeChanged}
+          {state.workbenchLoaded && mounted && width > 0 && <SpatialGrid width={width} cols={cols} layout={resizePreview ? geometry.map(item => item.i === resizePreview.i ? resizePreview : item) : geometry} editing={editable} onCommit={commit} onActive={activeChanged}
             libraryDrag={libraryDrag} onLibraryEnd={() => setLibraryDrag(null)}
             onLibraryDrop={(drag,accepted) => {try {if(registry.get(drag.definition.typeId)!==drag.definition||JSON.stringify(store.getSnapshot().layout)!==drag.baseLayout)throw new Error('Widget or layout changed');store.dropInstance(drag.definition,drag.id,accepted,cols)}catch{setManagementError(true)}}}
             libraryGhost={libraryDrag && <><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
@@ -234,25 +235,22 @@ export function HomePage(props: HomePageProps): ReactNode {
               data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
               <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!writable || busy || interacting} gripDisabled={!writable || busy}
                 icon={definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition}/></CardBoundary>}
-                onDelete={() => { setManagementError(false); setConfirmDelete(instance.instanceId) }} onNudge={key => nudge(instance.instanceId,key)}
-                sizeControl={definition && <select className="dsh-widget-size-select" aria-label={t('edit.presetLabel', { title })}
-                  disabled={!editable || interacting} value={projectedWidgetPresets(definition.sizing, cols).find(item => item.w === rect.w && item.h === rect.h)?.preset ?? ''}
-                  onChange={event => {
-                    if (!editable || interacting || registry.get(instance.typeId) !== definition) return
-                    setSizeError(false)
-                    try { store.setWidgetPreset(instance.instanceId, definition, geometry, cols, event.target.value as WidgetPreset) }
-                    catch { setSizeError(true) }
-                  }}>
-                  {!projectedWidgetPresets(definition.sizing, cols).some(item => item.w === rect.w && item.h === rect.h)
-                    && <option value="" disabled>{t('edit.presetLegacy', { w: rect.w, h: rect.h })}</option>}
-                  {projectedWidgetPresets(definition.sizing, cols).map(item => <option key={item.preset} value={item.preset}>{item.w} × {item.h}</option>)}
-                </select>} />
+                onDelete={() => { setManagementError(false); setConfirmDelete(instance.instanceId) }} onNudge={key => nudge(instance.instanceId,key)} />
               <div className="dsh-w-body dsh-home-widget-content" inert={editing || undefined}>
                 {definition === undefined ? <div className="dsh-empty" role="status">{t('widget.unavailable', { typeId: instance.typeId })}</div>
                   : <CardBoundary key={renderKey(instance, definition)} fallback={<div className="dsh-error" role="alert">{t('error.card')}</div>}>
                     <WidgetBody definition={definition} widgetProps={widgetProps} />
                   </CardBoundary>}
               </div>
+              {editing && definition && <WidgetResizeHandle t={t} title={title} rect={rect} sizing={definition.sizing}
+                cols={cols} gridWidth={width} geometry={geometry} disabled={!editable || interacting} cancelRequested={!editable}
+                onActive={activeChanged} onPreview={setResizePreview}
+                onCommit={(preset, snapshot) => {
+                  setSizeError(false)
+                  if (registry.get(instance.typeId) !== definition) { setSizeError(true); return }
+                  try { store.setWidgetPreset(instance.instanceId, definition, snapshot, cols, preset) }
+                  catch { setSizeError(true) }
+                }} />}
             </section>
           })}
           </SpatialGrid>}

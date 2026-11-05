@@ -48,6 +48,13 @@ for (const source of ['button', 'title']) {
     assert.deepEqual(state, { ghost: false, outline: false, active: false, commits: 1, cancels: 0 })
   })
 }
+test('descendant button blur does not cancel a pointer gesture observed at window capture', () => {
+  const f = fixture(), { state } = transaction(f)
+  f.emit(f.button, 'blur', { pointerId: undefined })
+  assert.equal(state.active, true)
+  f.emit(f.button, 'pointerup')
+  assert.equal(state.commits, 1)
+})
 test('compatible mouseup releases when an earlier window listener swallowed pointerup', () => {
   const f = fixture()
   f.window.addEventListener('pointerup', e => e.stopImmediatePropagation(), true)

@@ -2,6 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import { normalizeWidgetSizing, presetGeometry, projectedWidgetPresets, sameWidgetPreset } from '../src/client/widget-sizing.ts'
 import {
   HomeWidgetRegistry, WIDGET_JSON_LIMITS,
   cloneWidgetConfig, validateWidgetConfig, migrateWidgetInstance,
@@ -38,15 +39,15 @@ test('registration publishes immutable stable snapshots with detached useSyncExt
   assert.strictEqual(first, getSnapshot())
   assert.strictEqual(registry.get(definition.typeId), first[0])
   assert.equal(first[0].title(), 'Localized notes')
-  assert.deepEqual(first[0].defaults, { size: 's', height: 6, minWidth: 4, maxWidth: 4, minHeight: 6, maxHeight: 6 })
-  assert.deepEqual(first[0].sizing, { default: '4x6', supported: ['4x6'] })
+  assert.deepEqual(first[0].defaults, { size: 's', height: 5, minWidth: 4, maxWidth: 4, minHeight: 5, maxHeight: 5 })
+  assert.deepEqual(first[0].sizing, { default: { w: 4, h: 5 }, supported: [{ w: 4, h: 5 }] })
   assert.ok(Object.isFrozen(first[0].sizing))
   assert.ok(Object.isFrozen(first[0].sizing.supported))
   assert.ok(Object.isFrozen(first[0]))
   assert.ok(Object.isFrozen(first[0].defaults))
   definition.defaults.height = 8
   definition.title = 'Changed externally'
-  assert.equal(first[0].defaults.height, 6)
+  assert.equal(first[0].defaults.height, 5)
   assert.equal(first[0].title(), 'Localized notes')
   assert.throws(() => first.push(widget()), TypeError)
   unsubscribe()
@@ -58,26 +59,86 @@ test('registration publishes immutable stable snapshots with detached useSyncExt
   assert.strictEqual(getSnapshot(), getSnapshot())
 })
 
-test('public sizing is independently frozen and legacy defaults deterministically map to one host preset', () => {
-  const sizing = { default: '4x6', supported: ['4x6', '8x6'] }
+test('widget-owned object shapes are cloned, deeply frozen and match the default by dimensions', () => {
+  const sizing = { default: { w: 4, h: 6 }, supported: [{ w: 4, h: 6 }, { w: 7, h: 9 }] }
   const registry = new HomeWidgetRegistry()
   registry.register(widget({ sizing }))
   const definition = registry.get('@test/widgets:notes')
   assert.deepEqual(definition.sizing, sizing)
   assert.notStrictEqual(definition.sizing.supported, sizing.supported)
-  assert.ok(Object.isFrozen(definition.sizing))
-  assert.ok(Object.isFrozen(definition.sizing.supported))
-  assert.deepEqual(definition.defaults, { size: 's', height: 6, minWidth: 4, maxWidth: 8, minHeight: 6, maxHeight: 6 })
-  sizing.default = '8x6'
-  sizing.supported.push('12x12')
-  assert.deepEqual(definition.sizing, { default: '4x6', supported: ['4x6', '8x6'] })
-  for (const [height, expected] of [[3, 4], [4, 4], [5, 6], [6, 6], [7, 8], [8, 8], [9, 12], [12, 12], [30, 12]]) {
+  assert.notStrictEqual(definition.sizing.default, sizing.default)
+  assert.strictEqual(definition.sizing.default, definition.sizing.supported[0])
+  for (const value of [definition.sizing, definition.sizing.supported, definition.sizing.default, ...definition.sizing.supported]) {
+    assert.ok(Object.isFrozen(value))
+  }
+  assert.deepEqual(definition.defaults, { size: 's', height: 6, minWidth: 4, maxWidth: 7, minHeight: 6, maxHeight: 9 })
+  sizing.default.w = 8
+  sizing.supported[0].h = 12
+  sizing.supported.push({ w: 12, h: 12 })
+  assert.deepEqual(definition.sizing, { default: { w: 4, h: 6 }, supported: [{ w: 4, h: 6 }, { w: 7, h: 9 }] })
+})
+
+test('legacy defaults preserve every original height as one fixed declared combination', () => {
+  for (const height of [3, 4, 5, 6, 7, 8, 9, 12, 30]) {
     const legacy = new HomeWidgetRegistry()
     legacy.register(widget({ defaults: { size: 's', height } }))
     const entry = legacy.get('@test/widgets:notes')
-    assert.deepEqual(entry.sizing, { default: `4x${expected}`, supported: [`4x${expected}`] })
-    assert.deepEqual(entry.defaults, { size: 's', height: expected, minWidth: 4, maxWidth: 4, minHeight: expected, maxHeight: expected })
+    assert.deepEqual(entry.sizing, { default: { w: 4, h: height }, supported: [{ w: 4, h: height }] })
+    assert.deepEqual(entry.defaults, { size: 's', height, minWidth: 4, maxWidth: 4, minHeight: height, maxHeight: height })
   }
+})
+
+test('0.17.x string declarations parse any legal integer shape, mixed defaults compare by dimensions', () => {
+  for (const [w, h] of [[1, 3], [2, 30], [4, 6], [7, 9], [11, 23], [12, 30]]) {
+    const registry = new HomeWidgetRegistry()
+    registry.register(widget({ sizing: { default: `${w}x${h}`, supported: [{ w, h }] } }))
+    assert.deepEqual(registry.get('@test/widgets:notes').sizing, { default: { w, h }, supported: [{ w, h }] })
+    assert.deepEqual(normalizeWidgetSizing({ default: { w, h }, supported: [`${w}x${h}`] }), { default: { w, h }, supported: [{ w, h }] })
+    assert.equal(sameWidgetPreset({ w, h }, `${w}x${h}`), true)
+  }
+  const supported = Array.from({ length: 16 }, (_, i) => ({ w: i % 12 + 1, h: 3 + Math.floor(i / 12) }))
+  assert.equal(normalizeWidgetSizing({ default: supported[15], supported }).supported.length, 16)
+})
+
+test('sizing validates finite per-widget declarations atomically, without evaluating accessors', () => {
+  let accessed = false
+  const accessor = Object.defineProperty({}, 'w', { enumerable: true, get() { accessed = true; return 4 } })
+  accessor.h = 6
+  const sizingGetter = Object.defineProperty({ supported: [{ w: 4, h: 6 }] }, 'default', { enumerable: true, get() { accessed = true; return { w: 4, h: 6 } } })
+  const arrayGetter = Object.defineProperty([], '0', { enumerable: true, get() { accessed = true; return { w: 4, h: 6 } } })
+  const invalidShapes = [null, [], {}, { w: 4 }, { w: 4, h: 6, extra: true }, accessor,
+    ...[0, 13, 1.5, NaN, Infinity, '4'].map(w => ({ w, h: 6 })),
+    ...[2, 31, 3.5, NaN, Infinity, '6'].map(h => ({ w: 4, h })),
+    '0x6', '13x6', '4x2', '4x31', '4.5x6', '4x6.5', '4×6', ' 4x6', '04x6', '4x06']
+  const shape = { w: 4, h: 6 }
+  for (const sizing of [null, [], {}, { default: shape }, { default: shape, supported: [] },
+    { default: shape, supported: Array(17).fill(shape) }, { default: shape, supported: [shape, '4x6'] },
+    { default: shape, supported: [{ w: 5, h: 6 }] }, { default: shape, supported: new Array(1) },
+    { default: shape, supported: arrayGetter }, sizingGetter,
+    { default: shape, supported: [shape], extra: true },
+    ...invalidShapes.map(value => ({ default: value, supported: [value] }))]) {
+    const registry = new HomeWidgetRegistry()
+    const before = registry.getSnapshot()
+    assert.throws(() => registry.register(widget({ sizing })), /sizing/)
+    assert.strictEqual(registry.getSnapshot(), before)
+  }
+  assert.equal(accessed, false)
+  assert.throws(() => new HomeWidgetRegistry().register(widget({ sizing: { default: shape, supported: [shape] }, defaults: {} })), /not both/)
+})
+
+test('projection preserves legacy small width and deduplicates only matching responsive dimensions', () => {
+  for (let w = 1; w <= 12; w++) {
+    const shape = { w, h: 9 }
+    assert.deepEqual(presetGeometry(shape, 12), shape)
+    assert.deepEqual(presetGeometry(`${w}x9`, 6), { w: w <= 4 ? Math.min(w, 3) : Math.min(w, 6), h: 9 })
+    assert.deepEqual(presetGeometry(shape, 2), { w: Math.min(w, 2), h: 9 })
+  }
+  for (const cols of [0, 1, 3, 13, NaN]) assert.throws(() => presetGeometry('4x6', cols), /breakpoint/)
+  const sizing = normalizeWidgetSizing({ default: { w: 4, h: 6 }, supported: [{ w: 3, h: 6 }, { w: 4, h: 6 }, { w: 7, h: 9 }] })
+  const options = projectedWidgetPresets(sizing, 6)
+  assert.deepEqual(options.map(({ w, h }) => ({ w, h })), [{ w: 3, h: 6 }, { w: 6, h: 9 }])
+  assert.strictEqual(options[0].preset, sizing.default)
+  assert.equal(sameWidgetPreset({ w: 3, h: 6 }, { w: 4, h: 6 }), false, 'nominal declarations remain distinct despite responsive collision')
 })
 
 test('public identifiers are namespaced and legacy registration is restricted to explicit adapter option', () => {

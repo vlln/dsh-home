@@ -22,11 +22,11 @@ function meta(definition, id = 'widget-a') {
 }
 const rect = ({ x, y, w, h }) => ({ x, y, w, h })
 
-test('legacy defaults map to one host preset and its projected metadata on 12/6/2-column breakpoints', () => {
+test('legacy defaults map to one fixed shape and its projected metadata on 12/6/2-column breakpoints', () => {
   const definition = registered({ size: 's', height: 6, minWidth: 4, maxWidth: 5, minHeight: 5, maxHeight: 7 })
   const initial = emptyLayout()
   const before = structuredClone(initial)
-  assert.deepEqual(definition.sizing, { default: '4x6', supported: ['4x6'] })
+  assert.deepEqual(definition.sizing, { default: { w: 4, h: 6 }, supported: [{ w: 4, h: 6 }] })
   for (const [cols, width] of [[12, 4], [6, 3], [2, 2]]) {
     const [item] = buildSpatialLayout(initial, [meta(definition)], cols)
     assert.equal(item.w, width)
@@ -42,13 +42,36 @@ test('legacy defaults map to one host preset and its projected metadata on 12/6/
   assert.deepEqual(initial, before)
 })
 
+test('new layouts use widget-owned arbitrary default shape and bounds from its finite declarations', () => {
+  for (const shape of [{ w: 1, h: 30 }, { w: 5, h: 11 }, { w: 7, h: 9 }]) {
+    const registry = new HomeWidgetRegistry()
+    registry.register({ typeId: 'test/geometry:custom', apiVersion: 1, title: 'Custom', configVersion: 1,
+      Content: () => null, defaultConfig: () => ({}), validateConfig: () => true,
+      sizing: { default: shape, supported: [shape, { w: 12, h: 12 }] } })
+    const definition = registry.get('test/geometry:custom')
+    const layout = { ...emptyLayout(), instanceLayout: true }
+    const before = structuredClone(layout)
+    for (const cols of [12, 6, 2]) {
+      const [item] = buildSpatialLayout(layout, [meta(definition)], cols)
+      const width = cols === 12 ? shape.w : cols === 6 ? shape.w <= 4 ? Math.min(shape.w, 3) : Math.min(shape.w, 6) : Math.min(shape.w, 2)
+      assert.deepEqual(rect(item), { x: 0, y: 0, w: width, h: shape.h })
+      assert.equal(item.minW, width)
+      assert.equal(item.maxW, cols)
+      assert.equal(item.minH, Math.min(shape.h, 12))
+      assert.equal(item.maxH, Math.max(shape.h, 12))
+      assert.equal(canPlace([item], item.i, item, cols), true)
+    }
+    assert.deepEqual(layout, before)
+  }
+})
+
 test('legacy size-only records keep their chosen width when a breakpoint is first projected', () => {
   const definition = registered({ size: 's', height: 5, minWidth: 3, maxWidth: 5, minHeight: 4, maxHeight: 6 })
   const layout = { ...emptyLayout(), size: { 'widget-a': 'l' } }
   for (const cols of [12, 6, 2]) {
     const [item] = buildSpatialLayout(layout, [meta(definition)], cols)
     assert.equal(item.w, cols)
-    assert.equal(item.h, 6)
+    assert.equal(item.h, 5)
   }
 })
 
@@ -62,7 +85,7 @@ test('malformed saved rectangles recover to the host default without moving or r
     assert.deepEqual(rect(geometry.find(item => item.i === 'widget-b')), sibling)
     const repaired = geometry.find(item => item.i === 'widget-a')
     assert.equal(repaired.w, cols === 12 ? 4 : cols === 6 ? 3 : 2)
-    assert.equal(repaired.h, 6)
+    assert.equal(repaired.h, 5)
     assert.equal(canPlace(geometry, repaired.i, repaired, cols), true)
   }
 })

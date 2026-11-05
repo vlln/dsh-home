@@ -1,6 +1,6 @@
 {
   "name": "@vlln/dsh-home-example-counter",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Independent counter widget example for the dsh-home injected service.",
   "license": "MIT",

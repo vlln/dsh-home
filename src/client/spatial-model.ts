@@ -2,7 +2,7 @@
 import type { GridRect, Layout, WidgetSize } from './api.ts'
 import { homeOrder, legacySpatialHeight } from './layout-model.ts'
 import type { WidgetSizing } from './widget-contract.ts'
-import { presetGeometry, projectedWidgetPresets } from './widget-sizing.ts'
+import { presetGeometry, projectedWidgetPresets, sameWidgetPreset } from './widget-sizing.ts'
 
 export interface SpatialMeta {
   id: string
@@ -272,9 +272,9 @@ export function moveSpatialItem<T extends SpatialItem>(
 export function applyWidgetPreset(
   geometry: readonly SpatialItem[], id: string, sizing: Readonly<WidgetSizing>, preset: import('./widget-contract.ts').WidgetPreset, cols: number,
 ): readonly SpatialItem[] {
-  if (!sizing.supported.includes(preset)) throw new Error('Unsupported widget preset')
-  const option = projectedWidgetPresets(sizing, cols).find(item => item.preset === preset)
-    ?? (sizing.supported.includes(preset) ? { preset, ...presetGeometry(preset, cols) } : undefined)
+  const declared = sizing.supported.find(item => sameWidgetPreset(item, preset))
+  if (!declared) throw new Error('Unsupported widget size')
+  const option = { preset: declared, ...presetGeometry(declared, cols) }
   const target = geometry.find(item => item.i === id)
   if (!target || !option) throw new Error('Unknown widget or preset')
   const next = { ...target, w: option.w, h: option.h }

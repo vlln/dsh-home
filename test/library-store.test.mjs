@@ -190,33 +190,48 @@ for (const cols of [0, 1, 3, 6.5, 13, NaN, Infinity]) {
   })
 }
 
-test('new-instance dimensions must match the default host preset rather than legacy bounds or caller metadata', async () => {
+test('new-instance dimensions must match the fixed legacy shape rather than bounds or caller metadata', async () => {
   const def = definition({ defaults: { size: 's', height: 5, minWidth: 4, maxWidth: 8, minHeight: 5, maxHeight: 9 } })
   await withStore({}, async (store, control) => {
     const before = store.getSnapshot()
     for (const proposal of [item('new', 0, 0, 3, 5), item('new', 0, 0, 9, 5), item('new', 0, 0, 4, 4), item('new', 0, 0, 4, 10),
-      item('new', 0, 0, 4, 5), item('new', 0, 0, 5, 6), item('new', 0, 0, 8, 6)]) {
+      item('new', 0, 0, 4, 6), item('new', 0, 0, 5, 6), item('new', 0, 0, 8, 6)]) {
       assert.throws(() => store.dropInstance(def, 'new', [proposal], 12), /drop|dimension|bound/i)
       assert.strictEqual(store.getSnapshot(), before)
     }
     assert.equal(control.writes.length, 0)
-    store.dropInstance(def, 'new', [item('new', 0, 0, 2, 6)], 2)
+    store.dropInstance(def, 'new', [item('new', 0, 0, 2, 5)], 2)
     await store.flushLayout()
-    assert.deepEqual(control.persisted.layout.positions['2'].new, { x: 0, y: 0, w: 2, h: 6 })
+    assert.deepEqual(control.persisted.layout.positions['2'].new, { x: 0, y: 0, w: 2, h: 5 })
   })
 })
 
-test('library drops require default shape even when a different catalog shape is supported', async () => {
-  const def = definition({ defaults: undefined, sizing: { default: '4x6', supported: ['4x6', '8x6'] } })
+test('library drops require the widget default even when another declared shape is supported', async () => {
+  const def = definition({ defaults: undefined, sizing: { default: { w: 4, h: 6 }, supported: [{ w: 4, h: 6 }, { w: 7, h: 9 }] } })
   await withStore({}, async (store, control) => {
     const before = store.getSnapshot()
-    assert.throws(() => store.dropInstance(def, 'new', [item('new', 0, 0, 8, 6)], 12), /preset dimensions/i)
+    assert.throws(() => store.dropInstance(def, 'new', [item('new', 0, 0, 7, 9)], 12), /preset dimensions/i)
     assert.strictEqual(store.getSnapshot(), before)
     assert.equal(control.writes.length, 0)
     store.dropInstance(def, 'new', [item('new', 0, 14, 4, 6)], 12)
     await store.flushLayout()
     assert.deepEqual(control.persisted.layout.positions['12'].new, { x: 0, y: 14, w: 4, h: 6 })
   })
+})
+
+test('new drops persist arbitrary per-widget object dimensions without legacy size rounding', async () => {
+  for (const shape of [{ w: 1, h: 30 }, { w: 5, h: 11 }, { w: 7, h: 9 }]) {
+    const def = definition({ defaults: undefined, sizing: { default: shape, supported: [shape, { w: 12, h: 12 }] } })
+    for (const cols of [12, 6, 2]) {
+      await withStore({}, async (store, control) => {
+        const width = cols === 12 ? shape.w : cols === 6 ? shape.w <= 4 ? Math.min(shape.w, 3) : Math.min(shape.w, 6) : Math.min(shape.w, 2)
+        const proposal = [item('new', 0, 14, width, shape.h)]
+        store.dropInstance(def, 'new', proposal, cols)
+        await store.flushLayout()
+        assert.deepEqual(control.persisted.layout.positions[String(cols)].new, rect(proposal[0]))
+      })
+    }
+  }
 })
 
 test('duplicate/new invalid ids and malformed definitions reject before touching saved instances', async () => {

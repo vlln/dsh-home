@@ -57,7 +57,7 @@ export function observeDragRelease(targets: ReleaseTargets, options: {
     listen(targets.window, 'touchend', release)
     listen(targets.window, 'touchcancel', event => end(event, false))
   }
-  listen(targets.window, 'blur', event => end(event, false))
+  listen(targets.window, 'blur', event => { if (event.target === targets.window) end(event, false) })
   listen(targets.document, 'mouseleave', event => {
     // Ignore descendant mouseleave; crossing the library/desktop boundary is not cancellation.
     if ((event.target === targets.document || event.target === targets.documentElement) && event.relatedTarget == null) end(event, false)

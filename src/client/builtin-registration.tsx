@@ -104,14 +104,14 @@ function QueueContent() {
     onDismiss={id => store.dismiss(id)} />
 }
 const BUILTIN_SIZING: Record<string, WidgetSizing> = {
-  recent: { default: '8x8', supported: ['4x8', '8x8', '8x12', '12x8', '12x12'] },
-  tasks: { default: '4x8', supported: ['4x8', '8x8'] },
-  today: { default: '8x4', supported: ['4x4', '8x4', '12x4'] },
-  running: { default: '4x6', supported: ['4x4', '4x6', '4x8', '8x6'] },
-  areas: { default: '4x6', supported: ['4x6', '4x8', '8x6', '8x8'] },
-  rhythm: { default: '8x4', supported: ['4x4', '8x4', '12x4'] },
-  resume: { default: '8x6', supported: ['4x6', '8x6', '12x6'] },
-  queue: { default: '4x6', supported: ['4x6', '4x8', '4x12', '8x6', '8x8'] },
+  recent: { default: { w:8,h:7 }, supported: [{w:4,h:7},{w:8,h:7},{w:8,h:10},{w:12,h:10}] },
+  tasks: { default: { w:4,h:8 }, supported: [{w:4,h:8},{w:8,h:6}] },
+  today: { default: { w:8,h:4 }, supported: [{w:4,h:4},{w:8,h:4}] },
+  running: { default: { w:4,h:4 }, supported: [{w:4,h:4},{w:4,h:6},{w:6,h:6}] },
+  areas: { default: { w:4,h:6 }, supported: [{w:4,h:6},{w:6,h:7},{w:8,h:6}] },
+  rhythm: { default: { w:8,h:4 }, supported: [{w:4,h:4},{w:8,h:4},{w:12,h:5}] },
+  resume: { default: { w:8,h:5 }, supported: [{w:4,h:6},{w:8,h:5}] },
+  queue: { default: { w:4,h:6 }, supported: [{w:4,h:6},{w:4,h:9},{w:8,h:6}] },
 }
 export function registerBuiltins(registry: HomeWidgetRegistry, t: Translate): () => void {
   const disposers = BUILTIN_WIDGETS.map(widget => {

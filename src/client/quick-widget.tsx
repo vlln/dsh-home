@@ -130,7 +130,7 @@ export function registerQuickWidget(registry: HomeWidgetRegistry, t: Translate):
   return registry.register<QuickConfig>({
     typeId: QUICK_TYPE_ID, apiVersion: 1, title: () => t('widget.quick.title'),
     description: () => t('quick.description'), source: '@vlln/dsh-home', icon: QuickGlyph,
-    preview: { data: builtinPreviewData(t) }, sizing: { default: '4x6', supported: ['4x4', '4x6', '4x8', '4x12', '8x6', '8x8'] }, configVersion: QUICK_CONFIG_VERSION,
+    preview: { data: builtinPreviewData(t) }, sizing: { default: {w:4,h:6}, supported: [{w:4,h:4},{w:4,h:6},{w:4,h:9},{w:8,h:6}] }, configVersion: QUICK_CONFIG_VERSION,
     defaultConfig: defaultQuickConfig, validateConfig: validateQuickConfig, migrateConfig: migrateQuickConfig,
     Content: QuickContent,
   })

@@ -5,11 +5,23 @@ import type {} from '@deepseek-ai/cordis'
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 export type WidgetSize = 's' | 'm' | 'l'
 export type WidgetTitle = string | (() => string)
-/** Host-owned nominal grid catalog; extensions select names, never dimensions. */
-export type WidgetPreset = '4x4' | '4x6' | '4x8' | '4x12' | '8x4' | '8x6' | '8x8' | '8x12' | '12x4' | '12x6' | '12x8' | '12x12'
+/** Nominal shape on the 12-column grid: integer w 1..12 and h 3..30. */
+export interface GridShape {
+  readonly w: number
+  readonly h: number
+}
+/** @deprecated String declarations remain readable for 0.17.x extensions; prefer GridShape. */
+export type WidgetPreset = GridShape | `${number}x${number}`
+/** Each widget declares its own finite set of 1..16 shapes; there is no host-wide catalog.
+ * The default must match one supported shape by w/h, not object identity. */
 export interface WidgetSizing {
-  default: WidgetPreset
-  supported: readonly WidgetPreset[]
+  readonly default: GridShape
+  readonly supported: readonly GridShape[]
+}
+/** Compatibility input only. Registered definitions always expose object shapes. */
+export interface WidgetSizingInput {
+  readonly default: WidgetPreset
+  readonly supported: readonly WidgetPreset[]
 }
 
 /** Durable instance identity is distinct from its registered type; many instances may share one type. */
@@ -21,7 +33,7 @@ export interface WidgetInstance<C extends JsonValue = JsonValue> {
 }
 
 /** @deprecated Legacy registration hints, validated for compatibility then mapped
- * to host presets. Arbitrary dimensions never reach new placement or size controls. */
+ * to one fixed shape; the declared height is preserved without rounding. */
 export interface WidgetDefaults {
   size: WidgetSize
   /** Heights are grid rows, not pixels. */
@@ -73,9 +85,10 @@ export interface WidgetDefinition<C extends JsonValue = JsonValue> {
   preview?: { config?: () => C; data?: JsonValue }
   /** Informational package/source label; not an authorization capability. */
   source?: string
-  /** Select only from the host grid catalog. Do not combine with legacy defaults. */
-  sizing?: WidgetSizing
-  /** @deprecated Use sizing; legacy values are mapped to a single host preset. */
+  /** Declare this widget's finite supported shapes. Do not combine with legacy defaults.
+   * Legacy `"4x6"` declarations remain accepted, then normalized to GridShape objects. */
+  sizing?: WidgetSizing | WidgetSizingInput
+  /** @deprecated Use sizing; legacy values are mapped to one fixed shape. */
   defaults?: Partial<WidgetDefaults>
   configVersion: number
   /** Must be synchronous. The registry clones and validates every returned value. */

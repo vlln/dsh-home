@@ -47,15 +47,26 @@ import type { WidgetDefinition, WidgetContentProps } from '@vlln/dsh-home/widget
 
 No compilation is required for this directly authored JavaScript package. If you add a bundler, externalize `react` and `@deepseek-ai/dsh-client-ui-primitives` (plus any other host modules you actually import), and keep the `window.__ModuleLoader__.load` wrapper.
 
-## Host-owned size presets
+## Widget-declared finite grid sizes
 
-This example declares `sizing: { default: '4x6', supported: ['4x6', '8x6'] }`. These names select Home's shared catalog, not arbitrary dimensions: nominal widths are 4/8/12 and heights are 4/6/8/12 grid units. A provider can support a subset, but cannot create its own sizes or combine `sizing` with deprecated `defaults`.
+Each widget declares its own finite set of useful grid shapes; Home does not impose or display a shared size catalog. New integrations should use objects, for example:
 
-New counters start at the default preset. In layout-edit mode, use Home's size selector; it shows actual grid units at the current breakpoint, with no free-resize handle. Nominal widths 4/8/12 project to 4/8/12 on a 12-column grid, 3/6/6 on a 6-column grid, and 2/2/2 on a 2-column grid. Height is unchanged and duplicate projected shapes share one option, so the two counter widths become one option on a 2-column grid. A size change keeps the counter's top-left position and changes only the active breakpoint; a collision or boundary overflow rejects it without pushing other widgets.
+```js
+sizing: {
+  default: { w: 4, h: 6 },
+  supported: [{ w: 4, h: 6 }, { w: 7, h: 9 }],
+}
+```
 
-Existing legal saved rectangles retain their exact dimensions, even if they are not in the new catalog. They change size only when you explicitly select a preset. Home still persists per-breakpoint `x/y/w/h`, without a new preset identifier or a configuration migration. Component responsiveness should use the real content `width`/`height` in pixels; the legacy `size: 's' | 'm' | 'l'` prop is only a width bucket, not a preset identity.
+`w` is an integer from 1 to 12 in the nominal 12-column grid, and `h` is an integer from 3 to 30 rows. Declare 1–16 distinct combinations; `default` must match both `w` and `h` of a supported entry, not its object identity. Home independently clones and deeply freezes the sizing object, default object, supported array and every entry. Do not combine `sizing` with deprecated `defaults`. The older 0.17 string form remains accepted for any legal ASCII `WxH`, not just a fixed list, but is compatibility input rather than the recommended declaration or a user-facing catalog.
 
-Older plugins may keep `defaults`: Home validates its original ranges, then maps the width bucket and rounds height up to 4/6/8/12, capped at 12, producing a single supported preset. Those legacy min/max values no longer enable arbitrary sizing. New integrations should use `sizing` and verify that their real content fits every supported shape, including narrow screens and enlarged text. See the [public sizing contract](<../../docs/widget-development.md#5-宿主尺寸档位与配置限制>) for details.
+New instances use the declared default. In layout-edit mode, drag the **bottom-right size handle**: it snaps to the nearest declared projected shape by pixel distance. There is no size dropdown and no arbitrary continuous resizing. While the mouse remains down, the shape is only a preview and is not persisted; release commits a valid shape. Escape, blur and pointer/touch cancellation restore the starting size without saving. A single-shape widget whose current dimensions already match that shape has no size handle; a different legal saved size can still be explicitly converted. Focus the size handle and use arrow keys to switch combinations; the separate move handle's arrows still move the widget.
+
+At 12 columns the width stays `w`; at 6 columns it becomes `w <= 4 ? min(w, 3) : min(w, 6)`; at 2 columns it becomes `min(w, 2)`. Height is unchanged, and duplicate actual shapes merge before snapping or keyboard selection. A size change keeps the widget's top-left position and changes only the active breakpoint; a collision or boundary overflow rejects it without pushing other widgets.
+
+Existing legal saved rectangles retain their exact dimensions, even outside the declared set. Browsing, entering edit mode, moving and arranging do not convert them. Home still persists per-breakpoint `x/y/w/h`, without a new size identifier or a configuration migration; historical size-only layouts keep their old interpretation. Component responsiveness should use the real content `width`/`height` in pixels; the legacy `size: 's' | 'm' | 'l'` prop is only a width bucket, not a shape identity.
+
+Older plugins may keep `defaults`: Home validates the original ranges, then uses the width bucket and **exact original height** as a single supported combination. It does not ceil the height or cap it at 12; a height of 5 stays 5 and a height of 30 stays 30. Legacy min/max values do not enable arbitrary resizing. Verify that real content fits every declared shape, including narrow screens and enlarged text. These are contract requirements, not a claim of a new test run; historical 0.17 shared-catalog acceptance does not validate this corrected interaction. See the [public sizing contract](<../../docs/widget-development.md#5-组件声明的有限网格尺寸与配置限制>) for details.
 
 ## Development observability
 

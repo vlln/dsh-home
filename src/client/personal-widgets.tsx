@@ -129,13 +129,13 @@ export function registerPersonalWidgets(registry: HomeWidgets, t: Translate): ()
     disposers.push(registry.register<NotesConfig>({
       typeId: '@vlln/dsh-home:notes', apiVersion: 1, configVersion: 1, source: '@vlln/dsh-home',
       title: () => t('widget.notes.title'), description: () => t('widget.notes.description'), icon: IconEditOutlineRegular,
-      preview: { config: () => ({ title: t('gallery.sample.noteTitle'), text: t('gallery.sample.noteText') }) }, sizing: { default: '4x6', supported: ['4x6', '4x8', '8x6', '8x8', '8x12', '12x8', '12x12'] },
+      preview: { config: () => ({ title: t('gallery.sample.noteTitle'), text: t('gallery.sample.noteText') }) }, sizing: { default: {w:4,h:6}, supported: [{w:4,h:6},{w:6,h:7},{w:8,h:8},{w:8,h:12}] },
       defaultConfig: defaultNotesConfig, validateConfig: validateNotesConfig, Content: NotesContent,
     }))
     disposers.push(registry.register<ClockConfig>({
       typeId: '@vlln/dsh-home:clock', apiVersion: 1, configVersion: 1, source: '@vlln/dsh-home',
       title: () => t('widget.clock.title'), description: () => t('widget.clock.description'), icon: IconClockOutlineRegular,
-      preview: { config: () => ({ ...defaultClockConfig(), timeZone: 'UTC' }), data: { now: Date.UTC(2026, 9, 20, 10, 24) } }, sizing: { default: '4x4', supported: ['4x4'] },
+      preview: { config: () => ({ ...defaultClockConfig(), timeZone: 'UTC' }), data: { now: Date.UTC(2026, 9, 20, 10, 24) } }, sizing: { default: {w:4,h:4}, supported: [{w:4,h:4}] },
       defaultConfig: defaultClockConfig, validateConfig: validateClockConfig, Content: ClockContent,
     }))
   } catch (error) { dispose(); throw error }

@@ -1,52 +1,68 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { HomeWidgetRegistry } from '../src/client/widget-registry.ts'
-import { WIDGET_PRESETS, normalizeWidgetSizing, legacyInstanceProjection, presetGeometry, projectedWidgetPresets } from '../src/client/widget-sizing.ts'
+import { normalizeWidgetSizing, legacyInstanceProjection, presetGeometry, projectedWidgetPresets } from '../src/client/widget-sizing.ts'
 import { applyWidgetPreset, buildSpatialLayout, canPlace } from '../src/client/spatial-model.ts'
 import { HomeStore } from '../src/client/store.ts'
 import { emptyLayout, emptyPrefs } from '../src/client/api.ts'
 import { readFile } from 'node:fs/promises'
 const definition = extra => ({ typeId:'test/presets:note', apiVersion:1, title:'Note', configVersion:1,
   defaultConfig:()=>({text:'keep'}), validateConfig:()=>true, Content:()=>null,
-  sizing:{default:'4x6',supported:['4x4','4x6','8x6','8x8','12x8']}, ...extra })
+  sizing:{default:{w:4,h:6},supported:[{w:4,h:4},{w:4,h:6},{w:8,h:6},{w:8,h:8},{w:12,h:8}]}, ...extra })
 const rect = ({x,y,w,h}) => ({x,y,w,h})
 function registry(extra) { const r=new HomeWidgetRegistry(); r.register(definition(extra)); return r }
 const meta = (r,id) => { const d=r.get('test/presets:note'); return {id,sizing:d.sizing,defaultSize:d.defaults.size,defaultHeight:d.defaults.height,...d.defaults} }
-test('finite host catalog projects every shape at all public breakpoints',()=>{
-  assert.equal(Object.keys(WIDGET_PRESETS).length,12)
-  for(const [key,shape] of Object.entries(WIDGET_PRESETS)) for(const cols of [12,6,2]) {
-    const actual=presetGeometry(key,cols)
-    assert.equal(actual.h,shape.h)
-    assert.equal(actual.w,cols===12?shape.w:cols===6?(shape.w===4?3:6):2)
-    assert.ok(actual.w<=cols)
+test('all bounded integer shapes project without a host catalog, including legacy string syntax',()=>{
+  for(let w=1;w<=12;w++)for(let h=3;h<=30;h++)for(const cols of [12,6,2]) {
+    const shape={w,h},actual=presetGeometry(shape,cols)
+    assert.equal(actual.h,h)
+    assert.equal(actual.w,cols===12?w:cols===6?(w<=4?Math.min(w,3):Math.min(w,6)):Math.min(w,2))
+    assert.ok(actual.w>=1&&actual.w<=cols)
+    assert.deepEqual(presetGeometry(`${w}x${h}`,cols),actual)
   }
-  for(const key of ['5x6','4x5','20x20','__proto__',null]) assert.throws(()=>presetGeometry(key,12))
-  for(const cols of [1,4,8,13,NaN]) assert.throws(()=>presetGeometry('4x4',cols))
+  for(const shape of ['20x20','__proto__',null,{w:0,h:6},{w:13,h:6},{w:5,h:2},{w:5,h:31},{w:5.5,h:6},{w:5,h:NaN}])assert.throws(()=>presetGeometry(shape,12))
+  for(const cols of [1,4,8,13,NaN])assert.throws(()=>presetGeometry({w:5,h:7},cols))
 })
-test('registration accepts names only and freezes independent supported presets',()=>{
+test('registration owns a cloned deeply frozen set of at most sixteen exact shape combinations',()=>{
   const source=definition(),r=new HomeWidgetRegistry();r.register(source)
-  source.sizing.supported.push('12x12')
+  source.sizing.supported[0].h=30;source.sizing.default.w=7;source.sizing.supported.push({w:12,h:12})
   const d=r.get(source.typeId)
-  assert.ok(Object.isFrozen(d.sizing));assert.ok(Object.isFrozen(d.sizing.supported))
-  assert.equal(d.sizing.supported.includes('12x12'),false)
+  for(const value of[d.sizing,d.sizing.supported,d.sizing.default,...d.sizing.supported])assert.ok(Object.isFrozen(value))
+  assert.deepEqual(d.sizing.default,{w:4,h:6});assert.deepEqual(d.sizing.supported[0],{w:4,h:4})
+  assert.equal(d.sizing.supported.length,5)
   for(const sizing of [null,{}, {default:'4x4',supported:[]}, {default:'4x4',supported:['4x6']},
-    {default:'4x4',supported:['4x4','4x4']},{default:'5x4',supported:['5x4']},
-    {default:'4x4',supported:['4x4'],width:5}]) assert.throws(()=>registry({sizing}),/sizing/)
+    {default:'4x4',supported:['4x4',{w:4,h:4}]},{default:'4x4',supported:['4x4'],width:5},
+    {default:'4x4',supported:Array.from({length:17},(_,i)=>({w:4,h:i+4}))}])assert.throws(()=>registry({sizing}),/sizing/)
   assert.throws(()=>registry({defaults:{height:5}}),/not both/)
+  const supported=Array.from({length:16},(_,i)=>({w:5,h:i+3}))
+  assert.equal(normalizeWidgetSizing({default:{w:5,h:7},supported}).supported.length,16)
   const input={default:'4x4',supported:['4x4']};Object.defineProperty(input,'w',{get(){throw Error('getter executed')}})
   assert.throws(()=>normalizeWidgetSizing(input),/supports only/)
 })
-test('legacy registration maps arbitrary old hints to one standard shape, not custom geometry',()=>{
-  for(const [height,h]of [[3,4],[5,6],[7,8],[9,12],[30,12]]){
+test('legacy registration keeps its original height as one fixed declared shape',()=>{
+  for(const height of[3,5,7,9,30]){
     const r=registry({sizing:undefined,defaults:{size:'s',height,minWidth:3,maxWidth:5}}),d=r.get('test/presets:note')
-    assert.deepEqual(d.sizing,{default:`4x${h}`,supported:[`4x${h}`]})
-    for(const cols of [12,6,2])assert.deepEqual(rect(buildSpatialLayout(emptyLayout(),[meta(r,'a')],cols)[0]),{x:0,y:0,...presetGeometry(d.sizing.default,cols)})
+    assert.deepEqual(d.sizing,{default:{w:4,h:height},supported:[{w:4,h:height}]})
+    for(const cols of[12,6,2])assert.deepEqual(rect(buildSpatialLayout(emptyLayout(),[meta(r,'a')],cols)[0]),{x:0,y:0,...presetGeometry(d.sizing.default,cols)})
   }
 })
-test('projected choices deduplicate without losing default representative',()=>{
- const s=normalizeWidgetSizing({default:'12x6',supported:['4x6','8x6','12x6','8x8']})
- assert.deepEqual(projectedWidgetPresets(s,6).map(x=>x.preset),['4x6','12x6','8x8'])
- assert.deepEqual(projectedWidgetPresets(s,2).map(x=>x.preset),['12x6','8x8'])
+test('projected choices deduplicate without losing the default representative matched by w/h',()=>{
+ const s=normalizeWidgetSizing({default:{w:12,h:6},supported:['4x6',{w:8,h:6},'12x6',{w:8,h:8}]})
+ assert.deepEqual(projectedWidgetPresets(s,6).map(x=>x.preset),[{w:4,h:6},{w:12,h:6},{w:8,h:8}])
+ assert.deepEqual(projectedWidgetPresets(s,2).map(x=>x.preset),[{w:12,h:6},{w:8,h:8}])
+ assert.strictEqual(projectedWidgetPresets(s,6)[1].preset,s.default)
+})
+test('resize membership accepts only exact declared pairs, never a bounds cross product or responsive alias',()=>{
+ const sizing=normalizeWidgetSizing({default:{w:4,h:6},supported:[{w:4,h:6},{w:7,h:9}]}),a={i:'a',x:0,y:0,w:4,h:6,minW:1,minH:3,maxW:12}
+ const geometry=Object.freeze([Object.freeze(a)])
+ const changed=applyWidgetPreset(geometry,'a',sizing,{w:7,h:9},12)
+ assert.deepEqual(rect(changed[0]),{x:0,y:0,w:7,h:9})
+ assert.deepEqual(applyWidgetPreset(geometry,'a',sizing,'7x9',12),changed)
+ for(const shape of[{w:4,h:9},{w:7,h:6},{w:5,h:7},{w:6,h:9}])assert.throws(()=>applyWidgetPreset(geometry,'a',sizing,shape,12),/Unsupported/)
+ const middle=[{...a,w:3}]
+ assert.throws(()=>applyWidgetPreset(middle,'a',sizing,{w:6,h:9},6),/Unsupported/)
+ assert.deepEqual(rect(applyWidgetPreset(middle,'a',sizing,{w:7,h:9},6)[0]),{x:0,y:0,w:6,h:9})
+ assert.deepEqual(rect(geometry[0]),rect(a))
 })
 test('historical narrow/custom/large shapes survive load, movement bounds and missing-breakpoint projection',()=>{
  const r=registry(); const widths=[1,2,3,5,7,11]
@@ -119,10 +135,19 @@ test('size transaction never publishes repaired projection of a colliding peer',
  const expected=structuredClone(before);expected.positions[12].a.h=4
  assert.deepEqual(store.getSnapshot().layout,expected)
 }, state=>{state.layout.positions[12].b={x:0,y:0,w:4,h:6}}))
-test('free resize is disabled and only named grid options are exposed by the shell',async()=>{
+test('shell exposes a bottom-right discrete resize handle, not a select or engine free resize',async()=>{
  const grid=await readFile(new URL('../src/client/spatial-grid.tsx',import.meta.url),'utf8'),page=await readFile(new URL('../src/client/page.tsx',import.meta.url),'utf8')
  assert.match(grid,/resizeConfig=\{\{ enabled: false, handles: \[\] \}\}/)
- assert.match(page,/store\.setWidgetPreset/);assert.match(page,/edit\.presetLegacy/)
+ assert.doesNotMatch(page,/<select\b/)
+ assert.match(page,/<WidgetResizeHandle\b/);assert.match(page,/sizing=\{definition\.sizing\}/)
+ assert.match(page,/store\.setWidgetPreset/);assert.match(page,/onPreview=\{setResizePreview\}/)
+ const resize=await readFile(new URL('../src/client/widget-resize.tsx',import.meta.url),'utf8')
+ assert.match(resize,/projectedWidgetPresets\(sizing, cols\)/);assert.match(resize,/canPlace\(snapshot, source\.i, candidate, cols\)/)
+ assert.match(resize,/observeDragRelease/);assert.match(resize,/e\.key === 'Escape'/)
+ assert.match(resize,/className="dsh-widget-resize-handle"/)
+ const styles=await readFile(new URL('../src/client/styles.ts',import.meta.url),'utf8')
+ assert.match(styles,/\.dsh-widget-resize-handle\s*\{[^}]*bottom:\s*0;[^}]*right:\s*0;/)
+ assert.match(styles,/body\.dsh-home-resizing\s*\{[^}]*user-select:\s*none/)
  assert.match(page,/gripDisabled=\{!writable \|\| busy\}/)
  const frame=await readFile(new URL('../src/client/widget-frame.tsx',import.meta.url),'utf8');assert.match(frame,/disabled=\{gripDisabled \?\? disabled\}/)
 })

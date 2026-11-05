@@ -17,17 +17,17 @@ const rect = ({ x, y, w, h }) => ({ x, y, w, h })
 for (const [size, widths] of [['s', [4, 3, 2]], ['m', [8, 6, 2]], ['l', [12, 6, 2]]]) {
   test(`library draft ${size} dimensions follow the ordinary 12/6/2-column grid`, () => {
     const def = definition({ size, height: 7 })
-    assert.deepEqual(def.sizing, { default: `${widths[0]}x8`, supported: [`${widths[0]}x8`] })
+    assert.deepEqual(def.sizing, { default: { w: widths[0], h: 7 }, supported: [{ w: widths[0], h: 7 }] })
     for (const [index, cols] of [12, 6, 2].entries()) {
       const peer = Object.freeze(item('peer', 0, 9, Math.min(cols, 4), 5))
       const snapshot = Object.freeze([peer])
       const draft = libraryItem(def, 'draft', cols, snapshot)
       assert.equal(draft.i, 'draft')
-      assert.deepEqual(rect(draft), { x: 0, y: 14, w: widths[index], h: 8 })
+      assert.deepEqual(rect(draft), { x: 0, y: 14, w: widths[index], h: 7 })
       assert.equal(draft.minW, widths[index])
       assert.equal(draft.maxW, widths[index])
-      assert.equal(draft.minH, 8)
-      assert.equal(draft.maxH, 8)
+      assert.equal(draft.minH, 7)
+      assert.equal(draft.maxH, 7)
       assert.deepEqual(snapshot, [peer], 'draft staging never moves existing cards')
     }
   })
@@ -45,6 +45,25 @@ test('draft starts at origin and legacy bounds cannot widen its single projected
   assert.deepEqual(rect(narrow), { x: 0, y: 0, w: 2, h: 6 })
   assert.equal(narrow.minW, 2)
   assert.equal(narrow.maxW, 2)
+})
+
+test('library drafts use arbitrary widget-declared default shapes including one-column and tall cards', () => {
+  for (const shape of [{ w: 1, h: 30 }, { w: 2, h: 3 }, { w: 5, h: 11 }, { w: 7, h: 9 }]) {
+    const registry = new HomeWidgetRegistry()
+    registry.register({ typeId: 'test/library:custom', apiVersion: 1, title: 'Custom', configVersion: 1,
+      Content: () => null, defaultConfig: () => ({}), validateConfig: () => true,
+      sizing: { default: shape, supported: [shape, { w: 12, h: 12 }] } })
+    const def = registry.get('test/library:custom')
+    for (const cols of [12, 6, 2]) {
+      const width = cols === 12 ? shape.w : cols === 6 ? shape.w <= 4 ? Math.min(shape.w, 3) : Math.min(shape.w, 6) : Math.min(shape.w, 2)
+      const draft = libraryItem(def, 'draft', cols, [])
+      assert.deepEqual(rect(draft), { x: 0, y: 0, w: width, h: shape.h })
+      assert.equal(draft.minW, cols === 2 ? Math.min(shape.w, 2) : cols === 6 ? Math.min(width, 6) : shape.w)
+      assert.equal(draft.maxW, cols)
+      assert.equal(draft.minH, Math.min(shape.h, 12))
+      assert.equal(draft.maxH, Math.max(shape.h, 12))
+    }
+  }
 })
 
 test('draft staging rejects exhausted vertical space instead of emitting overlapping geometry', () => {

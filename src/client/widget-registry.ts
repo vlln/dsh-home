@@ -1,4 +1,4 @@
-/** Pure widget registry: no React runtime, private store, persistence, or geometry imports. */
+/** Pure widget registry: no React runtime, private store or persistence; sizing is normalized per widget. */
 import type {
   HomeWidgets, JsonValue, RegisteredWidgetDefinition, WidgetConfigValidation,
   WidgetContentProps, WidgetDefaults, WidgetDefinition, WidgetInstance,
