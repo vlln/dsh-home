@@ -12,9 +12,11 @@ import type { ReactNode } from 'react'
 import type { LedgerSession, LedgerSnapshot, WidgetSize } from './api.ts'
 import type { SessionMeta } from './store.ts'
 import { formatAgo, formatDuration, hhmm, shortcutHint, shortDay, type Translate } from './format.ts'
+import { DirectoryBadge } from './directory-badge.tsx'
 import { RecentBody } from './recent.tsx'
 import { TasksBody } from './tasks.tsx'
 import { PinnedBody } from './pinned-widget.tsx'
+import { dayCoverage, localDayWindow } from './widget-visual-model.ts'
 import type { SessionStatusMap } from './focus.tsx'
 
 /** 导航动作（由 index.tsx 接到官方 `uiWorkspace` 上）。 */
@@ -59,7 +61,6 @@ export interface BuiltinWidget {
 function IconPin() {
   return <svg className="dsh-w-glyph" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 2h6l-1 5 2 2H9l-1 5-1-5H4l2-2-1-5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" /></svg>
 }
-const DAY_MS = 86_400_000
 
 function IconToday() {
   return (
@@ -137,33 +138,47 @@ export function sessionTitle(
   return t('widget.unknown')
 }
 
-/** 今天 0 点（本地时区，与宿主的分日口径一致）。 */
-function startOfToday(now: number): number {
-  const date = new Date(now)
-  date.setHours(0, 0, 0, 0)
-  return date.getTime()
+// The elapsed-day axis expands on 23/25h DST days; minute labels remain exact.
+function dayMsLabel(start: number, end: number, fraction: number): string {
+  if (fraction === 1) return '24'
+  const time = hhmm(start + (end - start) * fraction)
+  return time.endsWith(':00') ? time.slice(0, 2) : time
+}
+
+/** Actual temporal coverage; no arbitrary daily goal or fake completion ring. */
+function DayDial({ segments, nowFraction, start, end }: { segments: readonly { left: number; width: number }[]; nowFraction: number; start: number; end: number }) {
+  const coverage = dayCoverage(segments)
+  const angle = nowFraction / 100 * Math.PI * 2 - Math.PI / 2
+  return <svg className="dsh-day-dial" viewBox="0 0 100 100" aria-hidden="true">
+    <circle className="dsh-day-dial-track" cx="50" cy="50" r="35" />
+    <g transform="rotate(-90 50 50)">{coverage.map((range, i) => <circle key={i} className="dsh-day-dial-arc" cx="50" cy="50" r="35" pathLength="100"
+      strokeDasharray={`${range.to - range.from} ${100 - (range.to - range.from)}`} strokeDashoffset={-range.from} />)}</g>
+    <circle className="dsh-day-dial-now" cx={50 + 35 * Math.cos(angle)} cy={50 + 35 * Math.sin(angle)} r="2.5" />
+    <text x="50" y="9" textAnchor="middle">{dayMsLabel(start, end, 0)}</text><text x="96" y="53" textAnchor="end">{dayMsLabel(start, end, .25)}</text>
+    <text x="50" y="97" textAnchor="middle">{dayMsLabel(start, end, .5)}</text><text x="4" y="53">{dayMsLabel(start, end, .75)}</text>
+  </svg>
 }
 
 function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
-  const start = startOfToday(now)
-  const end = start + DAY_MS
+  const { start, end } = localDayWindow(now)
+  const dayMs = end - start
   const segments: { left: number; width: number; live: boolean; label: string }[] = []
   let longest = 0
   for (const session of data?.sessions ?? []) {
     for (const [from, to] of session.clusters) {
       const begin = Math.max(from, start)
       const finish = Math.min(to, end)
-      if (finish <= begin) continue
+      if (!Number.isFinite(begin) || !Number.isFinite(finish) || finish <= begin) continue
       longest = Math.max(longest, finish - begin)
       segments.push({
-        left: ((begin - start) / DAY_MS) * 100,
-        width: Math.max(0.4, ((finish - begin) / DAY_MS) * 100),
+        left: ((begin - start) / dayMs) * 100,
+        width: ((finish - begin) / dayMs) * 100,
         live: finish >= now - 10 * 60_000,
         label: `${hhmm(begin)}–${hhmm(finish)} · ${formatDuration(finish - begin, t)} · ${sessionTitle(session, sessions, t)}`,
       })
     }
   }
-  const nowFraction = Math.min(100, Math.max(0, ((now - start) / DAY_MS) * 100))
+  const nowFraction = Math.min(100, Math.max(0, ((now - start) / dayMs) * 100))
   const active = data?.today.activeMs ?? 0
   const run = data?.today.runMs ?? 0
   const hasActivity = segments.length > 0
@@ -173,13 +188,16 @@ function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
   }
   return (
     <div className="dsh-today-content">
-      <div className="dsh-metric">
-        <span className="dsh-number">{formatDuration(active, t)}</span>
-        <span className="dsh-label">{t('widget.today.focused')}</span>
+      <div className="dsh-today-hero">
+        <div className="dsh-metric">
+          <span className="dsh-number">{formatDuration(active, t)}</span>
+          <span className="dsh-label">{t('widget.today.focused')}</span>
+        </div>
+        <DayDial segments={segments} nowFraction={nowFraction} start={start} end={end} />
       </div>
       {hasActivity ? (
         <>
-          <div className="dsh-band-track" aria-label={t('aria.band')} role="img">
+          <div className="dsh-band-track" aria-label={`${t('aria.band')}: ${segments.map(segment => segment.label).join('; ')}`} role="img">
             {segments.map((segment, index) => (
               <span
                 key={index}
@@ -192,7 +210,7 @@ function TodayBody({ t, data, sessions, now, actions }: WidgetProps) {
             <span className="dsh-band-now" style={{ left: `${nowFraction}%` }} />
           </div>
           <div className="dsh-band-scale" aria-hidden="true">
-            <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
+            {[0, .25, .5, .75, 1].map(fraction => <span key={fraction}>{dayMsLabel(start, end, fraction)}</span>)}
           </div>
         </>
       ) : (
@@ -250,6 +268,7 @@ function RunningBody({ t, data, sessions, now, actions }: WidgetProps) {
 function AreasBody({ t, data, actions }: WidgetProps) {
   const groups = new Map<string, {
     name: string
+    cwd: string
     ms: number
     sessions: number
     lastAt: number
@@ -261,7 +280,7 @@ function AreasBody({ t, data, actions }: WidgetProps) {
     if (session.todayMs <= 0 && session.todayTurns <= 0) continue
     const key = session.cwd ?? ''
     const name = key.split('/').filter(Boolean).pop() ?? t('unit.unknown')
-    const group = groups.get(key) ?? { name, ms: 0, sessions: 0, lastAt: 0 }
+    const group = groups.get(key) ?? { name, cwd: key, ms: 0, sessions: 0, lastAt: 0 }
     group.ms += session.todayMs
     group.sessions += 1
     const topLevelSession = session.parentSessionId === undefined && session.origin !== 'subagent'
@@ -289,7 +308,7 @@ function AreasBody({ t, data, actions }: WidgetProps) {
         )
         const title = (
           <span className="dsh-row-top">
-            <span className="dsh-row-title">{group.name}</span>
+            <DirectoryBadge cwd={group.cwd} /><span className="dsh-row-title">{group.name}</span>
             <span className="dsh-area-duration">{formatDuration(group.ms, t)}</span>
           </span>
         )

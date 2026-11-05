@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { FocusProps, SessionStatusMap } from './focus.tsx'
 import { formatAgo } from './format.ts'
+import { DirectoryBadge } from './directory-badge.tsx'
 import type { WidgetProps } from './widgets.tsx'
 import {
   cwdFilterValue, cwdLabels, filterRecentSessions, mergeRecentSessions, recentEmptyState,
@@ -84,6 +85,7 @@ export function RecentBody({ t, data, sessions, now, actions, size, width, heigh
                 data-status={status}
                 onClick={() => { actions.openSession(session.id) }}
               >
+                <DirectoryBadge cwd={session.cwd} />
                 <span className="dsh-row-top">
                   <span className="dsh-row-title" title={title}>{title}</span>
                   <span className="dsh-chip" data-tone={status === 'approval' || status === 'plan' || status === 'question' ? 'warn' : 'info'}>

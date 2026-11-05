@@ -15,6 +15,7 @@ import { quickStyles } from './quick-styles.ts'
 import { galleryStyles } from './gallery-styles.ts'
 import { libraryStyles } from './library-styles.ts'
 import { widgetRefinementStyles } from './widget-refinement-styles.ts'
+import { widgetExpressionStyles } from './widget-expression-styles.ts'
 
 /** 样式表元素 id（重复挂载时复用同一份）。 */
 export const STYLE_ID = 'dsh-home-styles'
@@ -778,7 +779,7 @@ export function injectStyles(): () => void {
   if (existing !== null) return () => {}
   const element = document.createElement('style')
   element.id = STYLE_ID
-  element.textContent = CSS + activityStyles + personalStyles + quickStyles + galleryStyles + libraryStyles + widgetRefinementStyles
+  element.textContent = CSS + activityStyles + personalStyles + quickStyles + galleryStyles + libraryStyles + widgetRefinementStyles + widgetExpressionStyles
   document.head.append(element)
   return () => { element.remove() }
 }

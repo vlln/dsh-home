@@ -23,7 +23,7 @@ test('content patterns use container geometry without hiding outer overflow or a
   assert.match(widgets, /dsh-rhythm-content/)
   assert.match(builtin, /size, width, height/)
   assert.match(widgetRefinementStyles, /container-type:inline-size/)
-  assert.match(widgetRefinementStyles, /12cqi/)
+  assert.match(personal, /16cqi/)
   assert.match(widgetRefinementStyles, /dsh-recent > .dsh-rows.*overflow-y:auto/)
   assert.doesNotMatch(widgetRefinementStyles, /dsh-home-widget-content[^}]*overflow:hidden/)
   assert.match(personal, /dsh-personal-note-text.*overflow:auto/)

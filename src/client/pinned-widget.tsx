@@ -3,6 +3,7 @@ import { useBuiltin } from './builtin-registration.tsx'
 import { pinnedSessionRows } from './pinned-model.ts'
 import { cwdLabels, recentSessionStatus, shortSessionId } from './session-model.ts'
 import { formatAgo } from './format.ts'
+import { DirectoryBadge } from './directory-badge.tsx'
 export function PinnedBody() {
   const { state, t, actions, statuses, statusSource } = useBuiltin()
   const pins = state.nativePins
@@ -19,7 +20,8 @@ export function PinnedBody() {
         const title = session.title ?? session.id
         return <button type="button" key={session.id} className="dsh-row dsh-recent-row" data-session-id={session.id} data-status={status}
           onClick={() => actions.openSession(session.id)}>
-          <span className="dsh-row-top"><span className="dsh-row-title" title={title}>{title}</span>
+          <DirectoryBadge cwd={session.cwd} />
+           <span className="dsh-row-top"><span className="dsh-row-title" title={title}>{title}</span>
             <span className="dsh-chip" data-tone={['approval','plan','question'].includes(status) ? 'warn' : 'info'}>{t(`recent.status.${status}`)}</span></span>
           <span className="dsh-row-meta dsh-recent-meta"><span className="dsh-recent-path" title={session.cwd}>{session.cwd ? labels.get(session.cwd) : t('recent.unknownCwd')}</span>
             <span className="dsh-recent-id" title={session.id}>{shortSessionId(session.id)}</span>

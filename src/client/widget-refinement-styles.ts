@@ -120,10 +120,7 @@ export const widgetRefinementStyles = `
 .dsh-home-widget .dsh-tasks > button:last-of-type { width:100%; }
 .dsh-home-widget .dsh-quick-widget-links { background:var(--dsw-alias-bg-layer-1); border:0; border-radius:var(--dsw-radius-md); padding:4px; }
 .dsh-home-widget .dsh-quick-widget > .dsh-widget-own-editor { justify-content:flex-start; padding-top:6px; }
-.dsh-home-widget .dsh-personal-notes > .dsh-personal-note-text { padding:10px 12px; border-radius:var(--dsw-radius-md); background:var(--dsw-alias-bg-layer-1); }
 .dsh-home-widget .dsh-personal-clock { min-height:100%; }
-.dsh-home-widget .dsh-personal-clock-meta { margin-top:auto; padding-top:8px; border-top:.5px solid var(--dsw-alias-border-l2); }
-.dsh-home-widget .dsh-personal-clock-time { font-size:clamp(30px,12cqi,48px); }
 .dsh-home-widget .dsh-activity-secondary { font-variant-numeric:tabular-nums; }
 .dsh-home-widget .dsh-activity { gap:4px; }
 .dsh-home-widget .dsh-activity-legend { padding-top:2px; border-top:.5px solid var(--dsw-alias-border-l2); }
@@ -131,11 +128,7 @@ export const widgetRefinementStyles = `
 .dsh-home-widget .dsh-activity-footer > .dsh-muted { flex:1 1 200px; }
 .dsh-home-widget .dsh-activity-footer > .dsh-widget-own-editor { margin:0; padding:0; flex:none; }
 @container widget (max-width:480px) {
-  .dsh-personal-clock { gap:4px; }
   .dsh-personal-clock .dsh-personal-label { font:var(--dsw-font-xs-13); }
-  .dsh-personal-clock .dsh-personal-clock-time { font-size:clamp(28px,10cqi,40px); }
-  .dsh-personal-clock .dsh-personal-clock-date { font:var(--dsw-font-xs-13); }
-  .dsh-personal-clock .dsh-personal-clock-meta { padding-top:4px; }
   .dsh-rhythm-days span:last-child { white-space:nowrap; }
 }
 

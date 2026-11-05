@@ -7,7 +7,7 @@ export function WidgetFrameHeader({title,t,editing,icon,onDelete,onPointerDown,o
  onPointerDown?:(event:PointerEvent<HTMLElement>)=>void;onNudge?:(key:string)=>void;disabled?:boolean;gripDisabled?:boolean
 }) {
  return <div className={`dsh-w-head${editing?' dsh-widget-grip':''}`} onPointerDown={onPointerDown}>
-   {icon}<h2 className="dsh-w-title">{title}</h2>
+   {icon && <span className="dsh-widget-symbol" aria-hidden="true">{icon}</span>}<h2 className="dsh-w-title">{title}</h2>
    {editing&&<div className="dsh-tools">
      <button type="button" className="dsh-tool dsh-widget-grip" disabled={gripDisabled ?? disabled} aria-label={t('edit.drag')} title={t('edit.drag')} onKeyDown={event=>{if(onNudge&&event.key.startsWith('Arrow')){event.preventDefault();onNudge(event.key)}}}>⠿</button>
      {onDelete&&<button type="button" className="dsh-tool dsh-delete-widget" disabled={disabled} aria-label={t('manager.delete')} title={t('manager.delete')} onClick={onDelete}><IconTrashOutlineRegular size={16}/></button>}

@@ -14,6 +14,7 @@ import {
   personalConfigBytes, startMinuteClock, validateClockConfig, validateNotesConfig,
 } from './personal-model.ts'
 import type { ClockConfig, NotesConfig } from './personal-model.ts'
+import { personalClockDisplayParts } from './personal-clock-display.ts'
 
 function textFieldLabels(t: Translate) {
   // No composition-layer override exists for widget instance drafts; hide that badge/reset row.
@@ -24,6 +25,7 @@ export function NotesContent(props: WidgetContentProps<NotesConfig>): ReactNode 
   const { config } = props
   const { t } = useBuiltin()
   return <div className="dsh-personal-notes">
+    <span className="dsh-personal-note-quote" aria-hidden="true">“</span>
     {config.title !== '' && <h3 className="dsh-personal-label">{config.title}</h3>}
     {config.text === ''
       ? <p className="dsh-personal-hint">{t('notes.empty')}</p>
@@ -80,11 +82,21 @@ export function ClockContent(props: WidgetContentProps<ClockConfig>): ReactNode 
       },
     })
   }, [visible, preview])
-  const { time, date } = formatPersonalClock(now, config, t('clock.dateLocale'))
-  return <div className="dsh-personal-clock">
+  const locale = t('clock.dateLocale')
+  const { time, date } = formatPersonalClock(now, config, locale)
+  const { timeParts, day, month } = personalClockDisplayParts(now, config, locale)
+  return <div className="dsh-personal-clock" data-hour12={config.hour12}>
     {config.label !== '' && <h3 className="dsh-personal-label">{config.label}</h3>}
-    <time className="dsh-personal-clock-time" dateTime={new Date(now).toISOString()}>{time}</time>
-    <p className="dsh-personal-clock-date">{date}</p>
+    <div className="dsh-personal-clock-display">
+      <time className="dsh-personal-clock-time" dateTime={new Date(now).toISOString()} aria-label={time}>
+        {timeParts.map((part, index) => <span key={index} data-part={part.type} aria-hidden="true">{part.value}</span>)}
+      </time>
+      <div className="dsh-personal-clock-date" role="img" aria-label={date} title={date}>
+        <span className="dsh-personal-clock-day" aria-hidden="true">{day}</span>
+        <span className="dsh-personal-clock-month" aria-hidden="true">{month}</span>
+      </div>
+    </div>
+    <p className="dsh-personal-clock-full-date">{date}</p>
     <div className="dsh-personal-clock-meta">
       <p className="dsh-personal-hint">{config.timeZone || t('clock.browserZone')}</p>
       <WidgetConfigEditor t={t} widgetProps={props} title={t('widget.clock.title')} label={t('clock.edit')}

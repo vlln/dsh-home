@@ -1,0 +1,48 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { personalClockDisplayParts } from '../src/client/personal-clock-display.ts'
+import { defaultClockConfig, formatPersonalClock } from '../src/client/personal-model.ts'
+
+const config = { label: '', timeZone: 'America/Los_Angeles', hour12: false }
+
+test('medallion follows configured zone at local midnight, including the previous UTC year', () => {
+  const before = personalClockDisplayParts(Date.UTC(2026, 0, 1, 7, 59), config, 'en-US')
+  const after = personalClockDisplayParts(Date.UTC(2026, 0, 1, 8), config, 'en-US')
+  assert.equal(before.day, '31')
+  assert.equal(before.month, 'Dec')
+  assert.equal(after.day, '1')
+  assert.equal(after.month, 'Jan')
+  const shanghai = personalClockDisplayParts(Date.UTC(2025, 11, 31, 16), { ...config, timeZone: 'Asia/Shanghai' }, 'zh-CN')
+  assert.equal(shanghai.day, '1')
+  assert.equal(shanghai.month, '1月')
+})
+
+test('display parts retain Intl locale order, literals and localized day periods without parsing text', () => {
+  const now = Date.UTC(2026, 9, 20, 10, 24)
+  for (const locale of ['en-US', 'zh-CN', 'ar-EG', 'ja-JP', 'fr-FR']) {
+    for (const hour12 of [false, true]) {
+      const selected = { ...config, hour12 }
+      const parts = personalClockDisplayParts(now, selected, locale)
+      assert.deepEqual(parts.timeParts, new Intl.DateTimeFormat(locale, {
+        timeZone: selected.timeZone, hour: '2-digit', minute: '2-digit', hour12,
+      }).formatToParts(now))
+      // Some ICU versions use a narrow NBSP only in formatToParts day-period literals.
+      assert.equal(parts.timeParts.map(part => part.value).join('').replace(/\s/g, ' '),
+        formatPersonalClock(now, selected, locale).time.replace(/\s/g, ' '))
+      const date = new Intl.DateTimeFormat(locale, { timeZone: selected.timeZone, day: 'numeric', month: 'short' }).formatToParts(now)
+      assert.equal(parts.day, date.find(part => part.type === 'day').value)
+      assert.equal(parts.month, new Intl.DateTimeFormat(locale, { timeZone: selected.timeZone, month: 'short' }).format(now))
+    }
+  }
+})
+
+test('empty zone preserves browser default and config stays immutable', () => {
+  const now = Date.UTC(2026, 5, 30, 23, 59)
+  const selected = defaultClockConfig()
+  const before = structuredClone(selected)
+  const result = personalClockDisplayParts(now, selected, 'en-US')
+  const date = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short' }).formatToParts(now)
+  assert.equal(result.day, date.find(part => part.type === 'day').value)
+  assert.equal(result.month, date.find(part => part.type === 'month').value)
+  assert.deepEqual(selected, before)
+})

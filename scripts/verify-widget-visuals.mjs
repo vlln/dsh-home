@@ -16,7 +16,7 @@ const fixture = new Function('PREVIEW_NOW', `${producer}; return builtinPreviewD
 const today = new Date().toISOString().slice(0, 10)
 const activity = { generatedAt: Date.now(), timeZone: 'America/Los_Angeles', today, available: true, complete: true, failed: 0, scanError: false, scanning: false, progress: { done: 3, total: 3 }, sessions: [], matchedSessions: 0, workspaces: [], days: Array.from({ length: 365 }, (_, n) => ({ key: new Date(Date.parse(today) - (364 - n) * 86400000).toISOString().slice(0, 10), messages: n % 5 === 0 ? 0 : (n * 7) % 19, sessions: n % 4 })) }
 const specs = [
-  ['recent', {}, 0, 0, 8, 6], ['clock', { label: 'Local time', timeZone: '', hour12: false }, 8, 0, 4, 6],
+  ['recent', {}, 0, 0, 8, 6], ['clock', { label: 'Local time', timeZone: '', hour12: false }, 8, 0, 4, 4],
   ['activity', { cwd: '', range: 'quarter' }, 0, 6, 8, 6], ['notes', { title: 'Pick up from here', text: 'Keep the interface calm and useful.\n\nFinish the release regressions, then review the compact widget hierarchy. No automatic task submission.' }, 8, 6, 4, 6],
   ['quick', { links: [{ kind: 'url', label: 'Design references', target: 'https://www.boardui.com/zh-hans' }, { kind: 'session', label: 'Review changes', target: 'sample-1' }] }, 0, 12, 4, 5], ['queue', {}, 4, 12, 4, 5], ['today', {}, 8, 12, 4, 5],
   ['tasks', {}, 0, 17, 4, 8], ['resume', {}, 4, 17, 8, 5], ['running', {}, 4, 22, 4, 4], ['areas', {}, 8, 22, 4, 4], ['rhythm', {}, 0, 22, 4, 4],
@@ -36,6 +36,10 @@ try {
     const cell = await page.locator('[data-widget-id="visual-activity"] .dsh-activity-cell[data-date]').first().boundingBox()
     assert(Math.abs(cell.width - cell.height) < .2, `square heatmap cells at ${width}: ${cell.width}x${cell.height}`)
     assert(cell.width >= 12 && cell.width <= 16)
+    assert.equal(await page.locator('.dsh-directory-badge:not([aria-hidden="true"])').count(), 0)
+    assert.equal(await page.locator('.dsh-day-dial animate,.dsh-day-dial animateTransform').count(), 0)
+    const motion = await page.locator('.dsh-home-widget .dsh-row').evaluateAll(nodes => nodes.map(el => getComputedStyle(el).transitionDuration))
+    assert(motion.every(duration => duration.split(',').every(value => Number.parseFloat(value) === 0)))
     const headings = await page.locator('.dsh-home-widget .dsh-w-title').evaluateAll(nodes => nodes.map(el => ({ size: Number.parseFloat(getComputedStyle(el).fontSize), color: getComputedStyle(el).color })))
     assert(headings.every(h => h.size >= 14))
     const geometry = await page.locator('.dsh-home-widget').evaluateAll(nodes => nodes.map(el => ({
