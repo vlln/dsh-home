@@ -82,6 +82,15 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 - 截图存在不等于视觉验收，必须实际查看。
 - 脚本缺少依赖、浏览器、安装权限或断言失败时以非零退出，不静默跳过。
 
+## 释放生命周期与视觉专项（0.14.3 / 0.15.0）
+
+- Bug 修复独立提交 `c27f1ff`：gallery threshold 使用 flushSync，SpatialGrid layoutEffect 同步接管；捕获阶段释放 / mouseup 兜底，保持来源把手稳定，blur / cancel / buttons0 安全取消；没有重写碰撞 solver。普通 RGL stop 幂等，捕获释放后仅在其 document handler 未完成时延后兜底。
+- 删除弹窗保留 mounted library，不清搜索 / 筛选 / 滚动状态。说明只用宿主 Tooltip portal，移除原生 article title 和自绘气泡，避免双重显示与滚动裁切；拖动 / 模态时禁 tooltip。
+- `scripts/verify-pointer-regressions.mjs` 专门覆盖不截图、不等待 dwell 的真实快速释放，把手和标题分别测试；另覆盖事件截断、取消与浮层保持。旧回归只用标题且截图后松手，未覆盖真实把手失效路径。
+- 视觉依据与源码边界见 [widget-design.md](<widget-design.md>)；没有新增外部依赖、假指标、布局自动调整或功能扩张。12 周格固定16px、一年12px，窄卡内部横滚。
+- 最终交互专项、组件库与轴向证据分别位于工作区 `.work/dsh-home/evidence/pointer-1793868750256/`、`library-1793868564330/`、`axis-nflvKI/`；10 / 8 / 4项通过。控件专项9项见 `controls-1793868314075/`。
+- 视觉专项见工作区 `.work/dsh-home/evidence/visuals-1793868631220/`：1600 / 900 / 540px 无页面横向溢出，标题与方格尺寸断言、便笺和时钟编辑入口通过；已查看实际渲染图。统计数据为合成路由夹具，暗色为DOM临时触发宿主alias，不等于持久化主题设置或中文矩阵验收。脚本统一finally恢复原实例/布局/偏好；原生触屏未完整验收。
+
 ## 布局控件专项（0.14.2）
 
 - 删除红色垃圾桶 + 官方独立 Modal，取消初始焦点、Esc 返回删除按钮，不连带退出编辑；尊重 event.defaultPrevented，避免 document Modal handler 关闭后 window handler 再退出编辑。Modal 打开时不禁用原删除按钮，保证宿主焦点回退。持久化删除失败保留原卡与确认框，重试成功再移除。

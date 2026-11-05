@@ -84,11 +84,14 @@ function ActivityBody({ config, width, preview }: WidgetContentProps<ActivityCon
   const active = days.filter(day => day.messages > 0).length
   const messages = days.reduce((n, day) => n + day.messages, 0)
   const dayLabel = (day: {key: string; messages: number; sessions: number}) => t(result.complete ? 'activity.day' : 'activity.partialDay', { date: day.key, messages: day.messages, sessions: day.sessions })
-  return <div className="dsh-activity" data-activity-complete={result.complete}>
-    <div className="dsh-activity-summary">{t('activity.summary', { days: count, active, messages })}</div>
+  return <div className="dsh-activity" data-activity-complete={result.complete} data-activity-range={count === 365 ? 'year' : 'quarter'}>
+    <div className="dsh-activity-summary" aria-label={t('activity.summary', { days: count, active, messages })}>
+      <div className="dsh-activity-primary"><strong className="dsh-activity-number">{active}</strong><span>{t('activity.activeDays')}</span></div>
+      <div className="dsh-activity-secondary"><span>{t('activity.period', { days: count })}</span><span>{t('activity.messages', { count: messages })}</span></div>
+    </div>
     {error && <div className="dsh-muted" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>}
     <div ref={calendar} className="dsh-activity-scroll" tabIndex={0} aria-label={t('activity.metric')}>
-      <div className="dsh-activity-grid" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(9px, 1fr))` }}>
+      <div className="dsh-activity-grid" style={{ gridTemplateColumns: `repeat(${weeks.length}, var(--dsh-activity-cell-size))` }}>
         {weeks.map((week, i) => <div className="dsh-activity-week" key={i}>
           <span className="dsh-activity-month" aria-hidden="true">{week.find(day => day?.key.endsWith('-01'))?.key.slice(5, 7) ?? ''}</span>
           {week.map((day, j) => day ? <button type="button" className="dsh-activity-cell" key={day.key}

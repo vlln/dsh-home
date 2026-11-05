@@ -78,6 +78,26 @@ try {
   await poll(async () => await page.locator('.dsh-library-ghost').count() === 0)
   assert.equal((await api('workbench.get')).instances.length, before)
   checks.push('outside release cancels without phantom instance or stuck ghost')
+  for (const reason of ['Escape', 'blur', 'pointercancel', 'buttons0']) {
+    start = await activitySource.locator('.dsh-w-title').boundingBox()
+    const count = (await api('workbench.get')).instances.length
+    await page.mouse.move(start.x + 30, start.y + 8); await page.mouse.down(); await page.mouse.move(700, 450, { steps: 4 })
+    await page.locator('.dsh-library-ghost').waitFor()
+    if (reason === 'Escape') await page.keyboard.press('Escape')
+    else await page.evaluate(reason => {
+      if (reason === 'blur') window.dispatchEvent(new Event('blur'))
+      else window.dispatchEvent(new PointerEvent(reason === 'buttons0' ? 'pointermove' : 'pointercancel', { pointerId: 1, pointerType: 'mouse', buttons: 0, clientX: 700, clientY: 450 }))
+    }, reason)
+    await page.mouse.up(); await poll(async () => await page.locator('.dsh-library-ghost').count() === 0)
+    assert.equal(await page.evaluate(() => document.body.classList.contains('dsh-home-dragging')), false)
+    assert.equal((await api('workbench.get')).instances.length, count)
+    checks.push(`${reason} safely cancels and clears all drag visuals without creating an instance`)
+  }
+  await page.locator('[data-widget-id="pointer-note"]').getByRole('button', { name: /^(Delete|删除)$/ }).click()
+  await modal.getByRole('button', { name: /^(Confirm delete|确认删除)$/ }).click()
+  await poll(async () => !(await api('workbench.get')).instances.some(i => i.instanceId === 'pointer-note'))
+  assert.equal(await panel.count(), 1); assert.equal(await search.inputValue(), 'activity')
+  checks.push('successful confirmed deletion also preserves the library and current filter')
   assert.deepEqual(errors, [])
 } catch (error) { errors.push(error.stack ?? String(error)); process.exitCode = 1; await page?.screenshot({ path: new URL('failure.png', out).pathname, fullPage: true }).catch(() => {}) }
 finally {
