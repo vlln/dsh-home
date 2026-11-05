@@ -45,6 +45,7 @@ export function builtinPreviewData(t: Translate): JsonValue {
   const totals = { activeMs: 4_500_000, runMs: 1_800_000, turns: 12, sessions: 3 }
   return {
     now: PREVIEW_NOW,
+    nativePins: { ids: ['sample-0', 'sample-1', 'sample-2'], archived: [], status: 'ready' },
     ledger: { generatedAt: PREVIEW_NOW, scannedAt: PREVIEW_NOW, scanning: false, progress: { done: 3, total: 3 },
       sessionCount: 3, today: totals, week: totals, sessions,
       days: Array.from({ length: 14 }, (_, i) => ({ key: new Date(PREVIEW_NOW - (13 - i) * 86_400_000).toISOString().slice(0, 10),
@@ -69,6 +70,8 @@ export function BuiltinPreviewProvider({ t, data, children }: { t: Translate; da
       workbenchLoaded: false, workbenchBusy: false, storage: { writable: false, status: 'read-only', error: null },
       sessions: hasLedger && sample.sessions !== null && typeof sample.sessions === 'object' && !Array.isArray(sample.sessions)
         ? sample.sessions as unknown as HomeState['sessions'] : {},
+      nativePins: hasLedger && sample.nativePins !== null && typeof sample.nativePins === 'object' && !Array.isArray(sample.nativePins)
+        ? sample.nativePins as unknown as HomeState['nativePins'] : { ids: [], archived: [], status: 'ready' },
       actionRevision: 0, loading: false, refreshing: false, error: null, lastLoadedAt: null,
       now: typeof sample.now === 'number' ? sample.now : PREVIEW_NOW,
     }
@@ -104,6 +107,7 @@ function QueueContent() {
     onDismiss={id => store.dismiss(id)} />
 }
 const BUILTIN_SIZING: Record<string, WidgetSizing> = {
+  pinned: { default: { w:4,h:7 }, supported: [{w:4,h:7}] },
   recent: { default: { w:8,h:7 }, supported: [{w:4,h:7},{w:8,h:7},{w:8,h:10},{w:12,h:10}] },
   tasks: { default: { w:4,h:8 }, supported: [{w:4,h:8},{w:8,h:6}] },
   today: { default: { w:8,h:4 }, supported: [{w:4,h:4},{w:8,h:4}] },

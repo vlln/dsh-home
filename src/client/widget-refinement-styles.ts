@@ -99,6 +99,15 @@ export const widgetRefinementStyles = `
 .dsh-home-widget .dsh-recent-row:is([data-status="idle"],[data-status="unknown"]) .dsh-chip { background:var(--dsw-alias-bg-module-platform); color:var(--dsw-alias-label-secondary); }
 .dsh-home-widget .dsh-recent-row[data-status="running"] .dsh-chip { background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 10%,transparent); color:var(--dsw-alias-state-success-primary); }
 
+/* Native pins: complete ordered list, one local scroll region, no top-N limit. */
+.dsh-pinned { display:flex; flex-direction:column; height:100%; min-height:0; gap:8px; }
+.dsh-pinned-summary { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; flex:none; font:var(--dsw-font-xxs-12); color:var(--dsw-alias-label-tertiary); }
+.dsh-pinned-summary strong { color:var(--dsw-alias-label-secondary); font-weight:500; }
+.dsh-pinned > .dsh-empty { flex:1 1 auto; }
+.dsh-pinned-rows { flex:1 1 auto; min-height:0; overflow-y:auto; margin:0; padding:2px; scroll-padding-block:3px; }
+.dsh-pinned-rows .dsh-row { flex:none; }
+.dsh-pinned-rows .dsh-row + .dsh-row { border-top:.5px solid var(--dsw-alias-border-l1); }
+
 /* Task choices remain choices; the only primary action still prepares a draft. */
 .dsh-home-widget .dsh-tasks { gap:10px; }
 .dsh-home-widget .dsh-tasks > .dsh-muted { line-height:1.5; }

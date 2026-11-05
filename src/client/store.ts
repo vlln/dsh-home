@@ -9,6 +9,7 @@
  */
 
 import { homeOrder } from './layout-model.ts'
+import type { WorkspaceSource } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { JsonValue, WidgetDefinition, WidgetInstance, RegisteredWidgetDefinition, WidgetPreset } from './widget-contract.ts'
 import { HomeWidgetRegistry, migrateWidgetInstance, validateWidgetConfig } from './widget-registry.ts'
 import { legacyInstanceProjection, presetGeometry } from './widget-sizing.ts'
@@ -42,6 +43,8 @@ export interface HomeState {
   workbenchBusy: boolean
   storage: StorageStatus
   sessions: Record<string, SessionMeta>
+  /** Native workspace registry projection only; never persisted in Home. */
+  nativePins?: { ids: readonly string[]; archived: readonly string[]; status: 'pending' | 'ready' | 'error' | 'unavailable' }
   /** Optional navigation services changed; keeps action consumers reactive. */
   actionRevision: number
   loading: boolean
@@ -69,6 +72,7 @@ export class HomeStore {
     workbenchBusy: false,
     storage: { writable: false, status: 'read-only', error: null },
     sessions: {},
+    nativePins: { ids: [], archived: [], status: 'unavailable' },
     actionRevision: 0,
     loading: true,
     refreshing: false,
@@ -91,6 +95,7 @@ export class HomeStore {
   private prefsTimer: ReturnType<typeof setTimeout> | null = null
 
   private sessionOff: (() => void) | null = null
+  private workspaceOff: (() => void) | null = null
 
   private disposed = false
   private writeQueue: Promise<unknown> = Promise.resolve()
@@ -189,7 +194,8 @@ export class HomeStore {
         const item = summary as Record<string, unknown>
         sessions[id] = {
           id,
-          ...(typeof item.title === 'string' ? { title: item.title } : {}),
+          ...(typeof item.displayTitle === 'string' && item.displayTitle.trim() !== '' ? { title: item.displayTitle }
+            : typeof item.title === 'string' ? { title: item.title } : {}),
           ...(typeof item.blank === 'boolean' ? { blank: item.blank } : {}),
           ...(typeof item.running === 'boolean' ? { running: item.running } : {}),
           ...(typeof item.cwd === 'string' ? { cwd: item.cwd } : {}),
@@ -209,6 +215,25 @@ export class HomeStore {
   detachSessions(): void {
     this.sessionOff?.()
     this.sessionOff = null
+  }
+
+  /** Subscribe to the native global pin registry; Home never owns pin mutations. */
+  attachWorkspaces(list: WorkspaceSource): void {
+    this.workspaceOff?.()
+    const sync = (): void => {
+      const snapshot = list.getSnapshot()
+      const ids = (values: readonly string[] | undefined): string[] => [...new Set((values ?? []).filter(id => typeof id === 'string' && id.trim() !== ''))]
+      this.set({ nativePins: { ids: ids(snapshot.pinnedSessionIds), archived: ids(snapshot.archivedSessionIds),
+        status: snapshot.state === 'error' ? 'error' : snapshot.phase === 'ready' ? 'ready' : 'pending' } })
+    }
+    sync()
+    this.workspaceOff = list.subscribe(sync)
+  }
+
+  detachWorkspaces(): void {
+    this.workspaceOff?.()
+    this.workspaceOff = null
+    this.set({ nativePins: { ids: [], archived: [], status: 'unavailable' } })
   }
 
   /** 拉一次账本快照。 */
@@ -600,6 +625,7 @@ export class HomeStore {
     if (this.layoutTimer !== null) clearTimeout(this.layoutTimer)
     if (this.prefsTimer !== null) clearTimeout(this.prefsTimer)
     this.detachSessions()
+    this.detachWorkspaces()
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibility)
     this.listeners.clear()
   }

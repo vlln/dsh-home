@@ -14,6 +14,7 @@ import type { SessionMeta } from './store.ts'
 import { formatAgo, formatDuration, hhmm, shortcutHint, shortDay, type Translate } from './format.ts'
 import { RecentBody } from './recent.tsx'
 import { TasksBody } from './tasks.tsx'
+import { PinnedBody } from './pinned-widget.tsx'
 import type { SessionStatusMap } from './focus.tsx'
 
 /** 导航动作（由 index.tsx 接到官方 `uiWorkspace` 上）。 */
@@ -55,6 +56,9 @@ export interface BuiltinWidget {
   body: (props: WidgetProps) => ReactNode
 }
 
+function IconPin() {
+  return <svg className="dsh-w-glyph" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 2h6l-1 5 2 2H9l-1 5-1-5H4l2-2-1-5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" /></svg>
+}
 const DAY_MS = 86_400_000
 
 function IconToday() {
@@ -360,6 +364,10 @@ export const BUILTIN_WIDGETS: readonly BuiltinWidget[] = [
   {
     id: 'recent', order: 0, defaultSize: 'm', defaultHeight: 7, Glyph: IconSessions,
     title: t => t('widget.recent.title'), body: RecentBody,
+  },
+  {
+    id: 'pinned', order: 5, defaultSize: 's', defaultHeight: 7, Glyph: IconPin,
+    title: t => t('widget.pinned.title'), body: PinnedBody,
   },
   {
     id: 'tasks', order: 10, defaultSize: 's', defaultHeight: 8, Glyph: IconQuick,

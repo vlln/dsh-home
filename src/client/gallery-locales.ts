@@ -1,4 +1,5 @@
 export const zhGallery = {
+  'gallery.description.pinned': '按原生置顶顺序列出全部置顶会话，点击继续。',
   'library.edit':'编辑内容', 'library.close':'关闭组件库', 'library.hint':'拖动标题或把手到桌面。悬停稳定 0.5 秒让位，Esc 取消。',
   'gallery.description.recent': '跨工作目录找回最近的会话。', 'gallery.description.tasks': '预填常用任务草稿，由你确认发送。',
   'gallery.description.today': '用时间带回顾今天的在场活动。', 'gallery.description.running': '查看当前正在运行的会话。',
@@ -7,7 +8,7 @@ export const zhGallery = {
   'gallery.addTab': '添加小组件', 'gallery.desktopTab': '桌面组件', 'gallery.search': '搜索小组件',
   'gallery.filter': '按来源筛选', 'gallery.all': '全部', 'gallery.builtin': '内置', 'gallery.extension': '扩展',
   'gallery.count': '{shown} / {total} 个组件', 'gallery.sample': '效果示例', 'gallery.noPreview': '此扩展暂未提供效果预览',
-  'gallery.defaultDescription': '添加到桌面后可独立移动和调整尺寸。', 'gallery.noMatch': '没有找到匹配的小组件',
+  'gallery.defaultDescription': '添加到桌面后可独立移动，尺寸固定。', 'gallery.noMatch': '没有找到匹配的小组件',
   'gallery.trySearch': '试试其他名称、来源或关键词。', 'gallery.clear': '清除筛选',
   'gallery.hint': '先看效果，再添加到桌面。预览使用示例内容，不会运行任务。',
   'gallery.sample.noteTitle': '下次从这里开始', 'gallery.sample.noteText': '记住关键思路，回来继续。',
@@ -15,6 +16,7 @@ export const zhGallery = {
   'gallery.sample.review': '审查改动', 'gallery.sample.plan': '整理下一步', 'gallery.sample.duration': '1 小时 24 分钟',
 } as const
 export const enGallery: Record<keyof typeof zhGallery, string> = {
+  'gallery.description.pinned': 'All native pinned sessions in pin order. Select one to continue.',
   'library.edit':'Edit content', 'library.close':'Close widget library', 'library.hint':'Drag a title or grip onto the desktop. Hold 0.5s to make room; Esc cancels.',
   'gallery.description.recent': 'Find recent conversations across working directories.', 'gallery.description.tasks': 'Prepare a task draft, then review and send yourself.',
   'gallery.description.today': 'Review today’s activity on a timeline.', 'gallery.description.running': 'See which sessions are running right now.',
@@ -23,7 +25,7 @@ export const enGallery: Record<keyof typeof zhGallery, string> = {
   'gallery.addTab': 'Add widgets', 'gallery.desktopTab': 'On desktop', 'gallery.search': 'Search widgets',
   'gallery.filter': 'Filter by source', 'gallery.all': 'All', 'gallery.builtin': 'Built-in', 'gallery.extension': 'Extensions',
   'gallery.count': '{shown} / {total} widgets', 'gallery.sample': 'Sample preview', 'gallery.noPreview': 'This extension has no preview yet',
-  'gallery.defaultDescription': 'Add to your desktop, then move and resize independently.', 'gallery.noMatch': 'No matching widgets',
+  'gallery.defaultDescription': 'Add to your desktop and move independently at a fixed size.', 'gallery.noMatch': 'No matching widgets',
   'gallery.trySearch': 'Try another name, source, or keyword.', 'gallery.clear': 'Clear filters',
   'gallery.hint': 'Preview first, then add to your desktop. Samples do not run tasks.',
   'gallery.sample.noteTitle': 'Start here next time', 'gallery.sample.noteText': 'Keep the key idea, then pick up where you left off.',

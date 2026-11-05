@@ -84,6 +84,13 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 - 截图存在不等于视觉验收，必须实际查看。
 - 脚本缺少依赖、浏览器、安装权限或断言失败时以非零退出，不静默跳过。
 
+## 原生置顶会话组件（2026-11-05，0.20.0 / dsh 0.2.1-rc.5）
+
+- `workspaces.list` 的 `pinnedSessionIds` / `archivedSessionIds` / phase / state 是原生唯一权威，订阅经可选 scoped 注入；不读 Home prefs、账本或 SessionSummary 的虚构 pinned 字段，不另开 follow 连接。卸载 / 重接 / dispose 清理订阅。
+- `pinnedSessionRows` 保留全局最近置顶在前顺序、去重，完整列表而非 Top N；不排除 blank/subagent 或仅保留当前目录。目录缺失用 ID fallback；原生 archived 集合防守排除。标题优先 native displayTitle，状态与现有 sessionStatus 共用。pin未到、服务缺席、同步error与ready空态区分。
+- 新类型只进组件库，固定标称4×7；完整列表在单独内容区滚动，点击走原生openSession。库预览使用合成nativePins，绝不读取live pins。没有新的存储格式或模型调用。
+- 354项单测通过（含长29项列表、原生顺序、缺metadata、blank/subagent、订阅/重连/错误/清理及无Home写）；类型与构建通过。真实隔离站6项验证 native pin/unpin RPC经follow实时驱动组件、刷新保留、原生会话导航、库搜索/预览与固定尺寸，证据工作区 `.work/dsh-home/evidence/pinned-1793882353097/`。使用私有站已有合成blank，无新建会话；原pin集合、实例、布局恢复。未声称点击原生侧栏置顶按钮：blank行原生无操作区。
+
 ## 固定用户尺寸验收（2026-11-05，0.19.0 / dsh 0.2.1-rc.5）
 
 - Page 移除尺寸手柄、resize preview、尺寸错误 UI 与尺寸提交调用，RGL resize 继续禁用；正文与配置路径不变。现有合法尺寸不自动 reset，新库实例仍使用组件默认尺寸；未改持久化格式。

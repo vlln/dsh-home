@@ -32,7 +32,7 @@ DSH 的"首页"其实是一次空白会话：logo + 一句标语 + 输入框。�
 
 ## 安装
 
-在 Web GUI 侧栏 **Plugins → 添加插件** 输入插件来源。下面的 Git 来源需已包含对应构建产物；**本文拖拽组件库与取消用户改尺寸的行为对应本地开发版 0.19.0，不表示该版本已发布到 npm 或远端源码已更新**。
+在 Web GUI 侧栏 **Plugins → 添加插件** 输入插件来源。下面的 Git 来源需已包含对应构建产物；**本文组件库、固定尺寸及原生置顶会话组件对应本地开发版 0.20.0，不表示该版本已发布到 npm 或远端源码已更新**。
 
 ```sh
 dsh plugin --profile web add "github:vlln/dsh-home"
@@ -45,7 +45,7 @@ dsh plugin --profile web add "github:vlln/dsh-home"
 ```sh
 pnpm run build
 pnpm pack
-DSH_HOME=<isolated-home> dsh plugin --profile web add ./vlln-dsh-home-0.19.0.tgz
+DSH_HOME=<isolated-home> dsh plugin --profile web add ./vlln-dsh-home-0.20.0.tgz
 ```
 
 ## 用起来
@@ -81,6 +81,7 @@ DSH_HOME=<isolated-home> dsh plugin --profile web add ./vlln-dsh-home-0.19.0.tgz
 
 以下类型同样可编排，可在编辑模式的组件目录中添加；已有实例可在卡片右上角删除，具体配置在组件自己的正文入口中编辑：
 
+- **置顶会话**：同步 DSH 原生全局置顶列表，最近置顶在前，跨工作目录显示全部置顶会话；点击进入原会话，内容多时内部滚动，不按最近列表上限截断。置顶 / 取消置顶在原生侧栏管理；组件不另存收藏状态。固定标称 4×7，需从组件库拖入，不自动占用桌面。
 - **在跑**：此刻有 agent 在跑的会话；
 - **今天按工作区**：今天每个工作区的时长与会话数（含子代理时长；仅基于最近下发的会话，可能不覆盖「今天」全量汇总；超过 5 个补一行「其他 N 个工作区」）；
 - **近两周**：每日活跃时长柱状；

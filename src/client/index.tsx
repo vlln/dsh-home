@@ -206,6 +206,15 @@ export function apply(ctx: Context): void {
     }, 'dsh-home: session catalog')
   })
 
+  ctx.inject(['workspaces'], scoped => {
+    const workspaces = scoped.get('workspaces')
+    if (workspaces === undefined) return
+    scoped.effect(() => {
+      store.attachWorkspaces(workspaces.list)
+      return () => store.detachWorkspaces()
+    }, 'dsh-home: native pinned sessions')
+  })
+
   const registry = new HomeWidgetRegistry()
   ctx.provide('homeWidgets', registry)
   ctx.effect(() => registerBuiltins(registry, (key, params) => ctx.locale.bind(NS)(key as HomeLocaleKey, params)), 'dsh-home: builtins')
