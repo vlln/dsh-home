@@ -31,6 +31,11 @@ export interface WidgetContentProps<C extends JsonValue = JsonValue> {
     height: number;
     editing: boolean;
     visible: boolean;
+    /** Present only in inert gallery previews. Use this data (null when absent), never live user data.
+     * Suppress requests, timers, subscriptions, navigation and persistence while preview is present. */
+    preview?: {
+        data: JsonValue;
+    };
 }
 export interface WidgetSettingsProps<C extends JsonValue = JsonValue> extends WidgetContentProps<C> {
     /** Update only the host-owned settings draft; saving/canceling is the host's responsibility. */
@@ -47,9 +52,15 @@ export interface WidgetDefinition<C extends JsonValue = JsonValue> {
     icon?: ComponentType<{
         size?: number;
     }>;
-    /** Optional static gallery illustration. Pure render only: no effects, network, timers or actions.
-     * The host never mounts Content to preview a type; absence falls back to its icon/description. */
+    /** @deprecated Gallery previews render Content with the preview signal instead. Ignored by Home. */
     Preview?: ComponentType;
+    /** Optional synchronous, side-effect-free sample configuration and JSON data for the SAME Content.
+     * Config defaults to defaultConfig(); data defaults to null. The host clones both, validates config,
+     * and never persists preview instances. This is a trusted-plugin convention, not a sandbox. */
+    preview?: {
+        config?: () => C;
+        data?: JsonValue;
+    };
     /** Informational package/source label; not an authorization capability. */
     source?: string;
     defaults?: Partial<WidgetDefaults>;

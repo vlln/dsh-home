@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { post } from './api.ts'
-import { builtinPreview } from './widget-previews.tsx'
 import { useBuiltin } from './builtin-registration.tsx'
-import { activityLevel, activityWeeks, validateActivityConfig, type ActivityConfig, type ActivitySnapshot } from './activity-model.ts'
+import { activityLevel, activityWeeks, shiftCalendarDay, validateActivityConfig, type ActivityConfig, type ActivitySnapshot } from './activity-model.ts'
 import type { WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { Translate } from './format.ts'
 
 function browserZone() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' }
-function useActivity(cwd: string, date?: string) {
+function useActivity(cwd: string, date?: string, preview?: WidgetContentProps['preview']) {
   const { state } = useBuiltin()
   const [loaded, setLoaded] = useState<{ value: ActivitySnapshot; cwd: string; zone: string; date?: string } | null>(null)
   const [error, setError] = useState(false)
@@ -17,6 +16,7 @@ function useActivity(cwd: string, date?: string) {
   const [retry, setRetry] = useState(0)
   const zone = browserZone()
   useEffect(() => {
+    if (preview) return
     let active = true
     let timer: ReturnType<typeof setTimeout> | undefined
     let deadline: ReturnType<typeof setTimeout> | undefined
@@ -37,25 +37,36 @@ function useActivity(cwd: string, date?: string) {
     }
     void load()
     return () => { active = false; clearTimeout(timer); clearTimeout(deadline); controller?.abort() }
-  }, [cwd, zone, date, retry, state.lastLoadedAt])
+  }, [cwd, zone, date, retry, state.lastLoadedAt, preview])
+  if (preview) {
+    const sample = preview.data
+    const valid = sample !== null && typeof sample === 'object' && !Array.isArray(sample)
+      && typeof sample.today === 'string' && Array.isArray(sample.days) && Array.isArray(sample.sessions)
+    const result: ActivitySnapshot = valid ? sample as unknown as ActivitySnapshot : {
+      generatedAt: 0, timeZone: 'UTC', today: '2026-10-20', days: [], workspaces: [], available: true,
+      complete: true, failed: 0, scanError: false, scanning: false, progress: { done: 0, total: 0 }, sessions: [], matchedSessions: 0,
+    }
+    return { result, error: false, loading: false, detailReady: true, retry: () => {} }
+  }
   // Keep the calendar mounted during same-workspace refreshes and day selection. Never
   // show another workspace/zone's data or a previous selected day's session results.
   const result = loaded?.cwd === cwd && loaded.zone === zone ? loaded.value : null
   const detailReady = result !== null && loaded?.date === date
   return { result, error, loading, detailReady, retry: () => setRetry(n => n + 1) }
 }
-function ActivityContent({ config, width }: WidgetContentProps<ActivityConfig>) {
+function ActivityContent({ config, width, preview }: WidgetContentProps<ActivityConfig>) {
   const { t, state, actions } = useBuiltin()
   const [date, setDate] = useState<string>()
-  const { result, error, loading, detailReady, retry } = useActivity(config.cwd, date)
+  const { result, error, loading, detailReady, retry } = useActivity(config.cwd, date, preview)
   const calendar = useRef<HTMLDivElement>(null)
   const ready = result !== null && result.available
   useEffect(() => {
+    if (preview) return
     // An explicitly selected year may scroll inside a narrow card. Start at the latest
     // days rather than hiding all recent activity; ordinary data refreshes keep position.
     const node = calendar.current
     if (ready && node) node.scrollLeft = node.scrollWidth
-  }, [ready, config.cwd, config.range, width])
+  }, [ready, config.cwd, config.range, width, preview])
   if (!result && error) return <div className="dsh-empty" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>
   if (!result) return <div className="dsh-empty" role="status">{t('activity.loading')}</div>
   if (!result.available) return <div className="dsh-empty">{t('activity.unavailable')}</div>
@@ -112,7 +123,12 @@ function ActivitySettings({ config, onConfigChange }: WidgetSettingsProps<Activi
 export function registerActivityWidget(registry: HomeWidgetRegistry, t: Translate) {
   return registry.register<ActivityConfig>({ typeId: '@vlln/dsh-home:activity', apiVersion: 1,
     title: () => t('activity.title'), description: () => t('activity.description'), source: '@vlln/dsh-home',
-    Preview: builtinPreview('activity', t), defaults: { size: 'm', height: 6, minHeight: 5 }, configVersion: 1,
+    preview: { data: {
+      generatedAt: Date.UTC(2026, 9, 20, 10, 24), timeZone: 'UTC', today: '2026-10-20',
+      days: Array.from({ length: 84 }, (_, i) => ({ key: shiftCalendarDay('2026-10-20', i - 83), messages: (i * 7 + Math.floor(i / 9)) % 15, sessions: i % 3 })),
+      workspaces: [], available: true, complete: true, failed: 0, scanError: false, scanning: false,
+      progress: { done: 3, total: 3 }, sessions: [], matchedSessions: 0,
+    } }, defaults: { size: 'm', height: 6, minHeight: 5 }, configVersion: 1,
     defaultConfig: () => ({ cwd: '', range: 'auto' }), validateConfig: validateActivityConfig,
     Content: ActivityContent, Settings: ActivitySettings })
 }

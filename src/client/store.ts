@@ -301,6 +301,26 @@ export class HomeStore {
     this.insertInstance(instance, definition, current, cols)
   }
 
+  /** Publish one accepted library drop and every displaced peer atomically; no first-fit intermediate. */
+  dropInstance(definition: WidgetDefinition, id: string, accepted: SpatialItem[], cols: number): void {
+    this.assertEditable()
+    if(![2,6,12].includes(cols))throw new Error('Invalid grid columns')
+    if(this.state.instances.length>=64||this.state.instances.some(item=>item.instanceId===id))throw new Error('Invalid new instance')
+    const registry=new HomeWidgetRegistry()
+    registry.register(definition,definition.typeId.startsWith('legacy:')?{internalLegacyTypeId:true}:undefined)
+    const instance=registry.createInstance(definition.typeId,id)
+    const visible=this.state.instances.filter(item=>!this.state.layout.hidden.includes(item.instanceId)).map(item=>item.instanceId)
+    if(accepted.length!==visible.length+1||new Set(accepted.map(item=>item.i)).size!==accepted.length||!accepted.some(item=>item.i===id)||visible.some(key=>!accepted.some(item=>item.i===key)))throw new Error('Stale drop layout')
+    for(const item of accepted)if(![item.x,item.y,item.w,item.h].every(Number.isInteger)||item.x<0||item.y<0||item.w<1||item.h<3||item.x+item.w>cols||item.y+item.h>10003||!canPlace(accepted,item.i,item,cols))throw new Error('Invalid drop geometry')
+    const active=accepted.find(item=>item.i===id)!,defaults=registry.get(definition.typeId)!.defaults
+    if(active.w<Math.min(defaults.minWidth,cols)||active.w>Math.min(defaults.maxWidth,cols)||active.h<defaults.minHeight||active.h>defaults.maxHeight)throw new Error('Widget bounds exceeded')
+    const layout=mergeSpatialPositions(this.state.layout,accepted,cols)
+    layout.order=[...new Set([...(this.state.layout.instanceLayout ? [...this.state.layout.order,...this.state.instances.map(item=>item.instanceId)] : homeOrder(this.state.layout,this.state.instances.map(item=>item.instanceId))),id])]
+    layout.instanceLayout=true
+    this.set({instances:[...this.state.instances,instance],layout})
+    this.persistSoon()
+  }
+
   duplicateInstance(id: string, definition: WidgetDefinition, current: SpatialItem[], cols: number): void {
     this.assertEditable()
     if (this.state.instances.length >= 64) throw new Error('Workbench instance limit reached')

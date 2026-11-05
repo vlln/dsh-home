@@ -36,11 +36,12 @@ test('registry accepts optional static preview without mounting it and rejects i
  const legacy={...d,typeId:'@test/pkg:no-preview'};delete legacy.Preview
  registry.register(legacy);assert.equal(registry.get(legacy.typeId).Preview,undefined)
 })
-test('gallery uses static Preview only and wide desktop has no fixed content cap',()=>{
+test('gallery uses isolated real Content preview and wide desktop has no fixed content cap',()=>{
  const gallery=readFileSync(new URL('../src/client/widget-gallery.tsx',import.meta.url),'utf8')
  assert.ok(!gallery.includes('definition.Content'))
  assert.ok(!gallery.includes('defaultConfig('))
- assert.match(gallery,/className="dsh-directory-preview" inert aria-hidden/)
+ assert.match(gallery,/<WidgetPreview definition=/)
+ assert.ok(!gallery.includes('onAdd'))
  const styles=readFileSync(new URL('../src/client/styles.ts',import.meta.url),'utf8')
  assert.match(styles,/\.dsh-home-inner \{ width: 100%; max-width: none; min-width: 0; flex: none;/)
 })

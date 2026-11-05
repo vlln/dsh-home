@@ -1,8 +1,7 @@
 /** The builtin quick type uses the public instance/settings contract without owning layout or persistence. */
 import { useEffect, useRef, useState } from 'react'
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
-import { useBuiltin } from './builtin-registration.tsx'
-import { builtinPreview } from './widget-previews.tsx'
+import { builtinPreviewData, useBuiltin } from './builtin-registration.tsx'
 import { formatAgo, shortcutHint, type Translate } from './format.ts'
 import type { WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
@@ -18,20 +17,24 @@ function QuickGlyph() {
   </svg>
 }
 
-export function QuickContent({ config, instance, editing, visible }: WidgetContentProps<QuickConfig>) {
+export function QuickContent({ config, instance, editing, visible, preview }: WidgetContentProps<QuickConfig>) {
   const { state, t, actions } = useBuiltin()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const pending = useRef<AbortController | null>(null)
-  useEffect(() => () => { pending.current?.abort() }, [])
   useEffect(() => {
+    if (preview) return
+    return () => { pending.current?.abort() }
+  }, [preview])
+  useEffect(() => {
+    if (preview) return
     if (editing || !visible) pending.current?.abort()
-  }, [editing, visible])
+  }, [editing, visible, preview])
   const last = (state.ledger?.sessions ?? [])
     .filter(session => session.parentSessionId === undefined && session.origin !== 'subagent' && session.turns > 0)
     .reduce<(NonNullable<typeof state.ledger>['sessions'][number]) | undefined>((latest, session) =>
       latest === undefined || session.lastAt > latest.lastAt ? session : latest, undefined)
-  const disabled = editing || !visible || busy
+  const disabled = Boolean(preview) || editing || !visible || busy
   const configError = quickConfigError(config)
   const open = (link: QuickLink) => {
     if (disabled || quickLinkError(link) !== null) return
@@ -123,7 +126,7 @@ export function registerQuickWidget(registry: HomeWidgetRegistry, t: Translate):
   return registry.register<QuickConfig>({
     typeId: QUICK_TYPE_ID, apiVersion: 1, title: () => t('widget.quick.title'),
     description: () => t('quick.description'), source: '@vlln/dsh-home', icon: QuickGlyph,
-    Preview: builtinPreview('quick', t), defaults: { size: 's', height: 4 }, configVersion: QUICK_CONFIG_VERSION,
+    preview: { data: builtinPreviewData(t) }, defaults: { size: 's', height: 4 }, configVersion: QUICK_CONFIG_VERSION,
     defaultConfig: defaultQuickConfig, validateConfig: validateQuickConfig, migrateConfig: migrateQuickConfig,
     Content: QuickContent, Settings: QuickSettings,
   })

@@ -8,13 +8,13 @@
 - 碰撞集合共用一个轴：单目标用归一化指针偏移，多目标用总脱离距离；上方同排一起上移、下方下移，左右镜像。仅沿选定轴传播，跨轴坐标与原相对顺序是硬约束；首选分流可行时保持不变；边界不足时仅尝试同轴的有序分割（同排/同列组不拆），按最少偏离首选及最小位移选择。首选轴完整无解后，才对另一轴独立求解一次；每个结果仍只有一个轴，保留该轴的跨轴坐标、同行同列分组和原顺序，不混轴、不自由重排；两轴均无解才拒绝。
 - 拖拽视觉几何与可提交布局分离：active 视觉位置仅由指针候选决定，碰撞只移动非 active 项。待确认 / 无法放置时绝不回写候选；松手拒绝时用 epoch 重挂载收敛引擎，避免旧重叠 visual 被内部 stop 留下。手势期间保持画布高度上界，防止收缩引起视口跳动。
 - 静止指针也能由确认定时器触发预演；拖回原位时邻居恢复。只在松手提交整份预演，Esc / blur / touchcancel 取消整个事务并清理 timer。
-- 页首进入 / 完成编辑，标题与把手可拖；正文 inert，右下角可缩放，清单恢复卡片。
+- 页首进入 / 完成编辑，标题与把手可拖；正文 inert，右下角可缩放，卡片右上角编辑内容 / 确认删除。当前组件库原型去掉隐藏、复制和实例清单。
 - 完成等待保存成功。旧 order/size/focusOrder 投影成初始矩形；positions 按 12/6/2 列断点分别保存 x/y/w/h，不覆盖其他断点、隐藏或缺席插件的记录。
 - 新扩展通过可选注入的 `homeWidgets` 注册 API v1 类型；内置卡与第三方类型共用实例路径，不自动实例化目录中的新类型。公共契约以[小组件开发指南](<widget-development.md>)为准。
 - 持久化实例为 `{ instanceId, typeId, configVersion, config }`；同类型可多实例、复制独立配置，隐藏不删除，确认删除才清理全部断点记录。Settings 只更新宿主草稿，保存成功后正文切换。
 - 旧 `home.widget` 仅由内部适配器保留 `{ size }` props；新安装贡献只进入目录，由用户添加。v2 布局引用过的第三方 id 按 `legacy:<id>` 迁移，不依赖当时是否安装。
 - 旧 `order / size / hidden / focusOrder` 和各断点覆盖保留；类型缺失、配置迁移失败或未来版本保留原记录，以占位 / 单卡错误展示，不静默重置。
-- 添加目录使用独立 `WidgetGallery`：多列静态预览、名称 / 说明 / 来源 / typeId 搜索与内置 / 扩展筛选；桌面实例管理分面显示。静态 `Preview` 可选，绝不为了浏览目录挂载 `Content`，无预览的旧扩展退回图标。示例仅作效果说明，不是实时数据。
+- `WidgetGallery` 是侧边真实内容预览库，名称 / 说明 / 来源 / typeId 搜索与内置 / 扩展筛选；直接拖标题或把手，不提供 Add 或额外放置模式。`preview.config/data` 提供样例，`ContentProps.preview` 标记隔离预览；没有样例时 config=默认、data=null。内置 preview provider 不构造 HomeStore，预览不请求活动 API 或启动时钟计时器。旧静态 Preview 忽略，第三方必须适配 preview 停用副作用。
 - `.dsh-home-inner` 跟随宿主可用宽度，不再固定上限；不更改网格坐标或主动压缩留白。宽度变化只触发已有 12/6/2 列投影，不因浏览目录保存位置。
 - 新放置与缩放遵守注册的标称宽度 `3..12`（6/2 列断点收窄）与高度 `3..30` 限制；已有全局合法矩形不因扩展收紧约束而静默挪动。`viewportCols` 区分真实列数与组件 `maxW` 缩放上限。
 
@@ -74,6 +74,17 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 - 不调用真实模型；原生目录选择器需要人工检查。
 - 截图存在不等于视觉验收，必须实际查看。
 - 脚本缺少依赖、浏览器、安装权限或断言失败时以非零退出，不静默跳过。
+
+## 拖拽组件库原型（0.13.2）
+
+- 本轮基线提交 `db2a154` 保存此前验收版本，拖拽库放在其后的独立功能提交，可单独 revert；本机覆盖文件不纳入提交。
+- 去掉 Add / On desktop / 隐藏 / 复制 UI，桌面统一 `WidgetFrameHeader` 保留把手、可选内容编辑、确认删除。原隐藏数据保留，不破坏性迁移。库中的类型不是实例，只有拖动把手；不会提供对类型无意义的删除或实例配置写入。
+- `WidgetPreview` 复用注册的 Content，`preview.config/data` 是可选样例；缺省 config 使用 defaultConfig、data=null。私有预览 Runtime 与实时状态隔离，时钟 / 活动 / 快捷显式屏蔽副作用。计数器示例 0.1.2 也识别 preview，不启动计时器。inert 仅阻止交互，不是第三方副作用沙箱。
+- 库仅提供指针运输，`SpatialGrid` 仍调用同一 update 管线：snapCandidate / placementAxis / advanceHover / multiPreviewPlacement / placementAccepted。solver-only 草稿先停在合法不重叠锚点，不落盘、不渲染第二份活实例；真实松手有效时 HomeStore.dropInstance 原子发布新实例和所有邻居坐标。拒绝 / 早松 / Esc / 画布外 / 失焦 / 尺寸变化不写入。
+- 覆盖 284 项单测：预览数据克隆与空态、库形状与吸附、45 项纯模型 / 原子 store 专项等；类型检查、构建通过。现有桌面四组严格轴向拖动回归通过，证据工作区 `.work/dsh-home/evidence/axis-sb3WNw/report.json`。
+- 浏览器专项使用 `scripts/verify-library-drag.mjs`，只访问协调后的 3186 私有站，完整备份 / finally 恢复原布局和实例。验收无 Add/tab/hide/duplicate，点击不创建、Esc 取消、直接拖入、静止 500ms 碰撞让位、画布外松手、内容编辑与确认删除、预览零活动请求。桌面实例只在有效松手挂载，正文预览和拖影使用隔离样例。
+- 最终 0.13.2 浏览器专项 8 项通过，原状态已恢复，证据 `.work/dsh-home/evidence/library-1793859518736/report.json` 与同目录截图；断言包含计数器预览 activeTimers=0、真实 Content 预览零 activity 请求。实际查看最终 PNG，避免把入场动画的 opacity=0 中间帧当作预览样式。
+- 已验证桌面鼠标；原生触屏拖出 / 窄屏抽屉 / 长距离边缘滚动只保留现有机制与取消策略，未完整实测，不能宣称完整触控验收。
 
 ## 预览组件库与全宽桌面验收（2026-11-04，0.12.1）
 

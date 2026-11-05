@@ -5,7 +5,6 @@ import {
   IconClockOutlineRegular, IconEditOutlineRegular, SettingsValueField, Switch,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useBuiltin } from './builtin-registration.tsx'
-import { builtinPreview } from './widget-previews.tsx'
 import type { Translate } from './format.ts'
 import type { HomeWidgets, WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
 import {
@@ -59,11 +58,12 @@ export function NotesSettings({ config, onConfigChange }: WidgetSettingsProps<No
   </div>
 }
 
-export function ClockContent({ config, visible }: WidgetContentProps<ClockConfig>): ReactNode {
-  const { t } = useBuiltin()
-  const [now, setNow] = useState(Date.now)
+export function ClockContent({ config, visible, preview }: WidgetContentProps<ClockConfig>): ReactNode {
+  const { t, state } = useBuiltin()
+  const [liveNow, setNow] = useState(() => preview ? state.now : Date.now())
+  const now = preview ? state.now : liveNow
   useEffect(() => {
-    if (!visible) return
+    if (preview || !visible) return
     return startMinuteClock(setNow, {
       now: Date.now,
       hidden: () => document.visibilityState === 'hidden',
@@ -74,7 +74,7 @@ export function ClockContent({ config, visible }: WidgetContentProps<ClockConfig
         return () => document.removeEventListener('visibilitychange', callback)
       },
     })
-  }, [visible])
+  }, [visible, preview])
   const { time, date } = formatPersonalClock(now, config, t('clock.dateLocale'))
   return <div className="dsh-personal-clock">
     {config.label !== '' && <h3 className="dsh-personal-label">{config.label}</h3>}
@@ -120,13 +120,13 @@ export function registerPersonalWidgets(registry: HomeWidgets, t: Translate): ()
     disposers.push(registry.register<NotesConfig>({
       typeId: '@vlln/dsh-home:notes', apiVersion: 1, configVersion: 1, source: '@vlln/dsh-home',
       title: () => t('widget.notes.title'), description: () => t('widget.notes.description'), icon: IconEditOutlineRegular,
-      Preview: builtinPreview('notes', t), defaults: { size: 's', height: 6, minHeight: 4 },
+      preview: { config: () => ({ title: t('gallery.sample.noteTitle'), text: t('gallery.sample.noteText') }) }, defaults: { size: 's', height: 6, minHeight: 4 },
       defaultConfig: defaultNotesConfig, validateConfig: validateNotesConfig, Content: NotesContent, Settings: NotesSettings,
     }))
     disposers.push(registry.register<ClockConfig>({
       typeId: '@vlln/dsh-home:clock', apiVersion: 1, configVersion: 1, source: '@vlln/dsh-home',
       title: () => t('widget.clock.title'), description: () => t('widget.clock.description'), icon: IconClockOutlineRegular,
-      Preview: builtinPreview('clock', t), defaults: { size: 's', height: 4, minHeight: 4 },
+      preview: { config: () => ({ ...defaultClockConfig(), timeZone: 'UTC' }), data: { now: Date.UTC(2026, 9, 20, 10, 24) } }, defaults: { size: 's', height: 4, minHeight: 4 },
       defaultConfig: defaultClockConfig, validateConfig: validateClockConfig, Content: ClockContent, Settings: ClockSettings,
     }))
   } catch (error) { dispose(); throw error }

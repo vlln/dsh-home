@@ -14,6 +14,9 @@ import type { HomeWidgets, RegisteredWidgetDefinition, WidgetContentProps, Widge
 import { widgetText, WidgetSettingsPanel } from './widget-settings.tsx'
 import { validateWidgetConfig } from './widget-registry.ts'
 import { WidgetGallery } from './widget-gallery.tsx'
+import { WidgetPreview } from './widget-preview.tsx'
+import { WidgetFrameHeader } from './widget-frame.tsx'
+import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
 
 export interface HomePageProps {
   t: Translate
@@ -74,7 +77,7 @@ export function HomePage(props: HomePageProps): ReactNode {
   const definitions = useSyncExternalStore(registry.subscribe, registry.getSnapshot, registry.getSnapshot)
   const [editing, setEditing] = useState(false)
   const [trayOpen, setTrayOpen] = useState(false)
-  const [managerView, setManagerView] = useState<'add' | 'desktop'>('add')
+  const [libraryDrag, setLibraryDrag] = useState<LibraryDrag | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [settingsId, setSettingsId] = useState<string | null>(null)
@@ -124,6 +127,8 @@ export function HomePage(props: HomePageProps): ReactNode {
   }), [state.instances, byType])
   const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true, initialWidth: 1100 })
   const cols = width >= 950 ? 12 : width >= 580 ? 6 : 2
+  useEffect(() => { setLibraryDrag(null) }, [cols,width])
+  useEffect(() => { if(!editing || !writable || busy) setLibraryDrag(null) },[editing,writable,busy])
   const geometry = useMemo(() => state.workbenchLoaded ? buildSpatialLayout(state.layout, metas, cols) : [], [state.workbenchLoaded, state.layout, metas, cols])
   const instancesById = useMemo(() => new Map(state.instances.map(instance => [instance.instanceId, instance])), [state.instances])
   const activeChanged = useCallback((value: boolean) => { setInteracting(value) }, [])
@@ -210,44 +215,24 @@ export function HomePage(props: HomePageProps): ReactNode {
         {state.error !== null && <div className="dsh-error" role="alert">
           <span>{t('error.load')}</span><Button variant="ghost" size="sm" onClick={() => { void store.refresh() }}>{t('error.retry')}</Button>
         </div>}
-        {editing && trayOpen && <section className="dsh-tray" aria-label={t('tray.title')}>
-          <div inert={!editable || interacting || undefined}>
-            <div className="dsh-manager-nav" role="group" aria-label={t('tray.title')}>
-              <Button variant={managerView === 'add' ? 'outline' : 'ghost'} aria-pressed={managerView === 'add'} onClick={() => setManagerView('add')}>{t('gallery.addTab')}</Button>
-              <Button aria-label={t('gallery.desktopTab')} variant={managerView === 'desktop' ? 'outline' : 'ghost'} aria-pressed={managerView === 'desktop'} onClick={() => setManagerView('desktop')}>{t('gallery.desktopTab')} · {state.instances.length}</Button>
-            </div>
-            {managerView === 'add' && <><p className="dsh-gallery-hint">{t('gallery.hint')}</p>
-              <WidgetGallery definitions={definitions} t={t} disabled={!editable || interacting} onAdd={definition => { manage(() => { store.addInstance(definition, geometry, cols) }) }} />
-            </>}
-            {managerView === 'desktop' && <><h2 className="dsh-manager-heading">{t('manager.instances')}</h2>
-            <div className="dsh-instance-list">{state.instances.map(instance => {
-              const definition = byType.get(instance.typeId)
-              const hidden = state.layout.hidden.includes(instance.instanceId)
-              const title = widgetText(definition?.title, instance.typeId)
-              return <div className="dsh-instance-item" key={instance.instanceId} data-instance-id={instance.instanceId} data-hidden={String(hidden)}>
-                <div className="dsh-manager-info"><strong>{title}</strong><span className="dsh-muted">{instance.instanceId}</span>{definition === undefined && <span className="dsh-muted">{t('widget.unavailable', { typeId: instance.typeId })}</span>}</div>
-                <div className="dsh-manager-actions">
-                  <Button variant="ghost" size="sm" aria-pressed={!hidden} onClick={() => { manage(() => { store.toggleSpatialHidden(instance.instanceId, geometry, metas, cols) }) }}>{t(hidden ? 'tray.show' : 'tray.hide')}</Button>
-                  <Button variant="ghost" size="sm" disabled={definition === undefined} onClick={() => { if (definition !== undefined) manage(() => { store.duplicateInstance(instance.instanceId, definition, geometry, cols) }) }}>{t('manager.duplicate')}</Button>
-                  {definition?.Settings !== undefined && <Button variant="ghost" size="sm" onClick={() => { setSettingsId(instance.instanceId); setConfirmDelete(null) }}>{t('manager.settings')}</Button>}
-                  {confirmDelete !== instance.instanceId && <Button variant="ghost" size="sm" onClick={() => { setConfirmDelete(instance.instanceId) }}>{t('manager.delete')}</Button>}
-                  {confirmDelete === instance.instanceId && <div className="dsh-delete-confirm" role="group" aria-label={t('manager.deleteConfirm', { title })}>
-                    <span>{t('manager.deleteConfirm', { title })}</span>
-                    <Button variant="outline" size="sm" onClick={() => { setConfirmDelete(null) }}>{t('settings.cancel')}</Button>
-                    <Button variant="outline" size="sm" onClick={() => { manage(() => { store.removeInstance(instance.instanceId); setConfirmDelete(null) }) }}>{t('manager.confirmDelete')}</Button>
-                  </div>}
-                </div>
-              </div>
-            })}</div></>}
-          </div>
-          {settingsInstance !== undefined && settingsDefinition?.Settings !== undefined && <WidgetSettingsPanel key={renderKey(settingsInstance, settingsDefinition)}
-            t={t} store={store} definition={settingsDefinition} disabled={!writable || busy}
-            widgetProps={{ ...contentProps(settingsInstance, geometry.find(rect => rect.i === settingsInstance.instanceId), width, cols, true, !state.layout.hidden.includes(settingsInstance.instanceId)), ...(bodyDimensions[settingsInstance.instanceId] ?? {}) }}
-            onClose={() => { setSettingsId(null) }} />}
-          {settingsId !== null && (settingsInstance === undefined || settingsDefinition?.Settings === undefined) && <div className="dsh-workbench-notice" role="alert"><span>{t('settings.unavailable')}</span><Button variant="outline" size="sm" disabled={busy} onClick={() => { setSettingsId(null) }}>{t('settings.cancel')}</Button></div>}
-        </section>}
+        {editing && trayOpen && <WidgetGallery definitions={definitions} t={t} disabled={!writable || busy || interacting || settingsId !== null}
+          onClose={() => setTrayOpen(false)} onDrag={(definition,point,grab) => {
+            if(!editable || interacting)return
+            try {
+              const id=crypto.randomUUID(),item=libraryItem(definition,id,cols,geometry)
+              setLibraryDrag({id,definition,item,start:{x:point.x,y:point.y},grab:{x:grab.x*((width+12)/cols*item.w-12),y:grab.y},touch:point.touch,pointerId:point.pointerId,baseLayout:JSON.stringify(state.layout)})
+            } catch {setManagementError(true)}
+          }} />}
+        {settingsInstance !== undefined && settingsDefinition?.Settings !== undefined && <WidgetSettingsPanel key={renderKey(settingsInstance, settingsDefinition)}
+          t={t} store={store} definition={settingsDefinition} disabled={!writable || busy}
+          widgetProps={{ ...contentProps(settingsInstance, geometry.find(rect => rect.i === settingsInstance.instanceId), width, cols, true, !state.layout.hidden.includes(settingsInstance.instanceId)), ...(bodyDimensions[settingsInstance.instanceId] ?? {}) }}
+          onClose={() => { setSettingsId(null) }} />}
         <div ref={containerRef} className="dsh-spatial-container" data-layout-surface="spatial" data-cols={cols}>
-          {state.workbenchLoaded && mounted && width > 0 && <SpatialGrid width={width} cols={cols} layout={geometry} editing={editable} onCommit={commit} onActive={activeChanged}>
+          {state.workbenchLoaded && mounted && width > 0 && <SpatialGrid width={width} cols={cols} layout={geometry} editing={editable} onCommit={commit} onActive={activeChanged}
+            libraryDrag={libraryDrag} onLibraryEnd={() => setLibraryDrag(null)}
+            onLibraryDrop={(drag,accepted) => {try {if(registry.get(drag.definition.typeId)!==drag.definition||JSON.stringify(store.getSnapshot().layout)!==drag.baseLayout)throw new Error('Widget or layout changed');store.dropInstance(drag.definition,drag.id,accepted,cols)}catch{setManagementError(true)}}}
+            libraryGhost={libraryDrag && <><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
+              <CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetPreview definition={libraryDrag.definition} t={t} size={libraryDrag.definition.defaults.size} width={Math.max(0,(width+12)/cols*libraryDrag.item.w-44)} height={Math.max(0,libraryDrag.item.h*56-80)}/></CardBoundary></>}>
           {geometry.map(rect => {
             const instance = instancesById.get(rect.i)
             if (instance === undefined) return null
@@ -256,15 +241,15 @@ export function HomePage(props: HomePageProps): ReactNode {
             const widgetProps = contentProps(instance, rect, width, cols, editing, true)
             return <section key={instance.instanceId} className="dsh-w dsh-home-widget" data-widget-id={instance.instanceId} data-widget-type={instance.typeId} data-size={widgetProps.size}
               data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
-              <div className={`dsh-w-head${editable ? ' dsh-widget-grip' : ''}`}>
-                {definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition} /></CardBoundary>}
-                <h2 className="dsh-w-title">{title}</h2>
-                {editing && <div className="dsh-tools" inert={!editable || interacting || undefined}>
-                  <button type="button" className="dsh-tool dsh-widget-grip" disabled={!editable} aria-label={t('edit.drag')} title={t('edit.drag')}
-                    onKeyDown={event => { if (event.key.startsWith('Arrow')) { event.preventDefault(); nudge(instance.instanceId, event.key) } }}>⠿</button>
-                  <button type="button" className="dsh-tool dsh-remove-widget" disabled={!editable} aria-label={t('edit.hide')} title={t('edit.hide')} onClick={() => { manage(() => { store.hide(instance.instanceId) }) }}>−</button>
-                </div>}
-              </div>
+              <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!editable || interacting}
+                icon={definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition}/></CardBoundary>}
+                onEdit={definition?.Settings ? () => {setTrayOpen(false);setSettingsId(instance.instanceId)} : undefined}
+                onDelete={() => setConfirmDelete(instance.instanceId)} onNudge={key => nudge(instance.instanceId,key)}/>
+              {confirmDelete===instance.instanceId && <div className="dsh-delete-confirm" role="group" aria-label={t('manager.deleteConfirm',{title})}>
+                <span>{t('manager.deleteConfirm',{title})}</span>
+                <Button variant="ghost" size="sm" onClick={()=>setConfirmDelete(null)}>{t('settings.cancel')}</Button>
+                <Button variant="outline" size="sm" onClick={()=>manage(()=>{store.removeInstance(instance.instanceId);setConfirmDelete(null)})}>{t('manager.confirmDelete')}</Button>
+              </div>}
               <div className="dsh-w-body dsh-home-widget-content" inert={editing || undefined}>
                 {definition === undefined ? <div className="dsh-empty" role="status">{t('widget.unavailable', { typeId: instance.typeId })}</div>
                   : <CardBoundary key={renderKey(instance, definition)} fallback={<div className="dsh-error" role="alert">{t('error.card')}</div>}>

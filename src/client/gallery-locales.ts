@@ -1,4 +1,5 @@
 export const zhGallery = {
+  'library.edit':'编辑内容', 'library.close':'关闭组件库', 'library.hint':'拖动标题或把手到桌面。悬停稳定 0.5 秒让位，Esc 取消。',
   'gallery.description.recent': '跨工作目录找回最近的会话。', 'gallery.description.tasks': '预填常用任务草稿，由你确认发送。',
   'gallery.description.today': '用时间带回顾今天的在场活动。', 'gallery.description.running': '查看当前正在运行的会话。',
   'gallery.description.areas': '看看今天在哪些工作目录投入时间。', 'gallery.description.rhythm': '近两周每日活跃时长的变化。',
@@ -14,6 +15,7 @@ export const zhGallery = {
   'gallery.sample.review': '审查改动', 'gallery.sample.plan': '整理下一步', 'gallery.sample.duration': '1 小时 24 分钟',
 } as const
 export const enGallery: Record<keyof typeof zhGallery, string> = {
+  'library.edit':'Edit content', 'library.close':'Close widget library', 'library.hint':'Drag a title or grip onto the desktop. Hold 0.5s to make room; Esc cancels.',
   'gallery.description.recent': 'Find recent conversations across working directories.', 'gallery.description.tasks': 'Prepare a task draft, then review and send yourself.',
   'gallery.description.today': 'Review today’s activity on a timeline.', 'gallery.description.running': 'See which sessions are running right now.',
   'gallery.description.areas': 'See where you spent time across working directories.', 'gallery.description.rhythm': 'Daily activity over the last two weeks.',

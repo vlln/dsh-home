@@ -1,7 +1,7 @@
 /** Pure widget registry: no React runtime, private store, persistence, or geometry imports. */
 import type {
   HomeWidgets, JsonValue, RegisteredWidgetDefinition, WidgetConfigValidation,
-  WidgetDefaults, WidgetDefinition, WidgetInstance,
+  WidgetContentProps, WidgetDefaults, WidgetDefinition, WidgetInstance,
 } from './widget-contract.ts'
 
 export const WIDGET_JSON_LIMITS = Object.freeze({ maxDepth: 8, maxNodes: 4096, maxBytes: 8192, maxKeyLength: 256 })
@@ -121,6 +121,28 @@ function defaultsFor(input: WidgetDefinition['defaults']): Readonly<WidgetDefaul
   return Object.freeze(defaults)
 }
 
+/** Each preview is ephemeral: no registry/store mutation, live instance or persisted data is read. */
+export function createWidgetPreviewProps<C extends JsonValue>(
+  definition: RegisteredWidgetDefinition<C>,
+  dimensions: Pick<WidgetContentProps, 'size' | 'width' | 'height'>,
+): WidgetContentProps<C> {
+  const config = validateWidgetConfig(definition, (definition.preview?.config ?? definition.defaultConfig)())
+  return {
+    ...dimensions, config,
+    instance: { instanceId: 'home-gallery-preview', typeId: definition.typeId, configVersion: definition.configVersion, config },
+    editing: false, visible: true,
+    preview: { data: cloneWidgetConfig(definition.preview?.data ?? null) },
+  }
+}
+
+function freezeJson(value: JsonValue): JsonValue {
+  if (value !== null && typeof value === 'object') {
+    for (const child of Object.values(value)) freezeJson(child)
+    Object.freeze(value)
+  }
+  return value
+}
+
 /** Only the home-owned legacy slot adapter may pass this option, never external public service callers. */
 export interface InternalWidgetRegistrationOptions { internalLegacyTypeId: true }
 
@@ -170,8 +192,29 @@ export class HomeWidgetRegistry implements HomeWidgets {
     const defaults = defaultsFor(definition.defaults)
     const factory = definition.defaultConfig
     const validator = definition.validateConfig
+    const sample = definition.preview
+    let preview: WidgetDefinition<C>['preview']
+    if (sample !== undefined) {
+      if (sample === null || typeof sample !== 'object' || Array.isArray(sample)
+        || ![Object.prototype, null].includes(Object.getPrototypeOf(sample))) fail('preview must be a plain object')
+      for (const key of Reflect.ownKeys(sample)) {
+        if (key !== 'config' && key !== 'data') fail('preview supports only config and data')
+        const descriptor = Object.getOwnPropertyDescriptor(sample, key)!
+        if (!descriptor.enumerable || !('value' in descriptor)) fail(`preview.${key} must be a data property`)
+      }
+      const sampleFactory = sample.config
+      if (sampleFactory !== undefined && typeof sampleFactory !== 'function') fail('preview.config must be a synchronous function')
+      preview = Object.freeze({
+        ...(sampleFactory === undefined ? {} : { config: () => {
+          try { return validateWidgetConfig({ validateConfig: validator } as WidgetDefinition<C>, sampleFactory()) }
+          catch (error) { fail(`"${typeId}" preview.config: ${message(error)}`) }
+        } }),
+        data: freezeJson(cloneWidgetConfig(sample.data ?? null)),
+      })
+      preview.config?.()
+    }
     const normalized = {
-      ...definition, defaults,
+      ...definition, defaults, preview,
       defaultConfig: () => {
         try { return validateWidgetConfig({ validateConfig: validator } as WidgetDefinition<C>, factory()) }
         catch (error) { fail(`"${typeId}" defaultConfig: ${message(error)}`) }

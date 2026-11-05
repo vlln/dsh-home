@@ -1,6 +1,9 @@
 /** RGL supplies pixel dragging/resize; a snapshot-based compactor previews local displacement. */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import type { LibraryDrag } from './library-drag-model.ts'
+import { libraryPointerInside } from './library-drag-model.ts'
 import GridLayout, { type Layout as EngineLayout, type LayoutItem } from 'react-grid-layout'
 import { snapCandidate } from './collision-preview.ts'
 import { multiPreviewPlacement, placementAxis } from './multi-preview.ts'
@@ -17,6 +20,10 @@ export interface SpatialGridProps {
   onCommit: (layout: SpatialItem[]) => void
   onActive: (active: boolean) => void
   children: ReactNode
+  libraryDrag?: LibraryDrag | null
+  libraryGhost?: ReactNode
+  onLibraryDrop?: (drag: LibraryDrag, layout: SpatialItem[]) => void
+  onLibraryEnd?: () => void
 }
 interface Gesture {
   id: string
@@ -34,7 +41,15 @@ interface Gesture {
 const items = (value: EngineLayout, cols: number): SpatialItem[] => value.map(item => ({
   ...item, minW: item.minW ?? Math.min(3, cols), minH: item.minH ?? 3, maxW: Math.min(item.maxW ?? cols, cols),
 }))
-export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, children }: SpatialGridProps): ReactNode {
+export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, children, libraryDrag, libraryGhost, onLibraryDrop, onLibraryEnd }: SpatialGridProps): ReactNode {
+  const [libraryVisual, setLibraryVisual] = useState<{x:number;y:number;w:number;h:number;inside:boolean} | null>(null)
+  const [libraryOutline,setLibraryOutline]=useState<{x:number;y:number;w:number;h:number;pending:boolean}|null>(null)
+  const libraryRef = useRef(libraryDrag)
+  const latestLayout = useRef(layout)
+  latestLayout.current = layout
+  libraryRef.current = libraryDrag
+  const libraryHandlers = useRef({ onLibraryDrop, onLibraryEnd })
+  libraryHandlers.current = { onLibraryDrop, onLibraryEnd }
   const [epoch, setEpoch] = useState(0)
   const [current, setCurrent] = useState<EngineLayout>(layout)
   const [dragHeight, setDragHeight] = useState(0)
@@ -47,6 +62,8 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
   const lastTouch = useRef<TouchEvent | null>(null)
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const refreshStationary = useRef<() => void>(() => {})
+  const refreshLibrary = useRef<() => void>(() => {})
+  const updateLibraryTransaction = useRef<() => void>(() => {})
   const clearHover = (): void => {
     if (hoverTimer.current !== null) clearTimeout(hoverTimer.current)
     hoverTimer.current = null
@@ -89,6 +106,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
       setCurrent(original.current)
       setDragHeight(0)
       setEpoch(i => i + 1)
+      if (libraryRef.current) { setLibraryVisual(null); libraryHandlers.current.onLibraryEnd?.() }
       document.body.classList.remove('dsh-home-dragging')
       onActive(false)
     }
@@ -129,7 +147,8 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
           container.scrollTop += dy
           if (container.scrollTop !== before && !p.touch) {
             // react-draggable measures offsetParent.scrollTop on mousemove, even when the mouse is still.
-            document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true, clientX: p.x, clientY: p.y, buttons: 1 }))
+            if (libraryRef.current) refreshLibrary.current()
+            else document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true, clientX: p.x, clientY: p.y, buttons: 1 }))
           }
         }
       }
@@ -205,7 +224,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
       else delete root.current.dataset.dropRejected
     }
     const visualBottom = Math.max(session.candidate.y + session.candidate.h,
-      ...session.preview.map(entry => entry.y + entry.h)) * 56 - 12
+      ...session.preview.filter(entry => !libraryRef.current || entry.i !== session.id).map(entry => entry.y + entry.h)) * 56 - 12
     setDragHeight(previous => Math.max(previous, visualBottom))
     if (placeholder) {
       // RGL 2.2.3 reuses this callback object as its drop preview; pin and regression-test this integration.
@@ -218,7 +237,9 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
   refreshStationary.current = () => {
     const p = pointer.current
     if (!active.current || !p) return
-    if (!p.touch) {
+    if (libraryRef.current) {
+      refreshLibrary.current()
+    } else if (!p.touch) {
       document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true, clientX: p.x, clientY: p.y, buttons: 1 }))
     } else if (lastTouch.current) {
       const event = lastTouch.current
@@ -254,8 +275,58 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     document.body.classList.remove('dsh-home-dragging')
     onCommit(result)
   }
+  updateLibraryTransaction.current = () => {
+    const drag = libraryRef.current, session = gesture.current, p = pointer.current, grid = root.current?.getBoundingClientRect()
+    if (!drag || !session || !p || !grid) return
+    const inside = libraryPointerInside(p, grid) && !document.elementFromPoint(p.x,p.y)?.closest('.dsh-library-panel')
+    const w = (width + 12) / cols * drag.item.w - 12, h = drag.item.h * 56 - 12
+    setLibraryVisual({ x:p.x-drag.grab.x, y:p.y-drag.grab.y, w,h,inside })
+    if (!inside) {
+      clearHover(); session.intent=null; session.pending=true; session.rejected=false
+      session.preview=session.snapshot.map(entry=>({...entry})); setCurrent(layout);setLibraryOutline(null); return
+    }
+    const item = {...drag.item}
+    update([],null,item,null,new Event('library-drag'),null)
+    setCurrent(session.preview.filter(entry=>entry.i!==drag.id))
+    setLibraryOutline({x:grid.left+session.candidate.x*((width+12)/cols),y:grid.top+session.candidate.y*56,w,h,pending:session.pending||session.rejected})
+  }
+  refreshLibrary.current = () => updateLibraryTransaction.current()
+  useEffect(() => {
+    if (!libraryDrag || !editing) return
+    const drag = libraryDrag
+    const snapshot = [...layout.map(item=>({...item})), {...drag.item}]
+    original.current = layout
+    cancelled.current=false; active.current=true
+    pointer.current={...drag.start,touch:drag.touch}
+    gesture.current={id:drag.id,kind:'drag',snapshot,candidate:{...drag.item},preview:snapshot,node:null,grab:drag.grab,intent:null,pending:true,direction:'y',rejected:false}
+    setDragHeight(root.current?.getBoundingClientRect().height??900)
+    document.body.classList.add('dsh-home-dragging'); onActive(true)
+    updateLibraryTransaction.current()
+    const move=(event:PointerEvent) => {
+      if (!active.current || cancelled.current || event.pointerId !== drag.pointerId) return
+      event.preventDefault()
+      pointer.current={x:event.clientX,y:event.clientY,touch:event.pointerType==='touch'}
+      updateLibraryTransaction.current()
+    }
+    const finish=(event:PointerEvent) => {
+      if(!active.current || cancelled.current || event.pointerId !== drag.pointerId)return
+      pointer.current={x:event.clientX,y:event.clientY,touch:event.pointerType==='touch'}
+      updateLibraryTransaction.current()
+      const s=gesture.current,grid=root.current?.getBoundingClientRect()
+      const inside=grid&&libraryPointerInside(pointer.current,grid)&&!document.elementFromPoint(event.clientX,event.clientY)?.closest('.dsh-library-panel')
+      const accepted=inside&&s&&!s.pending&&!s.rejected&&placementAccepted(s.preview,drag.id,s.candidate)
+      clearHover(); active.current=false; gesture.current=null; pointer.current=null
+      setCurrent(layout);setLibraryVisual(null);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false)
+      if(accepted&&s)libraryHandlers.current.onLibraryDrop?.(drag,s.preview)
+      libraryHandlers.current.onLibraryEnd?.()
+    }
+    const cancel=() => { clearHover();active.current=false;gesture.current=null;pointer.current=null;setCurrent(layout);setLibraryVisual(null);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false);libraryHandlers.current.onLibraryEnd?.() }
+    window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',finish);window.addEventListener('pointercancel',cancel)
+    return()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',cancel);clearHover();active.current=false;gesture.current=null;setLibraryVisual(null);setCurrent(latestLayout.current);setDragHeight(0);document.body.classList.remove('dsh-home-dragging');onActive(false)}
+    // A library gesture captures one immutable peer snapshot and uses the ordinary update() solver.
+  },[libraryDrag?.id,cols,editing])
   const constrained = useMemo(() => current.map(item => ({ ...item, maxH: item.maxH ?? 30 })), [current])
-  return <GridLayout key={`${cols}-${epoch}`} width={width} layout={constrained} innerRef={root}
+  return <><GridLayout key={`${cols}-${epoch}`} width={width} layout={constrained} innerRef={root}
     className="dsh-spatial-grid" compactor={compactor}
     gridConfig={{ cols, rowHeight: 44, margin: [12, 12], containerPadding: [0, 0], maxRows: 10003 }}
     dragConfig={{ enabled: editing, handle: '.dsh-widget-grip', cancel: 'button:not(.dsh-widget-grip), input, select, textarea, a', threshold: 5 }}
@@ -267,4 +338,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     onDragStop={value => { stop(value) }} onResizeStop={value => { stop(value) }}>
     {children}
   </GridLayout>
+    {libraryVisual && libraryOutline && createPortal(<div className="dsh-library-outline" data-pending={libraryOutline.pending} style={{left:libraryOutline.x,top:libraryOutline.y,width:libraryOutline.w,height:libraryOutline.h}} aria-hidden="true"/>,document.body)}
+    {libraryVisual && createPortal(<div className="dsh-library-ghost dsh-w" data-inside={libraryVisual.inside} style={{left:libraryVisual.x,top:libraryVisual.y,width:libraryVisual.w,height:libraryVisual.h}} inert aria-hidden="true">{libraryGhost}</div>,document.body)}
+  </>
 }

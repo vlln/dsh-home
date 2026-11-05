@@ -29,22 +29,23 @@ window.__ModuleLoader__.load({
           function useLocale() { React.useSyncExternalStore(subscribeLocale, readLocale); }
           // Development-only observability, intentionally kept after cleanup so leak checks can inspect it.
           const stats = window.__homeExampleStats ||= { mounts: 0, unmounts: 0, activeTimers: 0, instances: {} };
-          function Content({ instance, config, visible, editing }) {
+          function Content({ instance, config, visible, editing, preview }) {
             useLocale();
             const [count, setCount] = React.useState(config.start);
             const [ticks, setTicks] = React.useState(0);
             React.useEffect(() => { setCount(config.start); }, [config.start]);
             React.useEffect(() => {
+              if (preview) return;
               stats.mounts++;
               stats.instances[instance.instanceId] = (stats.instances[instance.instanceId] || 0) + 1;
               return () => { stats.unmounts++; stats.instances[instance.instanceId]--; };
-            }, [instance.instanceId]);
+            }, [instance.instanceId, preview]);
             React.useEffect(() => {
-              if (!visible || editing) return;
+              if (preview || !visible || editing) return;
               stats.activeTimers++;
               const timer = setInterval(() => setTicks(n => n + 1), 1000);
               return () => { clearInterval(timer); stats.activeTimers--; };
-            }, [visible, editing]);
+            }, [visible, editing, preview]);
             if (config.fail) throw new Error('home example: requested render failure');
             // Installed runtime exposes no standalone ui-primitives npm package: use semantic HTML,
             // retaining native keyboard/focus behavior and only the installed theme alias tokens.
