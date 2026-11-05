@@ -363,7 +363,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     className="dsh-spatial-grid" compactor={compactor}
     gridConfig={{ cols, rowHeight: 44, margin: [12, 12], containerPadding: [0, 0], maxRows: 10003 }}
     dragConfig={{ enabled: editing, handle: '.dsh-widget-grip', cancel: 'button:not(.dsh-widget-grip), input, select, textarea, a', threshold: 5 }}
-    resizeConfig={{ enabled: editing, handles: ['se'] }}
+    resizeConfig={{ enabled: false, handles: [] }}
     style={{ minHeight: editing ? Math.max(900, dragHeight) : undefined }}
     onDragStart={(value, _old, item, _placeholder, event, node) => { start(value, item, 'drag', event, node) }}
     onResizeStart={(value, _old, item, _placeholder, event, node) => { start(value, item, 'resize', event, node) }}

@@ -17,27 +17,30 @@ const rect = ({ x, y, w, h }) => ({ x, y, w, h })
 for (const [size, widths] of [['s', [4, 3, 2]], ['m', [8, 6, 2]], ['l', [12, 6, 2]]]) {
   test(`library draft ${size} dimensions follow the ordinary 12/6/2-column grid`, () => {
     const def = definition({ size, height: 7 })
+    assert.deepEqual(def.sizing, { default: `${widths[0]}x8`, supported: [`${widths[0]}x8`] })
     for (const [index, cols] of [12, 6, 2].entries()) {
       const peer = Object.freeze(item('peer', 0, 9, Math.min(cols, 4), 5))
       const snapshot = Object.freeze([peer])
       const draft = libraryItem(def, 'draft', cols, snapshot)
       assert.equal(draft.i, 'draft')
-      assert.deepEqual(rect(draft), { x: 0, y: 14, w: widths[index], h: 7 })
-      assert.equal(draft.minW, Math.min(cols, 3))
-      assert.equal(draft.maxW, cols)
-      assert.equal(draft.minH, 3)
-      assert.equal(draft.maxH, 30)
+      assert.deepEqual(rect(draft), { x: 0, y: 14, w: widths[index], h: 8 })
+      assert.equal(draft.minW, widths[index])
+      assert.equal(draft.maxW, widths[index])
+      assert.equal(draft.minH, 8)
+      assert.equal(draft.maxH, 8)
       assert.deepEqual(snapshot, [peer], 'draft staging never moves existing cards')
     }
   })
 }
 
-test('draft starts at origin on empty grid and preserves registered resize constraints at narrow breakpoints', () => {
+test('draft starts at origin and legacy bounds cannot widen its single projected host preset', () => {
   const def = definition({ size: 's', height: 6, minWidth: 4, maxWidth: 8, minHeight: 5, maxHeight: 9 })
   const wide = libraryItem(def, 'draft', 12, [])
   assert.deepEqual(rect(wide), { x: 0, y: 0, w: 4, h: 6 })
   assert.deepEqual({ minW: wide.minW, maxW: wide.maxW, minH: wide.minH, maxH: wide.maxH, viewportCols: wide.viewportCols },
-    { minW: 4, maxW: 8, minH: 5, maxH: 9, viewportCols: 12 })
+    { minW: 4, maxW: 4, minH: 6, maxH: 6, viewportCols: 12 })
+  const middle = libraryItem(def, 'draft', 6, [])
+  assert.deepEqual(rect(middle), { x: 0, y: 0, w: 3, h: 6 })
   const narrow = libraryItem(def, 'draft', 2, [])
   assert.deepEqual(rect(narrow), { x: 0, y: 0, w: 2, h: 6 })
   assert.equal(narrow.minW, 2)

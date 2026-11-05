@@ -107,7 +107,7 @@ test('invalid rects, missing ids and columns return an untouched snapshot clone'
   const snapshot = frozen([item('a', 0, 0), item('b', 4, 8)])
   const badRects = [
     null, [], {}, rect(-1, 0), rect(9, 0), rect(0, -1), rect(0, SPATIAL_MAX_Y + 1),
-    rect(NaN, 0), rect(0, Infinity), rect(0.5, 0), rect(0, 0, 0), rect(0, 0, 1),
+    rect(NaN, 0), rect(0, Infinity), rect(0.5, 0), rect(0, 0, 0),
     rect(0, 0, 4, 2), rect(0, 0, 4, 31), rect(0, 0, 4.5),
   ]
   for (const bad of badRects) assert.deepEqual(previewPlacement(snapshot, 'a', bad, 12), snapshot)

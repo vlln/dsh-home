@@ -138,7 +138,7 @@ export function registerActivityWidget(registry: HomeWidgetRegistry, t: Translat
       days: Array.from({ length: 84 }, (_, i) => ({ key: shiftCalendarDay('2026-10-20', i - 83), messages: (i * 7 + Math.floor(i / 9)) % 15, sessions: i % 3 })),
       workspaces: [], available: true, complete: true, failed: 0, scanError: false, scanning: false,
       progress: { done: 3, total: 3 }, sessions: [], matchedSessions: 0,
-    } }, defaults: { size: 'm', height: 6, minHeight: 5 }, configVersion: 1,
+    } }, sizing: { default: '8x6', supported: ['4x8', '8x6', '8x8', '8x12', '12x6', '12x8'] }, configVersion: 1,
     defaultConfig: () => ({ cwd: '', range: 'auto' }), validateConfig: validateActivityConfig,
     Content: ActivityContent })
 }

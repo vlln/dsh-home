@@ -10,7 +10,7 @@ import type { HomeState, HomeStore } from './store.ts'
 import { emptyLayout, emptyPrefs } from './api.ts'
 import type { LedgerSnapshot } from './api.ts'
 import type { Translate } from './format.ts'
-import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
+import type { JsonValue, WidgetContentProps, WidgetSizing } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 
 const Runtime = createContext<{
@@ -103,6 +103,16 @@ function QueueContent() {
     dismissed={state.prefs.dismissed} now={state.now} actions={actions} statusSource={statusSource} embedded
     onDismiss={id => store.dismiss(id)} />
 }
+const BUILTIN_SIZING: Record<string, WidgetSizing> = {
+  recent: { default: '8x8', supported: ['4x8', '8x8', '8x12', '12x8', '12x12'] },
+  tasks: { default: '4x8', supported: ['4x8', '8x8'] },
+  today: { default: '8x4', supported: ['4x4', '8x4', '12x4'] },
+  running: { default: '4x6', supported: ['4x4', '4x6', '4x8', '8x6'] },
+  areas: { default: '4x6', supported: ['4x6', '4x8', '8x6', '8x8'] },
+  rhythm: { default: '8x4', supported: ['4x4', '8x4', '12x4'] },
+  resume: { default: '8x6', supported: ['4x6', '8x6', '12x6'] },
+  queue: { default: '4x6', supported: ['4x6', '4x8', '4x12', '8x6', '8x8'] },
+}
 export function registerBuiltins(registry: HomeWidgetRegistry, t: Translate): () => void {
   const disposers = BUILTIN_WIDGETS.map(widget => {
     function Content({ size, width, height }: WidgetContentProps) {
@@ -115,7 +125,7 @@ export function registerBuiltins(registry: HomeWidgetRegistry, t: Translate): ()
     return registry.register({
       typeId: `@vlln/dsh-home:${widget.id}`, apiVersion: 1, title: () => widget.title(t), description: () => t(`gallery.description.${widget.id}`),
       source: '@vlln/dsh-home', icon: widget.Glyph, preview: { data: builtinPreviewData(t) },
-      defaults: { size: widget.defaultSize, height: widget.defaultHeight },
+      sizing: BUILTIN_SIZING[widget.id],
       configVersion: 1, defaultConfig: () => ({}), validateConfig: () => true, Content,
     })
   })
@@ -124,7 +134,7 @@ export function registerBuiltins(registry: HomeWidgetRegistry, t: Translate): ()
     { id: 'queue', title: 'queue.title', size: 's' as const, Content: QueueContent },
   ]) disposers.push(registry.register({
     typeId: `@vlln/dsh-home:${widget.id}`, apiVersion: 1, title: () => t(widget.title as Parameters<Translate>[0]), description: () => t(`gallery.description.${widget.id}`),
-    source: '@vlln/dsh-home', preview: { data: builtinPreviewData(t) }, defaults: { size: widget.size, height: 4 }, configVersion: 1,
+    source: '@vlln/dsh-home', preview: { data: builtinPreviewData(t) }, sizing: BUILTIN_SIZING[widget.id], configVersion: 1,
     defaultConfig: () => ({}), validateConfig: () => true, Content: widget.Content,
   }))
   disposers.push(registerActivityWidget(registry, t), registerPersonalWidgets(registry, t), registerQuickWidget(registry, t))

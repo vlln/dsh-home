@@ -225,7 +225,7 @@ try {
       assertGeometry(baseline.positions, 'Seed DOM')
       entry.before = baseline.rendered
       const { grid } = baseline, step = (grid.width + GAP) / COLS
-      const grip = await widget('today').locator('.dsh-widget-grip').first().boundingBox()
+      const grip = await widget('today').locator('.dsh-tools .dsh-widget-grip').boundingBox()
       assert(grip, 'Today must expose a real drag header')
       const start = { x: grip.x + grip.width / 2, y: grip.y + grip.height / 2 }
       assert(start.y > 72 && start.y < VIEWPORT.height - 72, 'Source title midpoint must be visible without edge scrolling')

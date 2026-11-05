@@ -1,7 +1,7 @@
 {
   "name": "@vlln/dsh-home",
   "description": "DSH 任务工作台：跨工作目录的最近会话、常用任务草稿、在跑与待处理、可编排小组件。",
-  "version": "0.16.2",
+  "version": "0.17.2",
   "type": "module",
   "main": "lib/index.mjs",
   "icon": "./icon.svg",

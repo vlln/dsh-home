@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import {
-  HomeWidgetRegistry, WIDGET_DEFAULTS, WIDGET_JSON_LIMITS,
+  HomeWidgetRegistry, WIDGET_JSON_LIMITS,
   cloneWidgetConfig, validateWidgetConfig, migrateWidgetInstance,
 } from '../src/client/widget-registry.ts'
 
@@ -38,12 +38,15 @@ test('registration publishes immutable stable snapshots with detached useSyncExt
   assert.strictEqual(first, getSnapshot())
   assert.strictEqual(registry.get(definition.typeId), first[0])
   assert.equal(first[0].title(), 'Localized notes')
-  assert.deepEqual(first[0].defaults, { ...WIDGET_DEFAULTS, size: 's', height: 5 })
+  assert.deepEqual(first[0].defaults, { size: 's', height: 6, minWidth: 4, maxWidth: 4, minHeight: 6, maxHeight: 6 })
+  assert.deepEqual(first[0].sizing, { default: '4x6', supported: ['4x6'] })
+  assert.ok(Object.isFrozen(first[0].sizing))
+  assert.ok(Object.isFrozen(first[0].sizing.supported))
   assert.ok(Object.isFrozen(first[0]))
   assert.ok(Object.isFrozen(first[0].defaults))
-  definition.defaults.height = 6
+  definition.defaults.height = 8
   definition.title = 'Changed externally'
-  assert.equal(first[0].defaults.height, 5)
+  assert.equal(first[0].defaults.height, 6)
   assert.equal(first[0].title(), 'Localized notes')
   assert.throws(() => first.push(widget()), TypeError)
   unsubscribe()
@@ -53,6 +56,28 @@ test('registration publishes immutable stable snapshots with detached useSyncExt
   assert.equal(changes.length, 1)
   assert.equal(getSnapshot().length, 0)
   assert.strictEqual(getSnapshot(), getSnapshot())
+})
+
+test('public sizing is independently frozen and legacy defaults deterministically map to one host preset', () => {
+  const sizing = { default: '4x6', supported: ['4x6', '8x6'] }
+  const registry = new HomeWidgetRegistry()
+  registry.register(widget({ sizing }))
+  const definition = registry.get('@test/widgets:notes')
+  assert.deepEqual(definition.sizing, sizing)
+  assert.notStrictEqual(definition.sizing.supported, sizing.supported)
+  assert.ok(Object.isFrozen(definition.sizing))
+  assert.ok(Object.isFrozen(definition.sizing.supported))
+  assert.deepEqual(definition.defaults, { size: 's', height: 6, minWidth: 4, maxWidth: 8, minHeight: 6, maxHeight: 6 })
+  sizing.default = '8x6'
+  sizing.supported.push('12x12')
+  assert.deepEqual(definition.sizing, { default: '4x6', supported: ['4x6', '8x6'] })
+  for (const [height, expected] of [[3, 4], [4, 4], [5, 6], [6, 6], [7, 8], [8, 8], [9, 12], [12, 12], [30, 12]]) {
+    const legacy = new HomeWidgetRegistry()
+    legacy.register(widget({ defaults: { size: 's', height } }))
+    const entry = legacy.get('@test/widgets:notes')
+    assert.deepEqual(entry.sizing, { default: `4x${expected}`, supported: [`4x${expected}`] })
+    assert.deepEqual(entry.defaults, { size: 's', height: expected, minWidth: 4, maxWidth: 4, minHeight: expected, maxHeight: expected })
+  }
 })
 
 test('public identifiers are namespaced and legacy registration is restricted to explicit adapter option', () => {
@@ -303,12 +328,15 @@ test('all migration failures preserve exact raw instance and return actionable d
   }
 })
 
-test('contract uses type-only host/React imports; registry does not import runtime implementations', async () => {
+test('contract is type-only and registry runtime imports stay within the pure sizing helper', async () => {
   const contract = await readFile(new URL('../src/client/widget-contract.ts', import.meta.url), 'utf8')
   const registry = await readFile(new URL('../src/client/widget-registry.ts', import.meta.url), 'utf8')
   assert.match(contract, /declare module '@deepseek-ai\/cordis'/)
   assert.match(contract, /homeWidgets: HomeWidgets/)
   assert.doesNotMatch(contract, /^import (?!type\b)/m)
-  assert.doesNotMatch(registry, /^import (?!type\b)/m)
-  assert.doesNotMatch(registry, /from ['"].*(?:store|geometry|spatial|react)/)
+  const runtimeImports = [...registry.matchAll(/^import (?!type\b)[\s\S]*?from ['"]([^'"]+)['"]/gm)].map(match => match[1])
+  assert.deepEqual(runtimeImports, ['./widget-sizing.ts'])
+  const sizing = await readFile(new URL('../src/client/widget-sizing.ts', import.meta.url), 'utf8')
+  assert.doesNotMatch(sizing, /^import (?!type\b)/m)
+  for (const source of [registry, sizing]) assert.doesNotMatch(source, /from ['"].*(?:store|geometry|spatial|react)/)
 })

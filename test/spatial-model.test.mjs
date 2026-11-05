@@ -237,9 +237,9 @@ test('placement and merge reject bad proposals, retaining hidden records and all
   assert.notEqual(merged, saved)
   assert.equal(merged.order, saved.order)
   assert.equal(merged.size, saved.size)
-  for (const bad of [rect(-1, 0), rect(0, NaN), rect(0, 0, 1, 3), rect(0, 0, 4, 31)]) {
+  for (const bad of [rect(-1, 0), rect(0, NaN), rect(0, 0, 0, 3), rect(0, 0, 4, 31)]) {
     assert.equal(canPlace([], 'a', bad, 12), false)
-    assert.equal(findSpatialSpace([], bad, 12) === null, bad.w === 1 || bad.h === 31)
+    assert.equal(findSpatialSpace([], bad, 12) === null, bad.w === 0 || bad.h === 31)
   }
 })
 

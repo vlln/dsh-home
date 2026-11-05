@@ -16,24 +16,25 @@ function registered(defaults) {
 }
 function meta(definition, id = 'widget-a') {
   const defaults = definition.defaults
-  return { id, defaultSize: defaults.size, defaultHeight: defaults.height,
+  return { id, sizing: definition.sizing, defaultSize: defaults.size, defaultHeight: defaults.height,
     minWidth: defaults.minWidth, maxWidth: defaults.maxWidth,
     minHeight: defaults.minHeight, maxHeight: defaults.maxHeight }
 }
 const rect = ({ x, y, w, h }) => ({ x, y, w, h })
 
-test('registered defaults constrain new geometry and metadata on 12/6/2-column breakpoints', () => {
+test('legacy defaults map to one host preset and its projected metadata on 12/6/2-column breakpoints', () => {
   const definition = registered({ size: 's', height: 6, minWidth: 4, maxWidth: 5, minHeight: 5, maxHeight: 7 })
   const initial = emptyLayout()
   const before = structuredClone(initial)
-  for (const [cols, width] of [[12, 4], [6, 4], [2, 2]]) {
+  assert.deepEqual(definition.sizing, { default: '4x6', supported: ['4x6'] })
+  for (const [cols, width] of [[12, 4], [6, 3], [2, 2]]) {
     const [item] = buildSpatialLayout(initial, [meta(definition)], cols)
     assert.equal(item.w, width)
     assert.equal(item.h, 6)
-    assert.equal(item.minW, Math.min(4, cols))
-    assert.equal(item.maxW, Math.min(5, cols))
-    assert.equal(item.minH, 5)
-    assert.equal(item.maxH, 7)
+    assert.equal(item.minW, width)
+    assert.equal(item.maxW, width)
+    assert.equal(item.minH, 6)
+    assert.equal(item.maxH, 6)
     assert.ok(item.w >= item.minW && item.w <= item.maxW)
     assert.ok(item.h >= item.minH && item.h <= item.maxH)
     assert.equal(canPlace([item], item.i, item, cols), true)
@@ -41,17 +42,17 @@ test('registered defaults constrain new geometry and metadata on 12/6/2-column b
   assert.deepEqual(initial, before)
 })
 
-test('legacy size override cannot exceed a registered width maximum for a newly placed widget', () => {
+test('legacy size-only records keep their chosen width when a breakpoint is first projected', () => {
   const definition = registered({ size: 's', height: 5, minWidth: 3, maxWidth: 5, minHeight: 4, maxHeight: 6 })
   const layout = { ...emptyLayout(), size: { 'widget-a': 'l' } }
   for (const cols of [12, 6, 2]) {
     const [item] = buildSpatialLayout(layout, [meta(definition)], cols)
-    assert.equal(item.w, Math.min(5, cols))
-    assert.equal(item.h, 5)
+    assert.equal(item.w, cols)
+    assert.equal(item.h, 6)
   }
 })
 
-test('malformed saved rectangles are repaired inside registered constraints without moving a valid sibling', () => {
+test('malformed saved rectangles recover to the host default without moving or resizing a legal legacy sibling', () => {
   const definition = registered({ size: 's', height: 5, minWidth: 3, maxWidth: 5, minHeight: 4, maxHeight: 6 })
   for (const cols of [12, 6, 2]) {
     const sibling = { x: 0, y: 20, w: Math.min(4, cols), h: 5 }
@@ -60,7 +61,7 @@ test('malformed saved rectangles are repaired inside registered constraints with
     const geometry = buildSpatialLayout(layout, [meta(definition), meta(definition, 'widget-b')], cols)
     assert.deepEqual(rect(geometry.find(item => item.i === 'widget-b')), sibling)
     const repaired = geometry.find(item => item.i === 'widget-a')
-    assert.equal(repaired.w, Math.min(5, cols))
+    assert.equal(repaired.w, cols === 12 ? 4 : cols === 6 ? 3 : 2)
     assert.equal(repaired.h, 6)
     assert.equal(canPlace(geometry, repaired.i, repaired, cols), true)
   }
@@ -73,9 +74,31 @@ test('constraint upgrades preserve globally legal saved geometry and neighboring
   const before = structuredClone(layout)
   const geometry = buildSpatialLayout(layout, [meta(definition), meta(definition, 'widget-b')], 12)
   for (const item of geometry) assert.deepEqual(rect(item), saved[item.i])
-  assert.equal(geometry[0].maxW, 5)
-  assert.equal(geometry[0].minH, 5)
+  assert.equal(geometry[0].maxW, 8, 'engine metadata includes grandfathered width rather than clamping it')
+  assert.equal(geometry[0].minH, 4, 'engine metadata includes grandfathered height')
+  assert.equal(geometry[0].maxH, 6)
   assert.deepEqual(layout, before)
+})
+
+test('single preset metadata never clamps saved narrow widths, nonpreset heights or tall legacy cards', () => {
+  const definition = registered({ size: 's', height: 6 })
+  for (const cols of [12, 6, 2]) {
+    const saved = Object.fromEntries([1, 2].flatMap(w => [3, 5, 7, 30].map((h, index) =>
+      [`w${w}h${h}`, { x: 0, y: index * 40, w, h }])))
+    // Each width group has its own rows so the preservation assertion is not a collision repair case.
+    for (const [id, value] of Object.entries(saved)) if (id.startsWith('w2')) value.y += 200
+    const layout = { ...emptyLayout(), instanceLayout: true, order: Object.keys(saved), positions: { [cols]: saved } }
+    const before = structuredClone(layout)
+    const geometry = buildSpatialLayout(layout, Object.keys(saved).map(id => meta(definition, id)), cols)
+    assert.equal(geometry.length, Object.keys(saved).length)
+    for (const item of geometry) {
+      assert.deepEqual(rect(item), saved[item.i])
+      assert.ok(item.minW <= item.w && item.maxW >= item.w)
+      assert.ok(item.minH <= item.h && item.maxH >= item.h)
+      assert.equal(canPlace(geometry, item.i, item, cols), true)
+    }
+    assert.deepEqual(layout, before)
+  }
 })
 
 test('implicit keyboard movement uses viewport columns rather than the widget resize maximum', () => {
@@ -86,7 +109,7 @@ test('implicit keyboard movement uses viewport columns rather than the widget re
     const moved = moveSpatialItem(initial, 'widget-a', 1, 0)
     assert.notStrictEqual(moved, initial)
     assert.equal(moved[0].x, 1)
-    assert.equal(moved[0].maxW, 4)
+    assert.equal(moved[0].maxW, cols === 12 ? 4 : 3)
     const explicit = moveSpatialItem(initial, 'widget-a', 1, 0, cols)
     assert.deepEqual(moved, explicit)
   }

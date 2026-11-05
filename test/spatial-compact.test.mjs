@@ -73,7 +73,7 @@ test('invalid breakpoint, duplicate ids, overlap and malformed geometry reject w
     null, undefined, {}, [null], [item('', 0, 0)], [item('a', 0, 0), item('a', 4, 0)],
     [item('a', 0, 0), item('b', 0, 1)], [item('a', -1, 0)], [item('a', 0, -1)],
     [item('a', 0, 10001)], [item('a', 0.5, 0)], [item('a', 0, NaN)],
-    [item('a', 0, 0, 13)], [item('a', 10, 0)], [item('a', 0, 0, 2)],
+    [item('a', 0, 0, 13)], [item('a', 10, 0)], [item('a', 0, 0, 0)],
     [item('a', 0, 0, 4, 31)], [item('a', 0, 0, 4, 2)],
     Array.from({ length: 65 }, (_, n) => item(String(n), 0, n * 4)),
   ]

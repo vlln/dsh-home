@@ -120,7 +120,7 @@ window.__ModuleLoader__.load({
             typeId: '@vlln/dsh-home-example:counter', apiVersion: 1,
             title: () => t('title'), description: () => t('description'),
             source: '@vlln/dsh-home-example-counter',
-            defaults: { size: 's', height: 4, minWidth: 3, maxWidth: 12, minHeight: 4, maxHeight: 12 },
+            sizing: { default: '4x6', supported: ['4x6', '8x6'] },
             configVersion: 2,
             defaultConfig: () => ({ label: t('default'), start: 0 }),
             validateConfig,

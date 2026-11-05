@@ -5,6 +5,12 @@ import type {} from '@deepseek-ai/cordis'
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 export type WidgetSize = 's' | 'm' | 'l'
 export type WidgetTitle = string | (() => string)
+/** Host-owned nominal grid catalog; extensions select names, never dimensions. */
+export type WidgetPreset = '4x4' | '4x6' | '4x8' | '4x12' | '8x4' | '8x6' | '8x8' | '8x12' | '12x4' | '12x6' | '12x8' | '12x12'
+export interface WidgetSizing {
+  default: WidgetPreset
+  supported: readonly WidgetPreset[]
+}
 
 /** Durable instance identity is distinct from its registered type; many instances may share one type. */
 export interface WidgetInstance<C extends JsonValue = JsonValue> {
@@ -14,7 +20,8 @@ export interface WidgetInstance<C extends JsonValue = JsonValue> {
   config: C
 }
 
-/** Width limits are integers 3..12 on the nominal grid; the host clamps them at 6/2-column breakpoints. */
+/** @deprecated Legacy registration hints, validated for compatibility then mapped
+ * to host presets. Arbitrary dimensions never reach new placement or size controls. */
 export interface WidgetDefaults {
   size: WidgetSize
   /** Heights are grid rows, not pixels. */
@@ -66,6 +73,9 @@ export interface WidgetDefinition<C extends JsonValue = JsonValue> {
   preview?: { config?: () => C; data?: JsonValue }
   /** Informational package/source label; not an authorization capability. */
   source?: string
+  /** Select only from the host grid catalog. Do not combine with legacy defaults. */
+  sizing?: WidgetSizing
+  /** @deprecated Use sizing; legacy values are mapped to a single host preset. */
   defaults?: Partial<WidgetDefaults>
   configVersion: number
   /** Must be synchronous. The registry clones and validates every returned value. */
@@ -79,7 +89,10 @@ export interface WidgetDefinition<C extends JsonValue = JsonValue> {
 }
 
 export type RegisteredWidgetDefinition<C extends JsonValue = JsonValue> =
-  Omit<WidgetDefinition<C>, 'defaults'> & { readonly defaults: Readonly<WidgetDefaults> }
+  Omit<WidgetDefinition<C>, 'defaults' | 'sizing'> & {
+    readonly defaults: Readonly<WidgetDefaults>
+    readonly sizing: Readonly<WidgetSizing>
+  }
 
 /** Service consumed by independent client extensions. The caller owns the disposer through ctx.effect. */
 export interface HomeWidgets {

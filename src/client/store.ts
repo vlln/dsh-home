@@ -9,9 +9,10 @@
  */
 
 import { homeOrder } from './layout-model.ts'
-import type { JsonValue, WidgetDefinition, WidgetInstance } from './widget-contract.ts'
+import type { JsonValue, WidgetDefinition, WidgetInstance, RegisteredWidgetDefinition, WidgetPreset } from './widget-contract.ts'
 import { HomeWidgetRegistry, migrateWidgetInstance, validateWidgetConfig } from './widget-registry.ts'
-import { buildSpatialLayout, canPlace, compactSpatialLayout, findSpatialSpace, mergeSpatialPositions, type SpatialItem } from './spatial-model.ts'
+import { legacyInstanceProjection, presetGeometry } from './widget-sizing.ts'
+import { applyWidgetPreset, buildSpatialLayout, canPlace, compactSpatialLayout, findSpatialSpace, mergeSpatialPositions, type SpatialItem } from './spatial-model.ts'
 import {
   emptyLayout, emptyPrefs, fetchWorkbench, fetchPrefs, fetchSnapshot, saveWorkbench, savePrefs, HomeApiError,
   type Layout, type LedgerSnapshot, type Prefs, type WidgetSize, type StorageStatus,
@@ -296,9 +297,9 @@ export class HomeStore {
     this.assertEditable()
     if (this.state.instances.length >= 64) throw new Error('Workbench instance limit reached')
     const registry = new HomeWidgetRegistry()
-    registry.register(definition, definition.typeId.startsWith('legacy:') ? { internalLegacyTypeId: true } : undefined)
+    registry.register({ ...definition, defaults: definition.sizing ? undefined : definition.defaults }, definition.typeId.startsWith('legacy:') ? { internalLegacyTypeId: true } : undefined)
     const instance = registry.createInstance(definition.typeId, crypto.randomUUID())
-    this.insertInstance(instance, definition, current, cols)
+    this.insertInstance(instance, registry.get(definition.typeId)!, current, cols)
   }
 
   /** Publish one accepted library drop and every displaced peer atomically; no first-fit intermediate. */
@@ -307,13 +308,14 @@ export class HomeStore {
     if(![2,6,12].includes(cols))throw new Error('Invalid grid columns')
     if(this.state.instances.length>=64||this.state.instances.some(item=>item.instanceId===id))throw new Error('Invalid new instance')
     const registry=new HomeWidgetRegistry()
-    registry.register(definition,definition.typeId.startsWith('legacy:')?{internalLegacyTypeId:true}:undefined)
+    registry.register({ ...definition, defaults: definition.sizing ? undefined : definition.defaults },definition.typeId.startsWith('legacy:')?{internalLegacyTypeId:true}:undefined)
     const instance=registry.createInstance(definition.typeId,id)
     const visible=this.state.instances.filter(item=>!this.state.layout.hidden.includes(item.instanceId)).map(item=>item.instanceId)
     if(accepted.length!==visible.length+1||new Set(accepted.map(item=>item.i)).size!==accepted.length||!accepted.some(item=>item.i===id)||visible.some(key=>!accepted.some(item=>item.i===key)))throw new Error('Stale drop layout')
     for(const item of accepted)if(![item.x,item.y,item.w,item.h].every(Number.isInteger)||item.x<0||item.y<0||item.w<1||item.h<3||item.x+item.w>cols||item.y+item.h>10003||!canPlace(accepted,item.i,item,cols))throw new Error('Invalid drop geometry')
-    const active=accepted.find(item=>item.i===id)!,defaults=registry.get(definition.typeId)!.defaults
-    if(active.w<Math.min(defaults.minWidth,cols)||active.w>Math.min(defaults.maxWidth,cols)||active.h<defaults.minHeight||active.h>defaults.maxHeight)throw new Error('Widget bounds exceeded')
+    const active=accepted.find(item=>item.i===id)!
+    const shape = presetGeometry(registry.get(definition.typeId)!.sizing.default, cols)
+    if(active.w!==shape.w||active.h!==shape.h)throw new Error('Widget preset dimensions required')
     const layout=mergeSpatialPositions(this.state.layout,accepted,cols)
     layout.order=[...new Set([...(this.state.layout.instanceLayout ? [...this.state.layout.order,...this.state.instances.map(item=>item.instanceId)] : homeOrder(this.state.layout,this.state.instances.map(item=>item.instanceId))),id])]
     layout.instanceLayout=true
@@ -327,12 +329,14 @@ export class HomeStore {
     const original = this.state.instances.find(instance => instance.instanceId === id)
     if (!original || original.typeId !== definition.typeId) throw new Error('Unknown widget instance or mismatched definition')
     const instance = { ...structuredClone(original), instanceId: crypto.randomUUID() }
-    this.insertInstance(instance, definition, current, cols)
+    const registry = new HomeWidgetRegistry()
+    registry.register({ ...definition, defaults: definition.sizing ? undefined : definition.defaults }, definition.typeId.startsWith('legacy:') ? { internalLegacyTypeId: true } : undefined)
+    this.insertInstance(instance, registry.get(definition.typeId)!, current, cols)
   }
 
-  private insertInstance(instance: WidgetInstance, definition: WidgetDefinition, current: SpatialItem[], cols: number): void {
+  private insertInstance(instance: WidgetInstance, definition: RegisteredWidgetDefinition, current: SpatialItem[], cols: number): void {
     const defaults = definition.defaults
-    const meta = { id: instance.instanceId, defaultSize: defaults?.size ?? 'm',
+    const meta = { id: instance.instanceId, sizing: definition.sizing, defaultSize: defaults?.size ?? 'm',
       defaultHeight: defaults?.height ?? 4, minWidth: defaults?.minWidth, minHeight: defaults?.minHeight,
       maxWidth: defaults?.maxWidth, maxHeight: defaults?.maxHeight }
     const layout = mergeSpatialPositions(this.state.layout, current, cols)
@@ -460,6 +464,30 @@ export class HomeStore {
     order.splice(side === 'before' ? index : index + 1, 0, id)
     this.set({ layout: { ...this.state.layout, order } })
     this.persistSoon()
+  }
+
+  /** Explicit, no-reflow grid preset transaction. Failures have zero publication/write. */
+  setWidgetPreset(id: string, definition: RegisteredWidgetDefinition, current: readonly SpatialItem[], cols: number, preset: WidgetPreset): boolean {
+    this.assertEditable()
+    if (this.disposed || ![2, 6, 12].includes(cols)) throw new Error('Invalid preset request')
+    const instance = this.state.instances.find(item => item.instanceId === id)
+    if (!instance || instance.typeId !== definition.typeId || this.state.layout.hidden.includes(id)) throw new Error('Unknown widget')
+    if (!this.migrationRegistry || this.migrationRegistry.get(instance.typeId) !== definition) throw new Error('Widget provider changed')
+    const metas = this.state.instances.map(item => {
+      const registered = this.migrationRegistry!.get(item.typeId)
+      return { id: item.instanceId, sizing: registered?.sizing,
+        legacyProjection: legacyInstanceProjection(item.typeId, item.instanceId, this.state.layout, registered), defaultSize: registered?.defaults.size ?? 'm' as const,
+        defaultHeight: registered?.defaults.height ?? 4, ...registered?.defaults }
+    })
+    const actual = buildSpatialLayout(this.state.layout, metas, cols)
+    if (actual.length !== current.length || new Set(current.map(item => item.i)).size !== current.length
+      || actual.some(item => !current.some(peer => peer.i === item.i && peer.x === item.x && peer.y === item.y && peer.w === item.w && peer.h === item.h))) throw new Error('Stale preset geometry')
+    for (const item of current) if (!canPlace(current, item.i, item, cols)) throw new Error('Invalid preset peers')
+    const next = applyWidgetPreset(current, id, definition.sizing, preset, cols)
+    if (next === current) return false
+    this.set({ layout: mergeSpatialPositions(this.state.layout, [next.find(item => item.i === id)!], cols) })
+    this.persistSoon()
+    return true
   }
 
   /** Persist only the active breakpoint, retaining hidden and absent plugin positions. */

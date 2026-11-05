@@ -133,7 +133,7 @@ test('accepted new instance and displaced peers publish once and persist as one 
 for (const cols of [12, 6, 2]) {
   test(`empty workbench accepts an exact ${cols}-column drop with no invented first-fit placement`, async () => {
     await withStore({}, async (store, control) => {
-      const proposal = [item('new', 0, 14, Math.min(cols, 4), 4)]
+      const proposal = [item('new', 0, 14, cols === 12 ? 4 : cols === 6 ? 3 : 2, 4)]
       store.dropInstance(definition(), 'new', proposal, cols)
       await store.flushLayout()
       assert.deepEqual(control.persisted.layout.positions[String(cols)].new, rect(proposal[0]))
@@ -167,7 +167,7 @@ for (const [label, change] of malformed) {
       const before = store.getSnapshot()
       let notifications = 0
       const off = store.subscribe(() => notifications++)
-      assert.throws(() => store.dropInstance(definition(), 'new', change(accepted()), 12), /drop/i)
+      assert.throws(() => store.dropInstance(definition(), 'new', change(accepted()), 12), /drop|preset dimensions/i)
       off()
       assert.strictEqual(store.getSnapshot(), before)
       assert.equal(notifications, 0)
@@ -190,18 +190,32 @@ for (const cols of [0, 1, 3, 6.5, 13, NaN, Infinity]) {
   })
 }
 
-test('new-instance dimensions must obey registered constraints rather than caller-provided metadata', async () => {
+test('new-instance dimensions must match the default host preset rather than legacy bounds or caller metadata', async () => {
   const def = definition({ defaults: { size: 's', height: 5, minWidth: 4, maxWidth: 8, minHeight: 5, maxHeight: 9 } })
   await withStore({}, async (store, control) => {
     const before = store.getSnapshot()
-    for (const proposal of [item('new', 0, 0, 3, 5), item('new', 0, 0, 9, 5), item('new', 0, 0, 4, 4), item('new', 0, 0, 4, 10)]) {
+    for (const proposal of [item('new', 0, 0, 3, 5), item('new', 0, 0, 9, 5), item('new', 0, 0, 4, 4), item('new', 0, 0, 4, 10),
+      item('new', 0, 0, 4, 5), item('new', 0, 0, 5, 6), item('new', 0, 0, 8, 6)]) {
       assert.throws(() => store.dropInstance(def, 'new', [proposal], 12), /drop|dimension|bound/i)
       assert.strictEqual(store.getSnapshot(), before)
     }
     assert.equal(control.writes.length, 0)
-    store.dropInstance(def, 'new', [item('new', 0, 0, 2, 5)], 2)
+    store.dropInstance(def, 'new', [item('new', 0, 0, 2, 6)], 2)
     await store.flushLayout()
-    assert.deepEqual(control.persisted.layout.positions['2'].new, { x: 0, y: 0, w: 2, h: 5 })
+    assert.deepEqual(control.persisted.layout.positions['2'].new, { x: 0, y: 0, w: 2, h: 6 })
+  })
+})
+
+test('library drops require default shape even when a different catalog shape is supported', async () => {
+  const def = definition({ defaults: undefined, sizing: { default: '4x6', supported: ['4x6', '8x6'] } })
+  await withStore({}, async (store, control) => {
+    const before = store.getSnapshot()
+    assert.throws(() => store.dropInstance(def, 'new', [item('new', 0, 0, 8, 6)], 12), /preset dimensions/i)
+    assert.strictEqual(store.getSnapshot(), before)
+    assert.equal(control.writes.length, 0)
+    store.dropInstance(def, 'new', [item('new', 0, 14, 4, 6)], 12)
+    await store.flushLayout()
+    assert.deepEqual(control.persisted.layout.positions['12'].new, { x: 0, y: 14, w: 4, h: 6 })
   })
 })
 

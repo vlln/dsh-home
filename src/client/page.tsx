@@ -17,6 +17,8 @@ import { WidgetGallery } from './widget-gallery.tsx'
 import { WidgetPreview } from './widget-preview.tsx'
 import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
+import { legacyInstanceProjection, projectedWidgetPresets } from './widget-sizing.ts'
+import type { WidgetPreset } from './widget-contract.ts'
 
 export interface HomePageProps {
   t: Translate
@@ -82,6 +84,7 @@ export function HomePage(props: HomePageProps): ReactNode {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const [managementError, setManagementError] = useState(false)
+  const [sizeError, setSizeError] = useState(false)
   const [interacting, setInteracting] = useState(false)
   const seenRef = useRef(false)
   const writable = state.workbenchLoaded && state.storage.writable
@@ -106,11 +109,12 @@ export function HomePage(props: HomePageProps): ReactNode {
   const metas = useMemo(() => state.instances.map(instance => {
     const defaults = byType.get(instance.typeId)?.defaults
     return {
-      id: instance.instanceId, defaultSize: defaults?.size ?? 'm' as const,
+      id: instance.instanceId, sizing: byType.get(instance.typeId)?.sizing,
+      legacyProjection: legacyInstanceProjection(instance.typeId, instance.instanceId, state.layout, byType.get(instance.typeId)), defaultSize: defaults?.size ?? 'm' as const,
       defaultHeight: defaults?.height ?? 4,
       ...(defaults === undefined ? {} : { minWidth: defaults.minWidth, maxWidth: defaults.maxWidth, minHeight: defaults.minHeight, maxHeight: defaults.maxHeight }),
     }
-  }), [state.instances, byType])
+  }), [state.instances, state.layout, byType])
   const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true, initialWidth: 1100 })
   const cols = width >= 950 ? 12 : width >= 580 ? 6 : 2
   useEffect(() => { setLibraryDrag(null) }, [cols,width])
@@ -176,7 +180,7 @@ export function HomePage(props: HomePageProps): ReactNode {
           </div>
           <div className="dsh-home-actions" role="group" aria-label={t('aria.actions')}>
             <Button variant={editing ? 'primary' : 'outline'} size="sm" disabled={!writable || busy || interacting || confirmDelete !== null} aria-pressed={editing}
-              onClick={() => { if (editing) void finish(); else { setEditing(true); setSaveError(false) } }}>
+              onClick={() => { if (editing) void finish(); else { setEditing(true); setSaveError(false); setSizeError(false) } }}>
               {t(saving ? 'edit.saving' : editing ? 'action.done' : 'action.edit')}
             </Button>
             {!editing && <>
@@ -197,6 +201,7 @@ export function HomePage(props: HomePageProps): ReactNode {
         </div>}
         {saveError && <div className="dsh-error" role="alert">{t('edit.saveError')}</div>}
         {managementError && <div className="dsh-error" role="alert">{t('manager.error')}</div>}
+        {sizeError && <div className="dsh-error" role="alert">{t('edit.presetBlocked')}</div>}
         {state.error !== null && <div className="dsh-error" role="alert">
           <span>{t('error.load')}</span><Button variant="ghost" size="sm" onClick={() => { void store.refresh() }}>{t('error.retry')}</Button>
         </div>}
@@ -227,9 +232,21 @@ export function HomePage(props: HomePageProps): ReactNode {
             }
             return <section key={instance.instanceId} className="dsh-w dsh-home-widget" data-widget-id={instance.instanceId} data-widget-type={instance.typeId} data-size={widgetProps.size}
               data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
-              <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!writable || busy || interacting}
+              <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!writable || busy || interacting} gripDisabled={!writable || busy}
                 icon={definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition}/></CardBoundary>}
-                onDelete={() => { setManagementError(false); setConfirmDelete(instance.instanceId) }} onNudge={key => nudge(instance.instanceId,key)}/>
+                onDelete={() => { setManagementError(false); setConfirmDelete(instance.instanceId) }} onNudge={key => nudge(instance.instanceId,key)}
+                sizeControl={definition && <select className="dsh-widget-size-select" aria-label={t('edit.presetLabel', { title })}
+                  disabled={!editable || interacting} value={projectedWidgetPresets(definition.sizing, cols).find(item => item.w === rect.w && item.h === rect.h)?.preset ?? ''}
+                  onChange={event => {
+                    if (!editable || interacting || registry.get(instance.typeId) !== definition) return
+                    setSizeError(false)
+                    try { store.setWidgetPreset(instance.instanceId, definition, geometry, cols, event.target.value as WidgetPreset) }
+                    catch { setSizeError(true) }
+                  }}>
+                  {!projectedWidgetPresets(definition.sizing, cols).some(item => item.w === rect.w && item.h === rect.h)
+                    && <option value="" disabled>{t('edit.presetLegacy', { w: rect.w, h: rect.h })}</option>}
+                  {projectedWidgetPresets(definition.sizing, cols).map(item => <option key={item.preset} value={item.preset}>{item.w} × {item.h}</option>)}
+                </select>} />
               <div className="dsh-w-body dsh-home-widget-content" inert={editing || undefined}>
                 {definition === undefined ? <div className="dsh-empty" role="status">{t('widget.unavailable', { typeId: instance.typeId })}</div>
                   : <CardBoundary key={renderKey(instance, definition)} fallback={<div className="dsh-error" role="alert">{t('error.card')}</div>}>

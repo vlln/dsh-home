@@ -18,7 +18,7 @@ export function libraryItem(definition: RegisteredWidgetDefinition, id: string, 
   if(![2,6,12].includes(cols)||layout.some(item=>item.i===id))throw new Error('Invalid library drag identity or columns')
   if(layout.some(item=>![item.x,item.y,item.w,item.h].every(Number.isInteger)||item.x<0||item.y<0||item.w<1||item.h<3))throw new Error('Invalid peer geometry')
   const d = definition.defaults
-  const item = buildSpatialLayout(emptyLayout(), [{ id, defaultSize:d.size, defaultHeight:d.height,
+  const item = buildSpatialLayout(emptyLayout(), [{ id, sizing:definition.sizing, defaultSize:d.size, defaultHeight:d.height,
     minWidth:d.minWidth,maxWidth:d.maxWidth,minHeight:d.minHeight,maxHeight:d.maxHeight }],cols)[0]!
   const y = Math.max(0,...layout.map(entry=>entry.y+entry.h))
   if(y+item.h>10000) throw new Error('No space for library draft')

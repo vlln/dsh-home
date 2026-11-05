@@ -47,6 +47,16 @@ import type { WidgetDefinition, WidgetContentProps } from '@vlln/dsh-home/widget
 
 No compilation is required for this directly authored JavaScript package. If you add a bundler, externalize `react` and `@deepseek-ai/dsh-client-ui-primitives` (plus any other host modules you actually import), and keep the `window.__ModuleLoader__.load` wrapper.
 
+## Host-owned size presets
+
+This example declares `sizing: { default: '4x6', supported: ['4x6', '8x6'] }`. These names select Home's shared catalog, not arbitrary dimensions: nominal widths are 4/8/12 and heights are 4/6/8/12 grid units. A provider can support a subset, but cannot create its own sizes or combine `sizing` with deprecated `defaults`.
+
+New counters start at the default preset. In layout-edit mode, use Home's size selector; it shows actual grid units at the current breakpoint, with no free-resize handle. Nominal widths 4/8/12 project to 4/8/12 on a 12-column grid, 3/6/6 on a 6-column grid, and 2/2/2 on a 2-column grid. Height is unchanged and duplicate projected shapes share one option, so the two counter widths become one option on a 2-column grid. A size change keeps the counter's top-left position and changes only the active breakpoint; a collision or boundary overflow rejects it without pushing other widgets.
+
+Existing legal saved rectangles retain their exact dimensions, even if they are not in the new catalog. They change size only when you explicitly select a preset. Home still persists per-breakpoint `x/y/w/h`, without a new preset identifier or a configuration migration. Component responsiveness should use the real content `width`/`height` in pixels; the legacy `size: 's' | 'm' | 'l'` prop is only a width bucket, not a preset identity.
+
+Older plugins may keep `defaults`: Home validates its original ranges, then maps the width bucket and rounds height up to 4/6/8/12, capped at 12, producing a single supported preset. Those legacy min/max values no longer enable arbitrary sizing. New integrations should use `sizing` and verify that their real content fits every supported shape, including narrow screens and enlarged text. See the [public sizing contract](<../../docs/widget-development.md#5-宿主尺寸档位与配置限制>) for details.
+
 ## Development observability
 
 `window.__homeExampleStats` exposes `mounts`, `unmounts`, `activeTimers`, and per-instance active mount counts. This deliberately development-only global remains readable after cleanup so a test can assert `activeTimers === 0` and all per-instance counts are zero. Stable DOM attributes are `data-home-example-instance` and `data-home-example-count`, keyed by durable instance id; the component-owned editor exposes `data-home-example-editor`. No probe server or runtime control surface is added by this example.

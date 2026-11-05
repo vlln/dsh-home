@@ -260,7 +260,7 @@ test('exhausted bounded space returns a complete snapshot clone without partial 
 test('invalid candidate, columns, pointer, missing id or corrupt snapshot returns a clone', () => {
   const snapshot = frozen([item('active', 0, 0), item('peer', 4, 10)])
   for (const bad of [null, [], {}, rect(-1, 0), rect(0, -1), rect(9, 0), rect(0, 10001),
-    rect(NaN, 0), rect(0.5, 0), rect(0, 0, 1), rect(0, 0, 4, 2), rect(0, 0, 4, 31)]) {
+    rect(NaN, 0), rect(0.5, 0), rect(0, 0, 0), rect(0, 0, 4, 2), rect(0, 0, 4, 31)]) {
     assert.deepEqual(multiPreviewPlacement(snapshot, 'active', bad, 12), snapshot)
   }
   for (const cols of [0, 13, 2.5, NaN, Infinity]) {

@@ -4,6 +4,8 @@ import type {
   WidgetContentProps, WidgetDefaults, WidgetDefinition, WidgetInstance,
 } from './widget-contract.ts'
 
+import { legacyWidgetSizing, normalizeWidgetSizing, sizingDefaults } from './widget-sizing.ts'
+
 export const WIDGET_JSON_LIMITS = Object.freeze({ maxDepth: 8, maxNodes: 4096, maxBytes: 8192, maxKeyLength: 256 })
 export const WIDGET_DEFAULTS: Readonly<WidgetDefaults> = Object.freeze({
   size: 'm', height: 4, minWidth: 3, maxWidth: 12, minHeight: 3, maxHeight: 30,
@@ -189,7 +191,9 @@ export class HomeWidgetRegistry implements HomeWidgets {
         && [Symbol.for('react.memo'), Symbol.for('react.forward_ref'), Symbol.for('react.lazy')].includes((value as { $$typeof: symbol }).$$typeof)
       if (typeof value !== 'function' && !wrapped) fail(`"${typeId}": ${key} must be a React component`)
     }
-    const defaults = defaultsFor(definition.defaults)
+    if (definition.sizing !== undefined && definition.defaults !== undefined) fail('use sizing or legacy defaults, not both')
+    const sizing = definition.sizing === undefined ? legacyWidgetSizing(defaultsFor(definition.defaults)) : normalizeWidgetSizing(definition.sizing)
+    const defaults = sizingDefaults(sizing)
     const factory = definition.defaultConfig
     const validator = definition.validateConfig
     const sample = definition.preview
@@ -214,7 +218,7 @@ export class HomeWidgetRegistry implements HomeWidgets {
       preview.config?.()
     }
     const normalized = {
-      ...definition, defaults, preview,
+      ...definition, defaults, sizing, preview,
       defaultConfig: () => {
         try { return validateWidgetConfig({ validateConfig: validator } as WidgetDefinition<C>, factory()) }
         catch (error) { fail(`"${typeId}" defaultConfig: ${message(error)}`) }

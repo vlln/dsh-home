@@ -594,10 +594,12 @@ export const CSS = `
   border-color: var(--dsw-alias-state-error-primary);
   background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent);
 }
-.dsh-home .react-grid-item > .react-resizable-handle { position: absolute; width: 24px; height: 24px; z-index: 6; touch-action: none; }
-.dsh-home .react-grid-item > .react-resizable-handle-se { bottom: 0; right: 0; cursor: se-resize; }
-.dsh-home .react-grid-item > .react-resizable-handle::after { content: ''; position: absolute; right: 7px; bottom: 7px; width: 7px; height: 7px; border-right: 2px solid var(--dsw-alias-label-tertiary); border-bottom: 2px solid var(--dsw-alias-label-tertiary); }
-.dsh-home .react-resizable-hide > .react-resizable-handle { display: none; }
+/* Geometry choices use a labelled native select (no host native-select primitive).
+   RGL resizing is disabled; no hidden or decorative free-resize handle remains. */
+.dsh-widget-size-select { min-width:0; max-width:150px; height:28px; padding:0 6px; border:.5px solid var(--dsw-alias-border-l3); border-radius:var(--dsw-radius-sm); background:var(--dsw-alias-bg-layer-1); color:var(--dsw-alias-label-primary); font:var(--dsw-font-xxs-12); cursor:default; touch-action:auto; }
+.dsh-widget-size-select:focus-visible { outline:2px solid var(--dsw-alias-state-business-primary); outline-offset:1px; }
+.dsh-home-widget .dsh-tools { flex:none; }
+.dsh-home-widget .dsh-w-head .dsh-w-title { flex:1 1 100px; }
 .dsh-home[data-editing="true"] .dsh-home-widget { border-style: solid; border-color: var(--dsw-alias-border-l3); }
 .dsh-home[data-editing="true"] .dsh-home-widget-content { opacity: 1; }
 .dsh-home[data-editing="true"] .dsh-widget-grip { touch-action: none; cursor: grab; }

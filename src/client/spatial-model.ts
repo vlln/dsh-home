@@ -1,11 +1,16 @@
 /** Pure home geometry; normal edits never compact. No React or grid runtime dependency. */
 import type { GridRect, Layout, WidgetSize } from './api.ts'
 import { homeOrder, legacySpatialHeight } from './layout-model.ts'
+import type { WidgetSizing } from './widget-contract.ts'
+import { presetGeometry, projectedWidgetPresets } from './widget-sizing.ts'
 
 export interface SpatialMeta {
   id: string
   defaultSize: WidgetSize
   defaultHeight?: number
+  sizing?: Readonly<WidgetSizing>
+  /** Compatibility hints only for an existing pre-position instance. */
+  legacyProjection?: { size: WidgetSize; height: number }
   minWidth?: number
   maxWidth?: number
   minHeight?: number
@@ -43,7 +48,7 @@ function isRect(value: unknown, cols: number): value is GridRect {
   const { x, y, w, h } = value
   return typeof x === 'number' && Number.isInteger(x) && x >= 0
     && typeof y === 'number' && Number.isInteger(y) && y >= 0 && y <= SPATIAL_MAX_Y
-    && typeof w === 'number' && Number.isInteger(w) && w >= Math.min(3, cols) && w <= cols
+    && typeof w === 'number' && Number.isInteger(w) && w >= 1 && w <= cols
     && typeof h === 'number' && Number.isInteger(h) && h >= SPATIAL_MIN_H && h <= SPATIAL_MAX_H
     && x + w <= cols
 }
@@ -186,12 +191,16 @@ export function buildSpatialLayout(
   const items = new Map<string, SpatialItem>()
   const itemFrom = (id: string, rect: GridRect): SpatialItem => {
     const meta = byId.get(id)!
+    // Resize is disabled; bounds must include grandfathered rectangles so RGL
+    // cannot silently clamp a saved custom size during an ordinary move.
+    const options = meta.sizing ? projectedWidgetPresets(meta.sizing, cols) : null
+    const minW = options ? Math.min(rect.w, ...options.map(item => item.w)) : Math.min(meta.minWidth ?? 3, cols)
+    const maxW = options ? Math.max(rect.w, ...options.map(item => item.w)) : Math.min(meta.maxWidth ?? cols, cols)
     return {
       i: id, x: rect.x, y: rect.y, w: rect.w, h: rect.h,
-      minW: Math.min(meta.minWidth ?? 3, cols), minH: meta.minHeight ?? SPATIAL_MIN_H,
-      maxW: Math.min(meta.maxWidth ?? cols, cols),
-      ...((meta.maxWidth ?? cols) < cols ? { viewportCols: cols } : {}),
-      ...(meta.maxHeight === undefined ? {} : { maxH: meta.maxHeight }),
+      minW, minH: options ? Math.min(rect.h, ...options.map(item => item.h)) : meta.minHeight ?? SPATIAL_MIN_H,
+      maxW, viewportCols: cols,
+      ...(options ? { maxH: Math.max(rect.h, ...options.map(item => item.h)) } : meta.maxHeight === undefined ? {} : { maxH: meta.maxHeight }),
     }
   }
 
@@ -214,10 +223,14 @@ export function buildSpatialLayout(
     const maxW = Math.min(meta.maxWidth ?? cols, cols)
     const minH = meta.minHeight ?? SPATIAL_MIN_H
     const maxH = meta.maxHeight ?? SPATIAL_MAX_H
+    const preset = meta.sizing ? presetGeometry(meta.sizing.default, cols) : null
     const shape = {
       x: 0, y: 0,
-      w: bounded(raw.w, Math.max(minW, Math.min(maxW, widthFromSize(size, cols))), minW, maxW),
-      h: bounded(raw.h, meta.defaultHeight ?? legacySpatialHeight(id), minH, maxH),
+      // Existing legacy width choices are grandfathered too. New library drafts
+      // use emptyLayout(), so only genuinely new instances take the host default.
+      w: preset ? (override === 's' || override === 'm' || override === 'l' ? widthFromSize(override, cols) : meta.legacyProjection ? widthFromSize(meta.legacyProjection.size, cols) : preset.w)
+        : bounded(raw.w, Math.max(minW, Math.min(maxW, widthFromSize(size, cols))), minW, maxW),
+      h: preset ? meta.legacyProjection?.height ?? preset.h : bounded(raw.h, meta.defaultHeight ?? legacySpatialHeight(id), minH, maxH),
     }
     const rect = findSpatialSpace(occupied, shape, cols)
     // Finite grid capacity is intentionally bounded; never emit an overlap.
@@ -253,6 +266,21 @@ export function moveSpatialItem<T extends SpatialItem>(
   const moved = { ...item, x: item.x + dx, y: item.y + dy }
   if (!canPlace(geometry, id, moved, count)) return geometry
   return geometry.map(entry => entry === item ? moved : entry)
+}
+
+/** Explicit size choice: keep x/y and every peer; no solver or automatic reflow. */
+export function applyWidgetPreset(
+  geometry: readonly SpatialItem[], id: string, sizing: Readonly<WidgetSizing>, preset: import('./widget-contract.ts').WidgetPreset, cols: number,
+): readonly SpatialItem[] {
+  if (!sizing.supported.includes(preset)) throw new Error('Unsupported widget preset')
+  const option = projectedWidgetPresets(sizing, cols).find(item => item.preset === preset)
+    ?? (sizing.supported.includes(preset) ? { preset, ...presetGeometry(preset, cols) } : undefined)
+  const target = geometry.find(item => item.i === id)
+  if (!target || !option) throw new Error('Unknown widget or preset')
+  const next = { ...target, w: option.w, h: option.h }
+  if (!canPlace(geometry, id, next, cols)) throw new Error('Widget preset is blocked')
+  if (target.w === next.w && target.h === next.h) return geometry
+  return geometry.map(item => item === target ? next : item)
 }
 
 /**
