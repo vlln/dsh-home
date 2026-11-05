@@ -1,5 +1,6 @@
 export const zhActivity = {
-  'activity.title': '工作足迹', 'activity.description': '按浏览器时区查看人工消息记录，不含子代理和自动续轮。',
+  'activity.title': '工作足迹', 'activity.description': '按浏览器时区查看人工消息记录，通过「筛选范围」选择目录与时间段；不含子代理和自动续轮。',
+  'activity.edit': '筛选范围',
   'activity.metric': '人工消息', 'activity.summary': '近 {days} 天 · {active} 天有记录 · {messages} 条消息',
   'activity.day': '{date} · {messages} 条人工消息 · {sessions} 个会话',
   'activity.partialDay': '{date} · 已整理 {messages} 条人工消息（历史未完整）',
@@ -16,7 +17,8 @@ export const zhActivity = {
   'activity.year': '最近一年', 'activity.zone': '时区：{zone} · 仅统计顶层会话的人工消息',
 } as const
 export const enActivity: Record<keyof typeof zhActivity, string> = {
-  'activity.title': 'Work footprints', 'activity.description': 'Human messages by browser time zone, excluding subagents and automatic continuation.',
+  'activity.title': 'Work footprints', 'activity.description': 'Human messages by browser time zone; use Filter range to choose a directory and period. Excludes subagents and automatic continuation.',
+  'activity.edit': 'Filter range',
   'activity.metric': 'Human messages', 'activity.summary': 'Last {days} days · {active} recorded days · {messages} messages',
   'activity.day': '{date} · {messages} human messages · {sessions} sessions',
   'activity.partialDay': '{date} · {messages} indexed human messages (history incomplete)',

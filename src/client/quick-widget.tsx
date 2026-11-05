@@ -5,6 +5,7 @@ import { builtinPreviewData, useBuiltin } from './builtin-registration.tsx'
 import { formatAgo, shortcutHint, type Translate } from './format.ts'
 import type { WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
+import { WidgetConfigEditor } from './widget-settings.tsx'
 import {
   QUICK_CONFIG_VERSION, QUICK_KINDS, QUICK_LIMITS, QUICK_TYPE_ID,
   defaultQuickConfig, migrateQuickConfig, quickConfigError, quickLinkError, quickWorkdirDraft, validateQuickConfig,
@@ -17,7 +18,8 @@ function QuickGlyph() {
   </svg>
 }
 
-export function QuickContent({ config, instance, editing, visible, preview }: WidgetContentProps<QuickConfig>) {
+export function QuickContent(props: WidgetContentProps<QuickConfig>) {
+  const { config, instance, editing, visible, preview } = props
   const { state, t, actions } = useBuiltin()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -80,6 +82,8 @@ export function QuickContent({ config, instance, editing, visible, preview }: Wi
     {busy && <p className="dsh-muted" role="status">{t('quick.preparing')}</p>}
     {error !== null && <p className="dsh-quick-widget-error" role="alert">{error}</p>}
     <span className="dsh-muted">{t('quick.hint')}</span>
+    <WidgetConfigEditor t={t} widgetProps={props} title={t('widget.quick.title')} label={t('quick.edit')}
+      Fields={QuickSettings} validate={validateQuickConfig} />
   </div>
 }
 
@@ -128,6 +132,6 @@ export function registerQuickWidget(registry: HomeWidgetRegistry, t: Translate):
     description: () => t('quick.description'), source: '@vlln/dsh-home', icon: QuickGlyph,
     preview: { data: builtinPreviewData(t) }, defaults: { size: 's', height: 4 }, configVersion: QUICK_CONFIG_VERSION,
     defaultConfig: defaultQuickConfig, validateConfig: validateQuickConfig, migrateConfig: migrateQuickConfig,
-    Content: QuickContent, Settings: QuickSettings,
+    Content: QuickContent,
   })
 }

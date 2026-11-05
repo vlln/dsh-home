@@ -1,7 +1,7 @@
 # 开发 Home 小组件（API v1）
 
 小组件是**独立 DSH 代码插件**贡献的 React 组件类型，不是首页里的任意脚本输入框。
-插件通过 Cordis 注入服务 `homeWidgets` 注册类型；Home 管理实例、布局、设置草稿与持久化。
+插件通过 Cordis 注入服务 `homeWidgets` 注册类型；Home 管理实例、布局与持久化；组件自己管理编辑入口、草稿和保存 / 取消 UI。
 不需要、也不应运行时 import Home 的内部 store、接口实现或几何模块。
 
 完整独立包示例：[计数器插件说明](<../examples/widget-counter/README.md>)。
@@ -14,22 +14,22 @@ TypeScript 只导入类型入口；构建后该 import 必须消失：
 ```tsx
 import type { Context } from '@deepseek-ai/cordis'
 import type {
-  WidgetDefinition, WidgetContentProps, WidgetSettingsProps,
+  WidgetDefinition, WidgetContentProps,
 } from '@vlln/dsh-home/widgets'
 
 type Config = { label: string }
 
-function Content({ config, instance }: WidgetContentProps<Config>) {
-  return <p data-instance={instance.instanceId}>{config.label}</p>
-}
-
-function Settings({ config, onConfigChange }: WidgetSettingsProps<Config>) {
-  return <label>
-    {/* 示例文案；实际插件使用自己的客户端 locale 字典。 */}
-    Label
-    <input value={config.label}
-      onChange={event => onConfigChange({ ...config, label: event.target.value })} />
-  </label>
+function Content({ config, instance, saveConfig, editing, preview }: WidgetContentProps<Config>) {
+  // 实际组件可自行提供完整草稿 / 弹窗；这里仅展示一个最小持久化动作。
+  return <div data-instance={instance.instanceId}>
+    <p>{config.label}</p>
+    {!editing && !preview && saveConfig && <button onClick={() => {
+      void saveConfig({ label: 'Updated greeting' }).catch(error => {
+        // 真实 UI 应显示失败并保留草稿，而不是只记控制台。
+        console.error(error)
+      })
+    }}>Update greeting</button>}
+  </div>
 }
 
 const definition: WidgetDefinition<Config> = {
@@ -42,7 +42,6 @@ const definition: WidgetDefinition<Config> = {
   validateConfig: config => typeof config.label === 'string' && config.label.length <= 100,
   defaults: { size: 's', height: 4 },
   Content,
-  Settings,
 }
 
 export function apply(ctx: Context): void {
@@ -116,7 +115,7 @@ Home 的 `@vlln/dsh-home/widgets` 导出只有 `types` 条件，对应包内
 命名空间采用小写稳定段；`legacy:` 是 Home 内部兼容适配器保留前缀，不用于新插件。
 
 注册只让类型出现在组件目录，**不会自动创建实例**。用户进入首页的
-**编辑布局 → 小组件** 后，把标题或把手拖到桌面有效落点松手，才创建实例。每次拖入生成新 `instanceId`；取消或画布外松手不创建。当前原型移除隐藏、复制和独立实例管理页；内容编辑和确认删除位于桌面卡片右上角。历史隐藏记录仍原样保留，删除经确认后移除该实例及全部断点位置。卸载扩展只撤销类型，
+**编辑布局 → 小组件** 后，把标题或把手拖到桌面有效落点松手，才创建实例。每次拖入生成新 `instanceId`；取消或画布外松手不创建。当前原型移除隐藏、复制和独立实例管理页；外壳只提供移动 / 缩放 / 删除，配置编辑完全由 Content 自行提供；删除使用独立确认弹窗。历史隐藏记录仍原样保留，删除经确认后移除该实例及全部断点位置。卸载扩展只撤销类型，
 不删除已经保存的实例；缺失类型以占位卡保留，重新安装相同 `typeId` 后可恢复。
 
 `createInstance(typeId, instanceId)` 服务方法只生成本地配置记录，不替代 Home 的用户添加流程，
@@ -129,27 +128,19 @@ Home 的 `@vlln/dsh-home/widgets` 导出只有 `types` 条件，对应包内
 
 `Content` 在预览中收到 `props.preview = { data }`，普通桌面实例不带此字段。组件必须在 preview 存在时停用网络、计时器、订阅、导航和写入，使用样例或空数据渲染同一视图。内置组件提供隔离的空 runtime / 样例数据，不创建 HomeStore，不调用模型或活动 API。预览正文 inert 且不进入键盘导航；这不是安全沙箱，不能替不遵守约定的第三方代码清理副作用。预览异常只隔离该卡，不持久化预览实例。
 
-## 4. 组件 props 与设置草稿
+## 4. 组件 props 与自行编辑
 
-`Content` 收到 `{ instance, config, size, width, height, editing, visible }`：
+`Content` 收到 `{ instance, config, size, width, height, editing, visible, saveConfig? }`，预览另带 `preview`：
 
-- `config` 是当前实例的配置，不是插件的全局配置；不要原地修改 props。
-- `size` 为兼容的 `s | m | l` 档；`width` / `height` 是实际内容区域的 CSS 像素数，
-  **不是网格列数/行数**。尺寸首次测量时应容忍近似值，随后响应实际测量更新。
-- `editing` 表示首页正在编辑布局；此时 Home 使内容区域 inert，避免误操作。
-- `visible` 是宿主提供的可见性信号，不是交叉观察器的视口曝光保证。
-  隐藏组件通常卸载，不会持续收到 `visible: false`。定时器、请求和订阅必须始终清理，
-  并按需在 `!visible || editing` 时暂停。
-- `Content` 只画卡内内容；外壳、标题、图标、拖动把手与错误边界由 Home 提供。
+- `config` 为当前实例配置，不可原地修改；组件自己克隆草稿，并决定表单、编辑入口与弹窗。
+- `size` 为兼容 `s | m | l`；`width` / `height` 为真实正文区域 CSS 像素，而非网格列 / 行。
+- `editing` 表示 Home 布局编辑态，正文 inert，此时不提供 `saveConfig`。
+- `visible` 不是视口交叉观察保证；隐藏通常卸载，必须清理计时器 / 请求 / 订阅。
+- 可选 `saveConfig(nextConfig): Promise<void>` 替换本实例完整配置。Home 克隆并校验，等待持久化成功后更新，失败 reject 且旧配置不变。仅在可写、非忙、非布局编辑的真实实例中提供；预览绝不提供。
+- 编辑入口和草稿保存 / 取消 / 错误提示是具体组件自己的能力，不能依赖通用外壳按钮。没有配置需求的组件不必实现编辑器。
+- `Settings` 定义字段已废弃，仅为旧类型检查保留；Home 不自动渲染它。已有扩展需将原表单接入自己的 Content，并通过 `saveConfig` 保存。`WidgetSettingsProps.onConfigChange` 可作为扩展内部草稿表单约定，但不再代表 Home 管理的设置面。
 
-可选 `Settings` 收到相同 props，加上 `onConfigChange(nextConfig)`。
-这是**替换整个设置草稿**，不是 patch，也不是持久化动作；如需合并，由扩展自行展开旧值。
-Home 在打开设置、接收变更、校验与保存边界克隆配置，避免草稿与已保存记录共享引用。
-
-1. 打开设置，Home 克隆当前配置作为草稿。
-2. `onConfigChange` 只更新草稿，正文仍显示已提交配置。
-3. 取消或关闭丢弃草稿；保存先校验，再等待持久化成功，之后才替换正文配置。
-4. 校验或写盘失败保留旧配置，并保留设置面供修正/重试；设置组件渲染失败禁止提交。
+内置便笺 / 时钟 / 快捷 / 工作足迹显式选用内部 `WidgetConfigEditor` 帮手；该帮手不是公共运行时出口，第三方不得 import Home 内部文件，应使用自己的代码与宿主 UI 控件。取消不调用保存；错误保留草稿；表单渲染失败禁止提交。
 
 正文渲染异常只影响该卡；标题/图标也有相应降级边界。错误边界不是代码权限隔离。
 
@@ -215,13 +206,13 @@ JSON 校验、错误边界和来源标签不能限制恶意代码的 DOM、网�
 
 ## 8. 本地安装与验证
 
-Home `0.10.2` 的本地开发包不等于已发布 npm 版本。在 Home 仓库根构建并打包，
+Home `0.14.0` 的本地开发包不等于已发布 npm 版本。在 Home 仓库根构建并打包，
 再安装到你自己的隔离验证 home（替换命令中的占位符）：
 
 ```sh
 pnpm run build
 pnpm pack
-DSH_HOME=<isolated-home> dsh plugin --profile web add ./vlln-dsh-home-0.10.2.tgz
+DSH_HOME=<isolated-home> dsh plugin --profile web add ./vlln-dsh-home-0.14.0.tgz
 ```
 
 独立示例包的构建/安装命令见[计数器说明](<../examples/widget-counter/README.md#install-locally>)。
@@ -229,6 +220,6 @@ DSH_HOME=<isolated-home> dsh plugin --profile web add ./vlln-dsh-home-0.10.2.tgz
 涉及 Node 半边产物更新时重启对应隔离进程；不要启动另一个服务器来冒充已打开页面更新。
 
 交付前至少实际验证：缺 Home 时正常启动、类型出现但无自动实例、添加两次互不影响、
-复制与设置保存/取消、写盘失败不丢原配置、隐藏/恢复/删除、扩展停用占位及重启恢复、
+组件自有编辑保存/取消、写盘失败不丢原配置、独立确认删除、扩展停用占位及重启恢复、
 迁移成功/失败、渲染抛错只坏一张、卸载后定时器/订阅清零，以及 zh/en、浅深主题和窄屏。
 检查实际 tarball 的入口、类型声明、locale 与图标；单测通过或页面能打开不替代这些真实链路。

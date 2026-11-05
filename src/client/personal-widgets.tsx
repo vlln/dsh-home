@@ -7,6 +7,7 @@ import {
 import { useBuiltin } from './builtin-registration.tsx'
 import type { Translate } from './format.ts'
 import type { HomeWidgets, WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
+import { WidgetConfigEditor } from './widget-settings.tsx'
 import {
   CLOCK_ZONE_MAX_LENGTH, PERSONAL_CONFIG_MAX_BYTES, PERSONAL_LABEL_MAX_LENGTH,
   defaultClockConfig, defaultNotesConfig, formatPersonalClock, isValidTimeZone,
@@ -19,13 +20,16 @@ function textFieldLabels(t: Translate) {
   return { overridden: false, overriddenLabel: t('personal.edited'), resetLabel: t('personal.reset'), disabled: false }
 }
 
-export function NotesContent({ config }: WidgetContentProps<NotesConfig>): ReactNode {
+export function NotesContent(props: WidgetContentProps<NotesConfig>): ReactNode {
+  const { config } = props
   const { t } = useBuiltin()
   return <div className="dsh-personal-notes">
     {config.title !== '' && <h3 className="dsh-personal-label">{config.title}</h3>}
     {config.text === ''
       ? <p className="dsh-personal-hint">{t('notes.empty')}</p>
       : <div className="dsh-personal-note-text">{config.text}</div>}
+    <WidgetConfigEditor t={t} widgetProps={props} title={t('widget.notes.title')} label={t('notes.edit')}
+      Fields={NotesSettings} validate={validateNotesConfig} />
   </div>
 }
 
@@ -58,7 +62,8 @@ export function NotesSettings({ config, onConfigChange }: WidgetSettingsProps<No
   </div>
 }
 
-export function ClockContent({ config, visible, preview }: WidgetContentProps<ClockConfig>): ReactNode {
+export function ClockContent(props: WidgetContentProps<ClockConfig>): ReactNode {
+  const { config, visible, preview } = props
   const { t, state } = useBuiltin()
   const [liveNow, setNow] = useState(() => preview ? state.now : Date.now())
   const now = preview ? state.now : liveNow
@@ -80,7 +85,11 @@ export function ClockContent({ config, visible, preview }: WidgetContentProps<Cl
     {config.label !== '' && <h3 className="dsh-personal-label">{config.label}</h3>}
     <time className="dsh-personal-clock-time" dateTime={new Date(now).toISOString()}>{time}</time>
     <p className="dsh-personal-clock-date">{date}</p>
-    <p className="dsh-personal-hint">{config.timeZone || t('clock.browserZone')}</p>
+    <div className="dsh-personal-clock-meta">
+      <p className="dsh-personal-hint">{config.timeZone || t('clock.browserZone')}</p>
+      <WidgetConfigEditor t={t} widgetProps={props} title={t('widget.clock.title')} label={t('clock.edit')}
+        Fields={ClockSettings} validate={validateClockConfig} />
+    </div>
   </div>
 }
 
@@ -121,13 +130,13 @@ export function registerPersonalWidgets(registry: HomeWidgets, t: Translate): ()
       typeId: '@vlln/dsh-home:notes', apiVersion: 1, configVersion: 1, source: '@vlln/dsh-home',
       title: () => t('widget.notes.title'), description: () => t('widget.notes.description'), icon: IconEditOutlineRegular,
       preview: { config: () => ({ title: t('gallery.sample.noteTitle'), text: t('gallery.sample.noteText') }) }, defaults: { size: 's', height: 6, minHeight: 4 },
-      defaultConfig: defaultNotesConfig, validateConfig: validateNotesConfig, Content: NotesContent, Settings: NotesSettings,
+      defaultConfig: defaultNotesConfig, validateConfig: validateNotesConfig, Content: NotesContent,
     }))
     disposers.push(registry.register<ClockConfig>({
       typeId: '@vlln/dsh-home:clock', apiVersion: 1, configVersion: 1, source: '@vlln/dsh-home',
       title: () => t('widget.clock.title'), description: () => t('widget.clock.description'), icon: IconClockOutlineRegular,
       preview: { config: () => ({ ...defaultClockConfig(), timeZone: 'UTC' }), data: { now: Date.UTC(2026, 9, 20, 10, 24) } }, defaults: { size: 's', height: 4, minHeight: 4 },
-      defaultConfig: defaultClockConfig, validateConfig: validateClockConfig, Content: ClockContent, Settings: ClockSettings,
+      defaultConfig: defaultClockConfig, validateConfig: validateClockConfig, Content: ClockContent,
     }))
   } catch (error) { dispose(); throw error }
   return dispose

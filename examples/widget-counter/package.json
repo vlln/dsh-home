@@ -1,6 +1,6 @@
 {
   "name": "@vlln/dsh-home-example-counter",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Independent counter widget example for the dsh-home injected service.",
   "license": "MIT",
@@ -18,6 +18,6 @@
   "files": ["index.mjs", "client.js", "cordis.patch.yml", "icon.svg", "locale", "README.md", "LICENSE"],
   "dsh": {
     "bundle": { "patch": "./cordis.patch.yml" },
-    "client": { "platform": "web", "external": ["react"] }
+    "client": { "platform": "web", "external": ["react", "@deepseek-ai/dsh-client-ui-primitives"] }
   }
 }

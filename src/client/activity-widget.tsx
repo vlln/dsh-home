@@ -6,6 +6,7 @@ import { activityLevel, activityWeeks, shiftCalendarDay, validateActivityConfig,
 import type { WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { Translate } from './format.ts'
+import { WidgetConfigEditor } from './widget-settings.tsx'
 
 function browserZone() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' }
 function useActivity(cwd: string, date?: string, preview?: WidgetContentProps['preview']) {
@@ -54,7 +55,15 @@ function useActivity(cwd: string, date?: string, preview?: WidgetContentProps['p
   const detailReady = result !== null && loaded?.date === date
   return { result, error, loading, detailReady, retry: () => setRetry(n => n + 1) }
 }
-function ActivityContent({ config, width, preview }: WidgetContentProps<ActivityConfig>) {
+function ActivityContent(props: WidgetContentProps<ActivityConfig>) {
+  const { t } = useBuiltin()
+  return <>
+    <ActivityBody {...props} />
+    <WidgetConfigEditor t={t} widgetProps={props} title={t('activity.title')} label={t('activity.edit')}
+      Fields={ActivitySettings} validate={validateActivityConfig} />
+  </>
+}
+function ActivityBody({ config, width, preview }: WidgetContentProps<ActivityConfig>) {
   const { t, state, actions } = useBuiltin()
   const [date, setDate] = useState<string>()
   const { result, error, loading, detailReady, retry } = useActivity(config.cwd, date, preview)
@@ -130,5 +139,5 @@ export function registerActivityWidget(registry: HomeWidgetRegistry, t: Translat
       progress: { done: 3, total: 3 }, sessions: [], matchedSessions: 0,
     } }, defaults: { size: 'm', height: 6, minHeight: 5 }, configVersion: 1,
     defaultConfig: () => ({ cwd: '', range: 'auto' }), validateConfig: validateActivityConfig,
-    Content: ActivityContent, Settings: ActivitySettings })
+    Content: ActivityContent })
 }

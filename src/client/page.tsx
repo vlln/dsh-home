@@ -1,7 +1,7 @@
 /** Registry-driven widget instances. The page owns layout, not widget business logic. */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { formatAgo, formatDay, type Translate } from './format.ts'
 import type { WidgetActions } from './widgets.tsx'
 import type { SessionStatusMap } from './focus.tsx'
@@ -11,7 +11,7 @@ import { SpatialGrid } from './spatial-grid.tsx'
 import { buildSpatialLayout, moveSpatialItem, sizeFromRect, SPATIAL_GAP, SPATIAL_ROW_HEIGHT, type SpatialItem } from './spatial-model.ts'
 import type { HomeStore } from './store.ts'
 import type { HomeWidgets, RegisteredWidgetDefinition, WidgetContentProps, WidgetInstance } from './widget-contract.ts'
-import { widgetText, WidgetSettingsPanel } from './widget-settings.tsx'
+import { widgetText } from './widget-settings.tsx'
 import { validateWidgetConfig } from './widget-registry.ts'
 import { WidgetGallery } from './widget-gallery.tsx'
 import { WidgetPreview } from './widget-preview.tsx'
@@ -29,7 +29,7 @@ export interface HomePageProps {
   useSessionStatus?: (selector: (snapshot: SessionStatusMap) => unknown) => unknown
 }
 
-function WidgetBody({ definition, widgetProps, onDimensions }: { definition: RegisteredWidgetDefinition; widgetProps: WidgetContentProps; onDimensions: (id: string, width: number, height: number) => void }): ReactNode {
+function WidgetBody({ definition, widgetProps }: { definition: RegisteredWidgetDefinition; widgetProps: WidgetContentProps }): ReactNode {
   const viewport = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   useEffect(() => {
@@ -40,13 +40,12 @@ function WidgetBody({ definition, widgetProps, onDimensions }: { definition: Reg
       const width = Math.max(0, node.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight))
       const height = Math.max(0, node.clientHeight - Number.parseFloat(style.paddingTop) - Number.parseFloat(style.paddingBottom))
       setDimensions(previous => previous.width === width && previous.height === height ? previous : { width, height })
-      onDimensions(widgetProps.instance.instanceId, width, height)
     }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(node)
     return () => { observer.disconnect() }
-  }, [onDimensions, widgetProps.instance.instanceId])
+  }, [widgetProps.instance.instanceId])
   // Validation/migration errors stay inside this instance's boundary, not the page render.
   if (widgetProps.instance.configVersion !== definition.configVersion) throw new Error('Widget config version unavailable')
   const config = validateWidgetConfig(definition, widgetProps.config)
@@ -78,23 +77,16 @@ export function HomePage(props: HomePageProps): ReactNode {
   const [editing, setEditing] = useState(false)
   const [trayOpen, setTrayOpen] = useState(false)
   const [libraryDrag, setLibraryDrag] = useState<LibraryDrag | null>(null)
-  const [confirmReset, setConfirmReset] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [settingsId, setSettingsId] = useState<string | null>(null)
   const [sinceCount, setSinceCount] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const [managementError, setManagementError] = useState(false)
   const [interacting, setInteracting] = useState(false)
-  const [bodyDimensions, setBodyDimensions] = useState<Record<string, { width: number; height: number }>>({})
-  const measureBody = useCallback((id: string, width: number, height: number): void => {
-    setBodyDimensions(previous => previous[id]?.width === width && previous[id]?.height === height
-      ? previous : { ...previous, [id]: { width, height } })
-  }, [])
   const seenRef = useRef(false)
   const writable = state.workbenchLoaded && state.storage.writable
   const busy = saving || state.workbenchBusy
-  const editable = editing && writable && !busy && settingsId === null
+  const editable = editing && writable && !busy && confirmDelete === null
   useEffect(() => { void store.refresh() }, [store])
   useEffect(() => {
     if (seenRef.current || state.ledger === null || !state.prefsLoaded || !writable) return
@@ -105,12 +97,6 @@ export function HomePage(props: HomePageProps): ReactNode {
     seenRef.current = true
     store.markSeen()
   }, [state.ledger, state.prefs.lastSeenAt, state.prefsLoaded, writable, store])
-  useEffect(() => {
-    if (!confirmReset) return
-    const timer = setTimeout(() => { setConfirmReset(false) }, 4000)
-    return () => { clearTimeout(timer) }
-  }, [confirmReset])
-
   // Re-registering the same type/version must recover a previous render error too.
   const definitionIds = useRef(new WeakMap<RegisteredWidgetDefinition, number>())
   const nextDefinitionId = useRef(0)
@@ -136,7 +122,7 @@ export function HomePage(props: HomePageProps): ReactNode {
     if (editable) store.setSpatialLayout(value, cols)
   }, [editable, store, cols])
   const finish = useCallback(async () => {
-    if (interacting || busy || !writable || settingsId !== null) return
+    if (interacting || busy || !writable || confirmDelete !== null) return
     setSaving(true)
     setSaveError(false)
     try {
@@ -144,22 +130,21 @@ export function HomePage(props: HomePageProps): ReactNode {
       await store.flushLayout()
       setEditing(false)
       setTrayOpen(false)
-      setConfirmReset(false)
       setConfirmDelete(null)
     } catch { setSaveError(true) }
     finally { setSaving(false) }
-  }, [geometry, cols, interacting, busy, writable, settingsId, store])
+  }, [geometry, cols, interacting, busy, writable, confirmDelete, store])
   useEffect(() => {
     const keydown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || interacting || busy) return
-      if (settingsId !== null) { event.preventDefault(); setSettingsId(null); return }
-      if (confirmDelete !== null) { event.preventDefault(); setConfirmDelete(null); return }
+      if (event.defaultPrevented || event.key !== 'Escape' || interacting || busy) return
+      // The modal owns Escape and focus restoration.
+      if (confirmDelete !== null) return
       if (trayOpen) { event.preventDefault(); setTrayOpen(false); return }
       if (editing) { event.preventDefault(); void finish() }
     }
     window.addEventListener('keydown', keydown)
     return () => { window.removeEventListener('keydown', keydown) }
-  }, [editing, finish, busy, trayOpen, interacting, settingsId, confirmDelete])
+  }, [editing, finish, busy, trayOpen, interacting, confirmDelete])
   const nudge = (id: string, key: string): void => {
     if (!editable || interacting) return
     const dx = key === 'ArrowLeft' ? -1 : key === 'ArrowRight' ? 1 : 0
@@ -172,8 +157,8 @@ export function HomePage(props: HomePageProps): ReactNode {
     setManagementError(false)
     try { change() } catch { setManagementError(true) }
   }
-  const settingsInstance = settingsId === null ? undefined : instancesById.get(settingsId)
-  const settingsDefinition = settingsInstance === undefined ? undefined : byType.get(settingsInstance.typeId)
+  const deleteInstance = confirmDelete === null ? undefined : instancesById.get(confirmDelete)
+  const deleteTitle = deleteInstance ? widgetText(byType.get(deleteInstance.typeId)?.title, deleteInstance.typeId) : ''
   return (
     <div className="dsh-home" data-editing={editing ? 'true' : 'false'}>
       <div className="dsh-home-inner">
@@ -190,7 +175,7 @@ export function HomePage(props: HomePageProps): ReactNode {
             </div>
           </div>
           <div className="dsh-home-actions" role="group" aria-label={t('aria.actions')}>
-            <Button variant={editing ? 'primary' : 'outline'} size="sm" disabled={!writable || busy || interacting || settingsId !== null} aria-pressed={editing}
+            <Button variant={editing ? 'primary' : 'outline'} size="sm" disabled={!writable || busy || interacting || confirmDelete !== null} aria-pressed={editing}
               onClick={() => { if (editing) void finish(); else { setEditing(true); setSaveError(false) } }}>
               {t(saving ? 'edit.saving' : editing ? 'action.done' : 'action.edit')}
             </Button>
@@ -207,7 +192,7 @@ export function HomePage(props: HomePageProps): ReactNode {
           <span className="dsh-edit-hint">{t('edit.hint')}</span>
           <div className="dsh-edit-actions">
             <Button variant="outline" size="sm" aria-expanded={trayOpen} onClick={() => { setTrayOpen(!trayOpen) }}>{t('action.widgets')}</Button>
-            <Button variant="ghost" size="sm" onClick={() => { if (!confirmReset) setConfirmReset(true); else manage(() => { store.reset(); setConfirmReset(false) }) }}>{t(confirmReset ? 'action.resetConfirm' : 'action.reset')}</Button>
+            <Button variant="ghost" size="sm" disabled={libraryDrag !== null || geometry.length === 0} title={t('action.compactHint')} onClick={() => manage(() => { store.compactSpatialLayout(geometry, cols) })}>{t('action.compact')}</Button>
           </div>
         </div>}
         {saveError && <div className="dsh-error" role="alert">{t('edit.saveError')}</div>}
@@ -215,7 +200,7 @@ export function HomePage(props: HomePageProps): ReactNode {
         {state.error !== null && <div className="dsh-error" role="alert">
           <span>{t('error.load')}</span><Button variant="ghost" size="sm" onClick={() => { void store.refresh() }}>{t('error.retry')}</Button>
         </div>}
-        {editing && trayOpen && <WidgetGallery definitions={definitions} t={t} disabled={!writable || busy || interacting || settingsId !== null}
+        {editing && trayOpen && <WidgetGallery definitions={definitions} t={t} disabled={!writable || busy || interacting || confirmDelete !== null}
           onClose={() => setTrayOpen(false)} onDrag={(definition,point,grab) => {
             if(!editable || interacting)return
             try {
@@ -223,10 +208,6 @@ export function HomePage(props: HomePageProps): ReactNode {
               setLibraryDrag({id,definition,item,start:{x:point.x,y:point.y},grab:{x:grab.x*((width+12)/cols*item.w-12),y:grab.y},touch:point.touch,pointerId:point.pointerId,baseLayout:JSON.stringify(state.layout)})
             } catch {setManagementError(true)}
           }} />}
-        {settingsInstance !== undefined && settingsDefinition?.Settings !== undefined && <WidgetSettingsPanel key={renderKey(settingsInstance, settingsDefinition)}
-          t={t} store={store} definition={settingsDefinition} disabled={!writable || busy}
-          widgetProps={{ ...contentProps(settingsInstance, geometry.find(rect => rect.i === settingsInstance.instanceId), width, cols, true, !state.layout.hidden.includes(settingsInstance.instanceId)), ...(bodyDimensions[settingsInstance.instanceId] ?? {}) }}
-          onClose={() => { setSettingsId(null) }} />}
         <div ref={containerRef} className="dsh-spatial-container" data-layout-surface="spatial" data-cols={cols}>
           {state.workbenchLoaded && mounted && width > 0 && <SpatialGrid width={width} cols={cols} layout={geometry} editing={editable} onCommit={commit} onActive={activeChanged}
             libraryDrag={libraryDrag} onLibraryEnd={() => setLibraryDrag(null)}
@@ -238,22 +219,21 @@ export function HomePage(props: HomePageProps): ReactNode {
             if (instance === undefined) return null
             const definition = byType.get(instance.typeId)
             const title = widgetText(definition?.title, instance.typeId)
-            const widgetProps = contentProps(instance, rect, width, cols, editing, true)
+            const widgetProps: WidgetContentProps = { ...contentProps(instance, rect, width, cols, editing, true),
+              ...(!editing && writable && !busy && definition ? { saveConfig: async config => {
+                if (registry.get(instance.typeId) !== definition) throw new Error('Widget provider changed')
+                await store.saveInstanceConfig(instance.instanceId, definition, config)
+              } } : {}),
+            }
             return <section key={instance.instanceId} className="dsh-w dsh-home-widget" data-widget-id={instance.instanceId} data-widget-type={instance.typeId} data-size={widgetProps.size}
               data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
-              <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!editable || interacting}
+              <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!writable || busy || interacting}
                 icon={definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition}/></CardBoundary>}
-                onEdit={definition?.Settings ? () => {setTrayOpen(false);setSettingsId(instance.instanceId)} : undefined}
-                onDelete={() => setConfirmDelete(instance.instanceId)} onNudge={key => nudge(instance.instanceId,key)}/>
-              {confirmDelete===instance.instanceId && <div className="dsh-delete-confirm" role="group" aria-label={t('manager.deleteConfirm',{title})}>
-                <span>{t('manager.deleteConfirm',{title})}</span>
-                <Button variant="ghost" size="sm" onClick={()=>setConfirmDelete(null)}>{t('settings.cancel')}</Button>
-                <Button variant="outline" size="sm" onClick={()=>manage(()=>{store.removeInstance(instance.instanceId);setConfirmDelete(null)})}>{t('manager.confirmDelete')}</Button>
-              </div>}
+                onDelete={() => { setTrayOpen(false); setManagementError(false); setConfirmDelete(instance.instanceId) }} onNudge={key => nudge(instance.instanceId,key)}/>
               <div className="dsh-w-body dsh-home-widget-content" inert={editing || undefined}>
                 {definition === undefined ? <div className="dsh-empty" role="status">{t('widget.unavailable', { typeId: instance.typeId })}</div>
                   : <CardBoundary key={renderKey(instance, definition)} fallback={<div className="dsh-error" role="alert">{t('error.card')}</div>}>
-                    <WidgetBody definition={definition} widgetProps={widgetProps} onDimensions={measureBody} />
+                    <WidgetBody definition={definition} widgetProps={widgetProps} />
                   </CardBoundary>}
               </div>
             </section>
@@ -263,6 +243,16 @@ export function HomePage(props: HomePageProps): ReactNode {
         {state.workbenchLoaded && geometry.length === 0 && <div className="dsh-empty"><span>{t('empty.noWidgets')}</span><Button variant="outline" size="sm" disabled={!writable || busy} onClick={() => { setEditing(true); setTrayOpen(true) }}>{t('action.widgets')}</Button></div>}
         {editing && <p className="dsh-muted dsh-edit-footnote">{t('edit.keyboard')}</p>}
       </div>
+      {deleteInstance && <Modal open title={t('manager.deleteTitle', { title: deleteTitle })} description={t('manager.deleteDescription')}
+        closeLabel={t('settings.cancel')} onClose={() => { if (!busy) setConfirmDelete(null) }} className="dsh-home-delete-modal"
+        footer={<><Button variant="outline" data-modal-autofocus disabled={busy} onClick={() => setConfirmDelete(null)}>{t('settings.cancel')}</Button>
+          <Button variant="primary" className="dsh-home-danger-button" disabled={busy || !writable} onClick={() => {
+            if (busy || !writable || interacting) return
+            void store.removeInstanceDurably(deleteInstance.instanceId).then(() => setConfirmDelete(null)).catch(() => setManagementError(true))
+          }}>{t('manager.confirmDelete')}</Button></>}>
+        <p className="dsh-home-delete-target">{deleteTitle}</p>
+        {managementError && <p className="dsh-error" role="alert">{t('manager.error')}</p>}
+      </Modal>}
     </div>
   )
 }

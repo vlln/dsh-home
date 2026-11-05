@@ -1,7 +1,8 @@
 /** Merge into the home locale namespace; keys match in both languages. */
 export const enQuick = {
-  'quick.description': 'New sessions, your latest conversation, and up to 8 personal shortcuts.',
-  'quick.hint': 'Add session, web, or working-directory links in this widget’s settings.',
+  'quick.description': 'New sessions, your latest conversation, and up to 8 personal shortcuts through Manage shortcuts.',
+  'quick.edit': 'Manage shortcuts',
+  'quick.hint': 'Use Manage shortcuts to add session, web, or working-directory links.',
   'quick.settings.hint': 'Up to 8 shortcuts per widget. Working directories open an unsent draft and keep any existing draft; nothing is sent automatically.',
   'quick.settings.empty': 'No custom shortcuts yet.',
   'quick.kind': 'Destination type',
@@ -22,7 +23,7 @@ export const enQuick = {
   'quick.newLabel': 'New shortcut',
   'quick.preparing': 'Preparing draft…',
   'quick.actionError': 'Could not open this shortcut. Please try again.',
-  'quick.sessionMissing': 'This session is not in the session directory. Check the session ID in settings.',
+  'quick.sessionMissing': 'This session is not in the session directory. Use Manage shortcuts to check the session ID.',
   'quick.workdirUnavailable': 'Working-directory drafts are unavailable in this host.',
   'quick.error.config': 'Invalid shortcut configuration.',
   'quick.error.limit': 'Use at most 8 shortcuts.',
@@ -34,8 +35,9 @@ export const enQuick = {
 } as const
 
 export const zhQuick: Record<keyof typeof enQuick, string> = {
-  'quick.description': '新建会话、回到上次会话，以及最多 8 个自定义快捷入口。',
-  'quick.hint': '在此组件的设置中添加会话、网页或工作目录入口。',
+  'quick.description': '新建会话、回到上次会话，并通过「管理入口」维护最多 8 个自定义快捷入口。',
+  'quick.edit': '管理入口',
+  'quick.hint': '点击「管理入口」，添加会话、网页或工作目录入口。',
   'quick.settings.hint': '每个组件最多 8 个入口。工作目录只打开未发送草稿并保留已有草稿，不会自动发送。',
   'quick.settings.empty': '还没有自定义入口。',
   'quick.kind': '目标类型',
@@ -56,7 +58,7 @@ export const zhQuick: Record<keyof typeof enQuick, string> = {
   'quick.newLabel': '新入口',
   'quick.preparing': '正在准备草稿…',
   'quick.actionError': '无法打开此入口，请重试。',
-  'quick.sessionMissing': '会话目录中没有此会话，请在设置中核对会话 ID。',
+  'quick.sessionMissing': '会话目录中没有此会话，请点击「管理入口」核对会话 ID。',
   'quick.workdirUnavailable': '当前宿主不支持工作目录草稿。',
   'quick.error.config': '快捷入口配置无效。',
   'quick.error.limit': '最多添加 8 个入口。',

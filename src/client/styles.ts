@@ -500,7 +500,14 @@ export const CSS = `
 .dsh-manager-info > strong { font: var(--dsw-font-xs-strong-13); }
 .dsh-manager-description { color: var(--dsw-alias-label-secondary); font-size: var(--dsh-content-font-size-secondary, 13px); line-height: 1.6; }
 .dsh-manager-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-.dsh-delete-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--dsw-alias-state-error-primary); font-size: var(--dsh-content-font-size-secondary, 13px); }
+.dsh-tool.dsh-delete-widget { color: var(--dsw-alias-state-error-primary); }
+.dsh-tool.dsh-delete-widget:hover { color: var(--dsw-alias-state-error-primary); background: var(--dsw-alias-interactive-bg-hover-danger); }
+/* Button has no danger variant; preserve the official control geometry, override semantic colors only. */
+.dsh-home-danger-button { background: var(--dsw-alias-state-error-primary) !important; color: var(--dsw-alias-label-primary-foreground) !important; }
+.dsh-home-danger-button:hover { filter: brightness(.92); }
+.dsh-home-delete-target { margin: 0; overflow-wrap: anywhere; font: var(--dsw-font-s-strong-14); color: var(--dsw-alias-label-primary); }
+.dsh-widget-own-editor { display: flex; justify-content: flex-end; margin-top: 8px; }
+.dsh-widget-config-modal .dsh-widget-settings { margin: 0; padding: 0; border: 0; }
 .dsh-widget-settings { margin-top: 16px; padding-top: 4px; border-top: 0.5px solid var(--dsw-alias-border-l3); }
 .dsh-settings-fields { margin: 12px 0; min-width: 0; }
 /* Fill only the content flex box, excluding the shell header and padding. The

@@ -121,7 +121,7 @@ const restoreOriginal = async () => {
     await page.close({ runBeforeUnload: false })
   }
   if (original !== undefined && modified) {
-    await api('layout.set', { layout: original })
+    await api('workbench.set', { layout: original, instances: originalInstances })
     assert.deepEqual((await api('layout.get')).layout, original, 'Restored layout differs from exclusive recovery backup')
     assert.deepEqual((await api('workbench.get')).instances, originalInstances, 'Layout-only regression changed widget instances')
     report.instancesUnchanged = true
@@ -208,7 +208,12 @@ try {
       const layout = { ...structuredClone(original), hidden: [...allIds].filter(id => !ids.includes(id)),
         positions: { ...original.positions, '12': structuredClone(fixture) } }
       modified = true; report.restoredOriginalLayout = false
-      await api('layout.set', { layout })
+      // Disposable explicit instances: never rely on legacy layout.set materializing builtin ids.
+      const fixtures = [...allIds].filter(id => !originalInstances.some(instance => instance.instanceId === id)).map(id => ({
+        instanceId: id, typeId: `@vlln/dsh-home:${id}`, configVersion: id === 'quick' ? 2 : 1,
+        config: id === 'quick' ? { links: [] } : {},
+      }))
+      await api('workbench.set', { layout, instances: [...originalInstances, ...fixtures] })
       await page.reload(); await open()
       await page.getByRole('button', { name: /^(Edit layout|编辑布局)$/ }).click()
       await page.locator('.dsh-home[data-editing=true]').waitFor(); await frames()

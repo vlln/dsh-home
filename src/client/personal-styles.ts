@@ -6,6 +6,8 @@ export const personalStyles = `
 .dsh-personal-note-text{font-size:var(--dsh-content-font-size);line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4}
 .dsh-personal-hint{margin:0;color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xs-13);overflow-wrap:anywhere}
 .dsh-personal-clock{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.dsh-personal-clock-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;flex-wrap:wrap}
+.dsh-personal-clock-meta .dsh-widget-own-editor{margin-top:0}
 .dsh-personal-clock-time{font-family:var(--dsw-font-family);font-size:clamp(28px,6vw,48px);font-weight:500;line-height:1.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;max-width:100%}
 .dsh-personal-clock-date{margin:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
 .dsh-personal-settings{display:flex;flex-direction:column;gap:8px;min-width:0}

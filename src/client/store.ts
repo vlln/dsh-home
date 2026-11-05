@@ -11,7 +11,7 @@
 import { homeOrder } from './layout-model.ts'
 import type { JsonValue, WidgetDefinition, WidgetInstance } from './widget-contract.ts'
 import { HomeWidgetRegistry, migrateWidgetInstance, validateWidgetConfig } from './widget-registry.ts'
-import { buildSpatialLayout, canPlace, findSpatialSpace, mergeSpatialPositions, type SpatialItem } from './spatial-model.ts'
+import { buildSpatialLayout, canPlace, compactSpatialLayout, findSpatialSpace, mergeSpatialPositions, type SpatialItem } from './spatial-model.ts'
 import {
   emptyLayout, emptyPrefs, fetchWorkbench, fetchPrefs, fetchSnapshot, saveWorkbench, savePrefs, HomeApiError,
   type Layout, type LedgerSnapshot, type Prefs, type WidgetSize, type StorageStatus,
@@ -347,16 +347,41 @@ export class HomeStore {
     this.persistSoon()
   }
 
-  removeInstance(id: string): void {
-    this.assertEditable()
+  private layoutWithoutInstance(id: string): Layout {
     const layout = structuredClone(this.state.layout)
     layout.order = layout.order.filter(value => value !== id)
     layout.focusOrder = layout.focusOrder.filter(value => value !== id)
     layout.hidden = layout.hidden.filter(value => value !== id)
     delete layout.size[id]
     for (const rows of Object.values(layout.positions ?? {})) delete rows[id]
-    this.set({ layout, instances: this.state.instances.filter(instance => instance.instanceId !== id) })
+    return layout
+  }
+
+  removeInstance(id: string): void {
+    this.assertEditable()
+    this.set({ layout: this.layoutWithoutInstance(id), instances: this.state.instances.filter(instance => instance.instanceId !== id) })
     this.persistSoon()
+  }
+
+  /** Confirmation UI closes only after this write succeeds; failure keeps the card/config/layout. */
+  async removeInstanceDurably(id: string): Promise<void> {
+    this.assertEditable()
+    if (this.disposed) throw new Error('Workbench is disposed')
+    if (!this.state.instances.some(instance => instance.instanceId === id)) throw new Error('Unknown widget instance')
+    const layout = this.layoutWithoutInstance(id)
+    const instances = this.state.instances.filter(instance => instance.instanceId !== id)
+    if (this.layoutTimer !== null) clearTimeout(this.layoutTimer)
+    this.layoutTimer = null
+    this.set({ workbenchBusy: true })
+    let saved = false
+    try {
+      await this.persistDocument(layout, instances)
+      this.set({ layout, instances })
+      saved = true
+    } finally {
+      this.set({ workbenchBusy: false })
+      if (saved && !this.disposed && this.migrationRegistry) this.reconcileDefinitions(this.migrationRegistry)
+    }
   }
 
   async saveInstanceConfig(id: string, definition: WidgetDefinition, config: JsonValue): Promise<void> {
@@ -444,6 +469,39 @@ export class HomeStore {
     this.persistSoon()
   }
 
+  /**
+   * User-click-only command: pass the current rendered geometry and breakpoint.
+   * Page must also block active pointer/library drags, settings and its own save.
+   * Read-only/loading/busy/disposed or invalid/stale requests throw atomically.
+   * Only visible instance positions at this breakpoint change; config, sizes,
+   * order, hidden/absent positions and every other breakpoint remain untouched.
+   * Uses the normal debounce; Done/flushLayout still owns durable-write errors.
+   */
+  compactSpatialLayout(current: readonly SpatialItem[], cols: number): boolean {
+    this.assertEditable()
+    if (this.disposed) throw new Error('Workbench is disposed')
+    const packed = compactSpatialLayout(current, cols)
+    const visible = this.state.instances.filter(instance => !this.state.layout.hidden.includes(instance.instanceId))
+    if (current.length !== visible.length || visible.some(instance => !current.some(item => item.i === instance.instanceId))) {
+      throw new Error('Stale compact layout')
+    }
+    const saved = this.state.layout.positions?.[String(cols)]
+    for (const item of current) {
+      // Unsaved projected cards are allowed (legacy/missing breakpoint). Existing
+      // durable rectangles must still match the snapshot the page is rendering.
+      if (saved && Object.hasOwn(saved, item.i)) {
+        const rect = saved[item.i]!
+        if (rect.x !== item.x || rect.y !== item.y || rect.w !== item.w || rect.h !== item.h) {
+          throw new Error('Stale compact geometry')
+        }
+      }
+    }
+    if (packed === current) return false
+    this.set({ layout: mergeSpatialPositions(this.state.layout, packed, cols) })
+    this.persistSoon()
+    return true
+  }
+
   /** Restoring one card finds a free slot without moving any existing widgets. */
   toggleSpatialHidden(id: string, current: SpatialItem[], metas: { id: string; defaultSize: WidgetSize }[], cols: number): void {
     this.assertEditable()
@@ -495,12 +553,6 @@ export class HomeStore {
 
   showAll(): void {
     this.set({ layout: { ...this.state.layout, hidden: [] } })
-    this.persistSoon()
-  }
-
-  reset(): void {
-    this.assertEditable()
-    this.set({ layout: { ...emptyLayout(), instanceLayout: true } })
     this.persistSoon()
   }
 

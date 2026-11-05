@@ -37,6 +37,10 @@ export interface WidgetContentProps<C extends JsonValue = JsonValue> {
   /** Present only in inert gallery previews. Use this data (null when absent), never live user data.
    * Suppress requests, timers, subscriptions, navigation and persistence while preview is present. */
   preview?: { data: JsonValue }
+  /** Optional durable config replacement. Content owns its editor and draft UX.
+   * Absent in previews, layout-edit mode, read-only state, and while the host is busy.
+   * Validates and waits for persistence; reject leaves the existing config unchanged. */
+  saveConfig?(config: C): Promise<void>
 }
 
 export interface WidgetSettingsProps<C extends JsonValue = JsonValue> extends WidgetContentProps<C> {
@@ -70,6 +74,7 @@ export interface WidgetDefinition<C extends JsonValue = JsonValue> {
   /** Synchronous, all-at-once migration to the current configVersion. Never mutates persisted input. */
   migrateConfig?: (config: JsonValue, fromVersion: number, toVersion: number) => C
   Content: ComponentType<WidgetContentProps<C>>
+  /** @deprecated Not rendered by the shell. Content owns its editing UI and may reuse this component. */
   Settings?: ComponentType<WidgetSettingsProps<C>>
 }
 

@@ -1,0 +1,35 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+import { createWidgetPreviewProps, HomeWidgetRegistry } from '../src/client/widget-registry.ts'
+const source = name => readFile(new URL(`../src/client/${name}`, import.meta.url), 'utf8')
+test('shell owns only geometry/deletion, never settings or reset', async () => {
+  const page = await source('page.tsx'), frame = await source('widget-frame.tsx')
+  assert.doesNotMatch(page, /WidgetSettingsPanel|definition\??\.Settings|onEdit=|confirmReset|store\.reset\(/)
+  assert.doesNotMatch(frame, /onEdit|library\.edit/)
+  assert.match(frame, /IconTrashOutlineRegular/)
+  assert.match(page, /<Modal open title=\{t\('manager\.deleteTitle'/)
+  assert.match(page, /removeInstanceDurably/)
+  assert.match(page, /data-modal-autofocus/)
+  assert.match(page, /event\.defaultPrevented/)
+  assert.match(page, /store\.compactSpatialLayout\(geometry, cols\)/)
+})
+test('preview cannot receive durable config capability', () => {
+  const registry = new HomeWidgetRegistry()
+  registry.register({ typeId: '@test/config:content', apiVersion: 1, title: 'Content', configVersion: 1,
+    defaultConfig: () => ({ text: 'sample' }), validateConfig: () => true, Content: () => null })
+  const props = createWidgetPreviewProps(registry.get('@test/config:content'), { size: 's', width: 300, height: 200 })
+  assert.equal(props.saveConfig, undefined)
+  assert.equal(props.preview.data, null)
+})
+test('builtins choose editors themselves and retain forms without shell registration', async () => {
+  for (const name of ['personal-widgets.tsx', 'quick-widget.tsx', 'activity-widget.tsx']) {
+    const text = await source(name)
+    assert.match(text, /<WidgetConfigEditor/)
+    assert.doesNotMatch(text, /Settings: (NotesSettings|ClockSettings|QuickSettings|ActivitySettings)/)
+  }
+  const helper = await source('widget-settings.tsx')
+  assert.match(helper, /widgetProps\.editing \|\| widgetProps\.preview/)
+  assert.match(helper, /await widgetProps\.saveConfig!\(next\)/)
+  assert.match(helper, /className="dsh-widget-config-modal"/)
+})

@@ -1,4 +1,4 @@
-/** Pure, non-compacting home geometry; no React or react-grid-layout runtime dependency. */
+/** Pure home geometry; normal edits never compact. No React or grid runtime dependency. */
 import type { GridRect, Layout, WidgetSize } from './api.ts'
 import { homeOrder, legacySpatialHeight } from './layout-model.ts'
 
@@ -105,6 +105,58 @@ export function findSpatialSpace(
     }
   }
   return null
+}
+
+/**
+ * Explicit user-requested packing only; never used by projection or normal moves.
+ * Place cards by their original visual order (top to bottom, then left to right;
+ * input order breaks exact ties). Each card takes the first free row-major slot,
+ * so a later narrow card may fill a hole before an earlier wide card. This is
+ * deterministic first-fit, not an optimal/minimum-height bin-packing solver.
+ * An already locally tight surface is preserved, making repeated clicks a no-op;
+ * shape-constrained holes may remain and no global packing optimum is promised.
+ *
+ * Preserve w/h, metadata and input array order. Invalid/overlapping input or an
+ * unsupported breakpoint throws before producing a result; never repair sizes,
+ * drop a card, or silently reinterpret another breakpoint. No-op returns the
+ * original array; changed cards alone are copied. Frozen inputs are supported.
+ */
+export function compactSpatialLayout<T extends SpatialItem>(geometry: T[], cols: number): T[]
+export function compactSpatialLayout<T extends SpatialItem>(geometry: readonly T[], cols: number): readonly T[]
+export function compactSpatialLayout<T extends SpatialItem>(geometry: readonly T[], cols: number): readonly T[] {
+  if (![2, 6, 12].includes(cols)) throw new Error('Invalid grid columns')
+  if (!Array.isArray(geometry) || geometry.length > 64) throw new Error('Invalid compact layout')
+  const ids = new Set<string>()
+  for (const item of geometry) {
+    if (!record(item) || typeof item.i !== 'string' || item.i.length === 0 || ids.has(item.i)
+      || !isRect(item, cols)) {
+      throw new Error('Invalid compact geometry')
+    }
+    ids.add(item.i)
+  }
+  if (geometry.some(item => !canPlace(geometry, item.i, item, cols))) throw new Error('Overlapping compact geometry')
+  // A first-fit result is locally tight: with peers held still no card has an
+  // earlier row-major slot. Keep it exactly, even if hole-filling changed visual
+  // order, so repeated clicks cannot unexpectedly reshuffle a packed surface.
+  const locallyTight = geometry.every(item => {
+    const first = findSpatialSpace(geometry.filter(peer => peer !== item), item, cols)
+    return first !== null && first.x === item.x && first.y === item.y
+  })
+  if (locallyTight) return geometry
+  const visual = geometry.map((item, index) => ({ item, index }))
+    .sort((a, b) => a.item.y - b.item.y || a.item.x - b.item.x || a.index - b.index)
+  const occupied: SpatialItem[] = []
+  const packed = new Map<string, T>()
+  let changed = false
+  for (const { item } of visual) {
+    const rect = findSpatialSpace(occupied, item, cols)
+    if (rect === null) throw new Error('No space available to compact layout')
+    const next = item.x === rect.x && item.y === rect.y ? item : { ...item, x: rect.x, y: rect.y }
+    changed ||= next !== item
+    occupied.push(next)
+    packed.set(item.i, next)
+  }
+  return changed ? geometry.map(item => packed.get(item.i)!) : geometry
 }
 
 /**
