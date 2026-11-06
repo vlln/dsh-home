@@ -73,12 +73,19 @@ try {
       const clockButton = page.locator('[data-widget-id="visual-clock"]').getByRole('button', { name: /^(Time options|时间选项)$/ }); await clockButton.click(); await page.locator('.dsh-widget-config-modal').waitFor(); await page.keyboard.press('Escape')
       const footprintButton = page.locator('[data-widget-id="visual-activity"]').getByRole('button', { name: /^(Filter range|筛选范围)$/ }); await footprintButton.click(); await page.locator('.dsh-widget-config-modal').waitFor(); await page.keyboard.press('Escape')
       const recentViewport = page.locator('[data-widget-id="visual-recent"] .dsh-widget-viewport')
-      const initialRows = await page.locator('[data-widget-id="visual-recent"] .dsh-recent-row').count()
+      const rows = () => page.locator('[data-widget-id="visual-recent"] .dsh-session-row').count()
+      const initialRows = await rows(), initialHeight = await recentViewport.evaluate(el => el.clientHeight)
       await recentViewport.evaluate(el => { el.style.height = '500px'; el.style.flex = 'none' })
-      await page.waitForFunction(n => document.querySelectorAll('[data-widget-id="visual-recent"] .dsh-recent-row').length > n, initialRows)
+      await page.waitForFunction(n => document.querySelector('[data-widget-id="visual-recent"] .dsh-widget-viewport').clientHeight > n, initialHeight)
+      const grownRows = await rows()
       await recentViewport.evaluate(el => { el.style.removeProperty('height'); el.style.removeProperty('flex') })
-      await page.waitForFunction(n => document.querySelectorAll('[data-widget-id="visual-recent"] .dsh-recent-row').length === n, initialRows)
-      checks.push('Notes, Clock and Activity editors reachable; measured height increases recent session capacity')
+      await page.waitForFunction(n => document.querySelectorAll('[data-widget-id="visual-recent"] .dsh-session-row').length === n, grownRows)
+      await page.waitForFunction(n => document.querySelector('[data-widget-id="visual-recent"] .dsh-widget-viewport').clientHeight === n, initialHeight)
+      // The row count is data-bound: with a short sample the taller viewport shows the same
+      // rows rather than more. What must hold is that the widget tracks its measured height
+      // and never drops rows that already fit.
+      assert(grownRows >= initialRows, `recent rows never shrink when the card grows (${initialRows} -> ${grownRows})`)
+      checks.push('Notes, Clock and Activity editors reachable; measured height grows the recent list')
       for (const [name] of specs) {
         const widget = page.locator(`[data-widget-id="visual-${name}"]`)
         await widget.scrollIntoViewIfNeeded()

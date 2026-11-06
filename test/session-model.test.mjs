@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   activityTimestamp, cwdFilterValue, cwdLabels, filterRecentSessions, mergeRecentSessions,
-  recentEmptyState, recentPageSize, recentViewportPageSize, recentSessionStatus, shortSessionId,
+  recentEmptyState, recentPageSize, recentViewportPageSize, recentSessionStatus,
 } from '../src/client/session-model.ts'
 
 function ledger(id, overrides = {}) {
@@ -134,18 +134,14 @@ test('select values distinguish missing cwd from any actual path', () => {
 
 test('size pages and short IDs do not lose canonical identity', () => {
   assert.deepEqual(['s', 'm', 'l'].map(recentPageSize), [3, 6, 10])
-  assert.equal(shortSessionId('session-abc12345-full-uuid'), 'abc12345…')
-  assert.equal(shortSessionId('abcdefghijk'), 'abcdefgh…')
-  assert.equal(shortSessionId('short'), 'short')
-  assert.equal(shortSessionId('session-'), 'session-')
 })
 
 test('recent capacity follows measured height and reserves wrapped narrow controls', () => {
   assert.equal(recentViewportPageSize('m'), 6)
-  assert.equal(recentViewportPageSize('s', 800, 400), 6)
-  assert.equal(recentViewportPageSize('l', 800, 400), 6)
-  assert.equal(recentViewportPageSize('s', 800, 600), 9)
-  assert.equal(recentViewportPageSize('s', 300, 400), 4)
+  assert.equal(recentViewportPageSize('s', 800, 400), 11)
+  assert.equal(recentViewportPageSize('l', 800, 400), 11)
+  assert.equal(recentViewportPageSize('s', 800, 600), 17)
+  assert.equal(recentViewportPageSize('s', 300, 400), 9)
   assert.equal(recentViewportPageSize('s', 200, 30), 1)
   assert.equal(recentViewportPageSize('s', 800, 100000), 20)
   assert.equal(recentViewportPageSize('m', NaN, 400), 6)

@@ -21,6 +21,9 @@ import { CanvasWidthHandle } from './canvas-grip.tsx'
 import { boardColumnsFor, boardWidthForColumns, resolveCanvasWidth, widgetWidthForColumns } from './canvas-width.ts'
 import { scatterDebris } from './debris-burst.ts'
 
+/** 已并入「最近活跃」的旧组件：仍照常渲染已有实例，只是不再出现在组件库里。 */
+const RETIRED_FROM_LIBRARY = new Set(['@vlln/dsh-home:today', '@vlln/dsh-home:rhythm'])
+
 export interface HomePageProps {
   t: Translate
   store: HomeStore
@@ -240,7 +243,7 @@ export function HomePage(props: HomePageProps): ReactNode {
         {state.error !== null && <div className="dsh-error" role="alert">
           <span>{t('error.load')}</span><Button variant="ghost" size="sm" onClick={() => { void store.refresh() }}>{t('error.retry')}</Button>
         </div>}
-        {editing && trayOpen && <WidgetGallery definitions={definitions} t={t} disabled={!writable || busy || interacting}
+        {editing && trayOpen && <WidgetGallery definitions={definitions.filter(definition => !RETIRED_FROM_LIBRARY.has(definition.typeId))} t={t} disabled={!writable || busy || interacting}
           position={state.prefs.libraryPosition} onPositionChange={position => { store.setLibraryPosition(position) }}
           onClose={() => setTrayOpen(false)} onDrag={(definition,point,grab) => {
             if(!editable || interacting)return

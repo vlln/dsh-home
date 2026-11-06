@@ -3,6 +3,7 @@
  *
  * @module @vlln/dsh-home/client/format
  */
+import { relativeTime } from '@deepseek-ai/dsh-client-ui-primitives'
 
 /** 翻译函数的最小形状（槽组件从 `PropsLocale` 拿到的是同一形状）。 */
 export type Translate = (key: string, params?: Record<string, string | number>) => string
@@ -37,6 +38,18 @@ export function formatAgo(time: number, now: number, t: Translate): string {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return t('time.hoursAgo', { n: hours })
   return t('time.daysAgo', { n: Math.floor(hours / 24) })
+}
+
+/**
+ * 原生会话列表那种紧凑相对时间：`刚刚 / 5分钟 / 3小时 / 2天 / 4个月 / 1年`。
+ * 分桶交给宿主 `relativeTime`，所以同一会话在我们的卡片与原生侧栏里说法一致。
+ * @param time 目标时刻
+ * @param now 当前时刻
+ * @param t 翻译
+ */
+export function compactAgo(time: number, now: number, t: Translate): string {
+  const { unit, n } = relativeTime(time, now)
+  return unit === 'now' ? t('time.now') : t(`time.${unit}`, { n })
 }
 
 /**

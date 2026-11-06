@@ -3,12 +3,11 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { FocusProps, SessionStatusMap } from './focus.tsx'
-import { formatAgo } from './format.ts'
-import { DirectoryBadge } from './directory-badge.tsx'
+import { SessionRow } from './session-row.tsx'
 import type { WidgetProps } from './widgets.tsx'
 import {
   cwdFilterValue, cwdLabels, filterRecentSessions, mergeRecentSessions, recentEmptyState,
-  recentViewportPageSize, recentSessionStatus, shortSessionId,
+  recentViewportPageSize, recentSessionStatus,
 } from './session-model.ts'
 
 export interface RecentProps extends WidgetProps {
@@ -70,36 +69,17 @@ export function RecentBody({ t, data, sessions, now, actions, size, width, heigh
         <div className="dsh-empty" role="status">{t(loadError && all.length === 0 ? 'error.load' : `recent.${empty}`)}</div>
       ) : (
         <div className="dsh-rows">
-          {shown.map(session => {
-            const status = recentSessionStatus(session, source === 'runtime' ? statuses?.get(session.id) : undefined)
-            const title = session.title ?? t('recent.untitled')
-            const cwd = session.cwd === undefined ? t('recent.unknownCwd') : labels.get(session.cwd) ?? session.cwd
-            const activity = session.lastAt === null ? t('recent.unknownActivity')
-              : t('recent.activity', { time: formatAgo(session.lastAt, now, t) })
-            return (
-              <button
-                key={session.id}
-                type="button"
-                className="dsh-row dsh-recent-row"
-                data-session-id={session.id}
-                data-status={status}
-                onClick={() => { actions.openSession(session.id) }}
-              >
-                <DirectoryBadge cwd={session.cwd} />
-                <span className="dsh-row-top">
-                  <span className="dsh-row-title" title={title}>{title}</span>
-                  <span className="dsh-chip" data-tone={status === 'approval' || status === 'plan' || status === 'question' ? 'warn' : 'info'}>
-                    {t(`recent.status.${status}`)}
-                  </span>
-                </span>
-                <span className="dsh-row-meta dsh-recent-meta">
-                  <span className="dsh-recent-path" title={session.cwd ?? t('recent.unknownCwd')}>{cwd}</span>
-                  <span className="dsh-recent-id" title={session.id}>{shortSessionId(session.id)}</span>
-                  <span title={session.lastAt === null ? undefined : new Date(session.lastAt).toISOString()}>{activity}</span>
-                </span>
-              </button>
-            )
-          })}
+          {shown.map(session => <SessionRow
+            key={session.id}
+            session={session}
+            title={session.title ?? t('recent.untitled')}
+            workspace={session.cwd === undefined ? t('recent.unknownCwd') : labels.get(session.cwd) ?? session.cwd}
+            workspaceTitle={session.cwd}
+            status={recentSessionStatus(session, source === 'runtime' ? statuses?.get(session.id) : undefined)}
+            now={now}
+            t={t}
+            onOpen={() => { actions.openSession(session.id) }}
+          />)}
         </div>
       )}
 

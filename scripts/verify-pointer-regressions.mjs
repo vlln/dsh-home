@@ -17,7 +17,7 @@ try {
   await writeFile(new URL('backup.json', out), JSON.stringify({ backup, prefs }, null, 2))
   // Pin the board to the 12-column default: the fixture rectangle lives in that breakpoint,
   // and a wider inherited board scrolls it under the sidebar where no grip drag can start.
-  await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
+  await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null, libraryPosition: null } })
   const fixture = { instanceId: 'pointer-note', typeId: '@vlln/dsh-home:notes', configVersion: 1, config: { title: 'Drag regression', text: 'Disposable test note' } }
   await api('workbench.set', { instances: [...backup.instances, fixture], layout: { ...backup.layout, instanceLayout: true, hidden: backup.instances.map(i => i.instanceId), order: [...backup.layout.order, fixture.instanceId], positions: { ...backup.layout.positions, 12: { ...backup.layout.positions?.[12], [fixture.instanceId]: { x: 0, y: 8, w: 4, h: 6 } } } } })
   page = await context.newPage(); page.on('pageerror', e => errors.push(e.message))

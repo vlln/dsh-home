@@ -11,7 +11,7 @@ try{
  // The fixture writes into the 12-column breakpoint; pin the board to the default width
  // instead of inheriting whatever the station was last left at (a wide board scrolls the
  // fixture under the sidebar, where a grip drag cannot start).
- await api('prefs.set',{prefs:{...prefs.prefs,canvasWidth:null}})
+ await api('prefs.set',{prefs:{...prefs.prefs,canvasWidth:null,libraryPosition:null}})
  // A disposable geometry fixture, never replacing original instances or configs.
  const fixture={...backup.layout,hidden:backup.instances.map(i=>i.instanceId)}
  await api('workbench.set',{layout:fixture,instances:backup.instances})

@@ -141,15 +141,10 @@ export function recentPageSize(size: WidgetSize): number {
  * the list stays scrollable for larger fonts/long metadata and Show more. */
 export function recentViewportPageSize(size: WidgetSize, width?: number, height?: number): number {
   if (!Number.isFinite(height) || !Number.isFinite(width) || height! <= 0 || width! <= 0) return recentPageSize(size)
-  const controls = width! < 400 ? 110 : 64
-  const row = width! < 400 ? 72 : 56
+  // One-line rows: a tinted workspace segment plus the title plate.
+  const controls = width! < 400 ? 104 : 62
+  const row = 30
   return Math.max(1, Math.min(20, Math.floor((height! - controls) / row)))
-}
-
-/** Strip the standard prefix before shortening UUIDs; the full id remains the identity. */
-export function shortSessionId(id: string): string {
-  const bare = id.startsWith('session-') ? id.slice('session-'.length) : id
-  return bare.length > 8 ? `${bare.slice(0, 8)}…` : bare || id
 }
 
 /** Indexing is not a claim that the account has no sessions or no search results yet. */

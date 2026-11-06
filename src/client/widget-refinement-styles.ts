@@ -81,23 +81,14 @@ export const widgetRefinementStyles = `
 .dsh-home-widget .dsh-queue-meta .dsh-chip { display:inline-flex; align-items:center; gap:5px; height:auto; min-height:18px; padding:0; border-radius:0; background:transparent; font:var(--dsw-font-xxs-12); }
 .dsh-home-widget .dsh-queue-meta .dsh-chip::before { content:''; width:6px; height:6px; flex:none; border-radius:50%; corner-shape:round; background:currentColor; }
 
-/* Compact recent rows: strong title, recognizable directory, quieter ID/time.
-   Unknown/idle must remain neutral and must never imply a completed session. */
+/* Recent card: filters and footer stay fixed, the row list owns the scroll. Session row
+   styling lives next to its component in styles.ts under .dsh-session-row. */
 .dsh-home-widget .dsh-recent { gap:8px; height:100%; min-height:0; }
 .dsh-home-widget .dsh-recent > :is(.dsh-recent-filters,.dsh-recent-footer) { flex:none; }
 .dsh-home-widget .dsh-recent > .dsh-rows { flex:1 1 auto; min-height:60px; overflow-y:auto; margin-inline:0; scroll-padding-block:3px; padding:2px; }
-.dsh-home-widget .dsh-recent .dsh-recent-row { flex:none; }
 .dsh-home-widget .dsh-recent-filters > :is(input,select) { background:var(--dsw-alias-bg-layer-1); }
 .dsh-home-widget .dsh-recent-filters input::placeholder { color:var(--dsw-alias-label-tertiary); opacity:1; }
 .dsh-home-widget .dsh-recent-footer { padding-top:4px; border-top:.5px solid var(--dsw-alias-border-l2); }
-.dsh-home-widget .dsh-recent-row { gap:4px; padding-block:8px; }
-.dsh-home-widget .dsh-recent-row + .dsh-recent-row { border-top:.5px solid var(--dsw-alias-border-l1); }
-.dsh-home-widget .dsh-recent-meta { gap:2px 10px; }
-.dsh-home-widget .dsh-recent-path { color:var(--dsw-alias-label-secondary); }
-.dsh-home-widget .dsh-recent-id { font-size:11px; color:var(--dsw-alias-label-tertiary); }
-.dsh-home-widget .dsh-recent-row .dsh-chip { height:20px; padding-inline:6px; font:var(--dsw-font-xxxs-11); }
-.dsh-home-widget .dsh-recent-row:is([data-status="idle"],[data-status="unknown"]) .dsh-chip { background:var(--dsw-alias-bg-module-platform); color:var(--dsw-alias-label-secondary); }
-.dsh-home-widget .dsh-recent-row[data-status="running"] .dsh-chip { background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 10%,transparent); color:var(--dsw-alias-state-success-primary); }
 
 /* Native pins: complete ordered list, one local scroll region, no top-N limit. */
 .dsh-pinned { display:flex; flex-direction:column; height:100%; min-height:0; gap:8px; }
