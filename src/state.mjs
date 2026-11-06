@@ -18,6 +18,10 @@ import path from 'node:path'
 /** v3 adds durable instances; v2 is migrated in memory until the next normal commit. */
 export const STATE_VERSION = 3
 
+/** Bounds for the one user-chosen board width; must match client canvas-width.ts. */
+export const CANVAS_MIN_WIDTH = 960
+export const CANVAS_MAX_WIDTH = 1600
+
 // Diagnostics are not document fields and cannot accidentally be persisted.
 const storageMetadata = new WeakMap()
 export function stateStorage(state) {
@@ -83,7 +87,7 @@ function writeJson(file, value) {
 
 /** 空偏好。 */
 export function emptyPrefs() {
-  return { lastSeenAt: null, dismissed: {} }
+  return { lastSeenAt: null, dismissed: {}, canvasWidth: null }
 }
 
 /** 空状态文档。 */
@@ -220,12 +224,16 @@ export function normalizeLayout(raw) {
 /**
  * 校验并规整首页偏好。
  * @param raw 前端提交的偏好
- * @returns `{ lastSeenAt, dismissed }`
+ * @returns `{ lastSeenAt, dismissed, canvasWidth }`
  */
 export function normalizePrefs(raw) {
   const prefs = emptyPrefs()
   if (raw === null || raw === undefined || typeof raw !== 'object' || Array.isArray(raw)) return prefs
   if (typeof raw.lastSeenAt === 'number' && Number.isFinite(raw.lastSeenAt)) prefs.lastSeenAt = raw.lastSeenAt
+  // One whole-board width; bounded here so a hand-edited file cannot produce an unusable canvas.
+  if (typeof raw.canvasWidth === 'number' && Number.isFinite(raw.canvasWidth)) {
+    prefs.canvasWidth = Math.round(Math.min(CANVAS_MAX_WIDTH, Math.max(CANVAS_MIN_WIDTH, raw.canvasWidth)))
+  }
   if (raw.dismissed !== null && typeof raw.dismissed === 'object' && !Array.isArray(raw.dismissed)) {
     for (const [id, at] of Object.entries(raw.dismissed)) {
       if (!isWidgetId(id) || typeof at !== 'number' || !Number.isFinite(at)) continue

@@ -279,6 +279,14 @@ export class HomeStore {
     this.persistPrefsSoon()
   }
 
+  /** One width for the whole board; not a per-widget size and never a layout change. */
+  setCanvasWidth(width: number): void {
+    if (!this.canWritePrefs()) return
+    if (this.state.prefs.canvasWidth === width) return
+    this.set({ prefs: { ...this.state.prefs, canvasWidth: width } })
+    this.persistPrefsSoon()
+  }
+
   private persistPrefsSoon(): void {
     if (!this.canWritePrefs()) return
     if (this.prefsTimer !== null) clearTimeout(this.prefsTimer)

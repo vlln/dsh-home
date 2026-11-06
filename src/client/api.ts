@@ -138,11 +138,13 @@ export async function post<T>(op: string, extra: Record<string, unknown> = {}, s
 export interface Prefs {
   lastSeenAt: number | null
   dismissed: Record<string, number>
+  /** Whole-board content width chosen in edit mode; null means the default. */
+  canvasWidth: number | null
 }
 
 /** 空偏好。 */
 export function emptyPrefs(): Prefs {
-  return { lastSeenAt: null, dismissed: {} }
+  return { lastSeenAt: null, dismissed: {}, canvasWidth: null }
 }
 
 /** 空布局。 */
@@ -171,6 +173,8 @@ export async function fetchPrefs(): Promise<Prefs> {
   const value = await post<{ prefs: Prefs }>('prefs.get')
   const prefs = value?.prefs
   if (!prefs || (prefs.lastSeenAt !== null && (typeof prefs.lastSeenAt !== 'number' || !Number.isFinite(prefs.lastSeenAt)))
+    // Absent means "never chosen", so hosts predating this preference stay readable.
+    || (prefs.canvasWidth !== null && prefs.canvasWidth !== undefined && (typeof prefs.canvasWidth !== 'number' || !Number.isFinite(prefs.canvasWidth)))
     || prefs.dismissed === null || typeof prefs.dismissed !== 'object' || Array.isArray(prefs.dismissed)
     || Object.values(prefs.dismissed).some(at => typeof at !== 'number' || !Number.isFinite(at))) {
     throw new HomeApiError('Invalid saved preferences response', 'bad-prefs-response')

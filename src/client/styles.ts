@@ -31,7 +31,10 @@ export const CSS = `
   min-height: 0;
   overflow-y: auto;
   background: var(--dsw-alias-bg-base);
-  padding-top: calc(var(--dsh-frame-top-clearance, 0px) + 20px);
+  /* No padding here: the sticky header's containing block would start below it and
+     let card content show through above the header while scrolled. The clearance
+     lives in the header's own padding instead (see .dsh-home-head). */
+  padding-top: 0;
   padding-right: 24px;
   padding-bottom: 40px;
   padding-left: max(24px, var(--dsh-frame-leading-clearance, 0px));
@@ -43,7 +46,7 @@ export const CSS = `
    (a 4-column card spanned 309px..736px), so no single layout could fit every width.
    Below the cap the canvas still follows the window; above it the extra space is
    margin, so saved rectangles and breakpoints stay exactly as they are. */
-.dsh-home-inner { width: 100%; max-width: var(--dsh-home-max-width, 1280px); margin-inline: auto; min-width: 0; flex: none; }
+.dsh-home-inner { position: relative; width: 100%; max-width: var(--dsh-home-max-width, 1280px); margin-inline: auto; min-width: 0; flex: none; }
 
 .dsh-home-head {
   display: flex;
@@ -563,8 +566,28 @@ export const CSS = `
 .dsh-home-grid > .dsh-w + .dsh-w { margin-top: 0; }
 
 /* Unified mobile-widget editing surface. Only the editing shell owns gestures. */
-.dsh-home-head { position: sticky; top: 0; z-index: 8; background: var(--dsw-alias-bg-base); padding: 8px 0 12px; }
-.dsh-home-widget { min-width: 0; }
+/* The clearance is inside the sticky box, so nothing can slide above the header. */
+.dsh-home-head { position: sticky; top: 0; z-index: 8; background: var(--dsw-alias-bg-base); padding: calc(var(--dsh-frame-top-clearance, 0px) + 20px) 0 12px; }
+/* Edit-only board width handle. It resizes the whole column, never a widget, so it
+   stays outside the "no user resize" rule that governs cards. */
+.dsh-canvas-grip {
+  position: absolute; top: 0; bottom: 0; z-index: 9; width: 12px;
+  /* Sits in the container gutter just past the column edge, so a full-width card's
+     own delete button stays clickable. Kept inside the padding box: no horizontal scroll. */
+  right: -10px; cursor: col-resize; touch-action: none;
+  border-radius: var(--dsw-radius-pill, 999px);
+}
+.dsh-canvas-grip::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; border-radius: 999px; background: transparent; transition: background-color 120ms ease-out; }
+.dsh-canvas-grip:is(:hover, :focus-visible, [data-active])::before { background: var(--dsw-alias-state-business-primary); opacity: .45; }
+.dsh-canvas-grip[data-active]::before { opacity: .9; }
+.dsh-canvas-grip:focus-visible { outline: none; }
+.dsh-canvas-grip-bar {
+  position: sticky; display: block; top: 44vh; width: 10px; height: 52px; margin: 44vh auto 0;
+  border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-1); box-shadow: var(--dsw-shadow-lv2);
+}
+.dsh-canvas-grip:is(:hover, :focus-visible) .dsh-canvas-grip-bar { border-color: var(--dsw-alias-state-business-primary); }
+@media (prefers-reduced-motion: reduce) { .dsh-canvas-grip::before { transition: none; } }.dsh-home-widget { min-width: 0; }
 .dsh-home-widget .dsh-focus, .dsh-home-widget .dsh-queue {
   border: 0; background: transparent; padding: 0; border-radius: 0; animation: none; margin: 0;
 }
@@ -769,6 +792,8 @@ body.dsh-home-dragging * { cursor: grabbing !important; }
 }
 @media (max-width: 720px) {
   .dsh-home { padding-right: 16px; padding-left: max(16px, var(--dsh-frame-leading-clearance, 0px)); }
+  /* Narrow gutters: keep the width handle inside the padding box. */
+  .dsh-canvas-grip { right: -6px; width: 10px; }
   .dsh-home-grid { grid-template-columns: minmax(0, 1fr); }
   .dsh-w, .dsh-w[data-size="m"], .dsh-w[data-size="l"] { grid-column: span 1; }
 }
