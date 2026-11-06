@@ -14,9 +14,12 @@ export function resolveCanvasWidth(saved: number | null | undefined): number {
   return saved === null || saved === undefined ? CANVAS_DEFAULT_WIDTH : clampCanvasWidth(saved)
 }
 
-/** Pixel width from a pointer delta, so dragging right always widens. */
-export function canvasWidthFromDrag(startWidth: number, startX: number, currentX: number): number {
-  return clampCanvasWidth(startWidth + (currentX - startX))
+/** Pixel width from a pointer delta along one edge, so dragging out always widens.
+ * The column is centred, so one edge moving `dx` outward widens the box by `2·dx`
+ * and the edge itself stays exactly under the pointer. */
+export function canvasWidthFromEdgeDrag(startWidth: number, startX: number, currentX: number, side: 'left' | 'right'): number {
+  const outward = side === 'right' ? currentX - startX : startX - currentX
+  return clampCanvasWidth(startWidth + outward * 2)
 }
 
 /** Keyboard equivalent of the same edit, in pixels. */

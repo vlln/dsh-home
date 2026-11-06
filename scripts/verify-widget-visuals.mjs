@@ -89,11 +89,14 @@ try {
   const wide = await page.evaluate(() => {
     const home = document.querySelector('.dsh-home'), inner = document.querySelector('.dsh-home-inner'), surface = document.querySelector('.dsh-spatial-container')
     const box = inner.getBoundingClientRect(), pad = home.getBoundingClientRect()
-    return { viewport: window.innerWidth, surface: surface.clientWidth, inner: box.width, left: box.left - pad.left, right: pad.right - box.right }
+    // The cap is the user's saved preference, so read what is actually applied.
+    const applied = Number.parseFloat(getComputedStyle(home).getPropertyValue('--dsh-home-max-width'))
+    return { viewport: window.innerWidth, surface: surface.clientWidth, inner: box.width, applied, left: box.left - pad.left, right: pad.right - box.right }
   })
-  assert(wide.surface <= 1281, `content column must be capped: ${JSON.stringify(wide)}`)
+  assert(Number.isFinite(wide.applied) && wide.applied >= 960 && wide.applied <= 1600, `cap stays in range: ${JSON.stringify(wide)}`)
+  assert(wide.surface <= wide.applied + 1, `content column must never exceed its cap: ${JSON.stringify(wide)}`)
   assert(Math.abs(wide.left - wide.right) <= 2, `capped column must be centred: ${JSON.stringify(wide)}`)
-  checks.push('2400px: content column caps at 1280px and centres instead of stretching widgets')
+  checks.push(`2400px: content column stops at its ${wide.applied}px cap and centres instead of stretching widgets`)
   await page.screenshot({ path: new URL('widgets-2400-light.png', out).pathname, fullPage: true, animations: 'disabled' })
   await page.setViewportSize({ width: 1600, height: 1700 }); await page.locator('.dsh-home').evaluate(el => { el.scrollTop = 0 })
   await page.waitForFunction(() => { const surface = document.querySelector('.dsh-spatial-container'); const grid = document.querySelector('.dsh-spatial-grid'); return surface?.dataset.cols === '12' && Math.abs((grid?.getBoundingClientRect().width ?? 0) - (surface?.clientWidth ?? 0)) < 2 })

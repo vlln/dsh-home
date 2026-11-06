@@ -1,6 +1,6 @@
 /** Registry-driven widget instances. The page owns layout, not widget business logic. */
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import type { ReactNode } from 'react'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { formatAgo, formatDay, type Translate } from './format.ts'
 import type { WidgetActions } from './widgets.tsx'
@@ -18,10 +18,8 @@ import { WidgetPreview } from './widget-preview.tsx'
 import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
 import { legacyInstanceProjection } from './widget-sizing.ts'
-import {
-  CANVAS_DEFAULT_WIDTH, CANVAS_MAX_WIDTH, CANVAS_MIN_WIDTH,
-  canvasWidthFromDrag, canvasWidthFromKey, resolveCanvasWidth,
-} from './canvas-width.ts'
+import { CanvasWidthHandle } from './canvas-grip.tsx'
+import { resolveCanvasWidth } from './canvas-width.ts'
 
 export interface HomePageProps {
   t: Translate
@@ -88,7 +86,6 @@ export function HomePage(props: HomePageProps): ReactNode {
   const [saveError, setSaveError] = useState(false)
   const [managementError, setManagementError] = useState(false)
   const [interacting, setInteracting] = useState(false)
-  const [widthDraft, setWidthDraft] = useState<number | null>(null)
   const seenRef = useRef(false)
   const writable = state.workbenchLoaded && state.storage.writable
   const busy = saving || state.workbenchBusy
@@ -166,16 +163,19 @@ export function HomePage(props: HomePageProps): ReactNode {
   }
   // One board width the user may drag in edit mode. It is a preference, not widget geometry:
   // saved rectangles and breakpoints are untouched, and the grid simply measures the result.
-  const savedCanvasWidth = resolveCanvasWidth(state.prefs.canvasWidth)
-  const canvasWidth = widthDraft ?? savedCanvasWidth
-  const canvasWidthRef = useRef(canvasWidth)
-  canvasWidthRef.current = canvasWidth
+  const canvasWidth = resolveCanvasWidth(state.prefs.canvasWidth)
+  const homeRef = useRef<HTMLDivElement>(null)
+  // Written imperatively rather than through the style prop: the handle owns this variable
+  // during a gesture, so React must not restore a stale value mid-drag.
+  useLayoutEffect(() => {
+    homeRef.current?.style.setProperty('--dsh-home-max-width', `${canvasWidth}px`)
+  }, [canvasWidth])
   const gripVisible = editable && !interacting
-  const commitCanvasWidth = (next: number): void => { store.setCanvasWidth(next); setWidthDraft(null) }
+  const commitCanvasWidth = (next: number): void => { store.setCanvasWidth(next) }
   const deleteInstance = confirmDelete === null ? undefined : instancesById.get(confirmDelete)
   const deleteTitle = deleteInstance ? widgetText(byType.get(deleteInstance.typeId)?.title, deleteInstance.typeId) : ''
   return (
-    <div className="dsh-home" data-editing={editing ? 'true' : 'false'} style={{ '--dsh-home-max-width': `${canvasWidth}px` } as CSSProperties}>
+    <div ref={homeRef} className="dsh-home" data-editing={editing ? 'true' : 'false'}>
       <div className="dsh-home-inner">
         <header className="dsh-home-head">
           <div>
@@ -257,42 +257,9 @@ export function HomePage(props: HomePageProps): ReactNode {
         </div>
         {state.workbenchLoaded && geometry.length === 0 && <div className="dsh-empty"><span>{t('empty.noWidgets')}</span><Button variant="outline" size="sm" disabled={!writable || busy} onClick={() => { setEditing(true); setTrayOpen(true) }}>{t('action.widgets')}</Button></div>}
         {editing && <p className="dsh-muted dsh-edit-footnote">{t('edit.keyboard')}</p>}
-        {gripVisible && <div
-          className="dsh-canvas-grip" role="separator" aria-orientation="vertical" tabIndex={0}
-          aria-label={t('canvas.width')} aria-valuemin={CANVAS_MIN_WIDTH} aria-valuemax={CANVAS_MAX_WIDTH} aria-valuenow={canvasWidth}
-          title={t('canvas.widthHint')} data-active={widthDraft !== null ? 'true' : undefined}
-          onDoubleClick={() => { commitCanvasWidth(CANVAS_DEFAULT_WIDTH) }}
-          onKeyDown={event => {
-            const next = canvasWidthFromKey(canvasWidth, event.key)
-            if (next === canvasWidth) return
-            event.preventDefault(); event.stopPropagation(); commitCanvasWidth(next)
-          }}
-          onPointerDown={event => {
-            if (event.button !== 0 || !event.isPrimary) return
-            event.preventDefault(); event.stopPropagation()
-            const element = event.currentTarget, startX = event.clientX
-            const startWidth = canvasWidthRef.current
-            setWidthDraft(startWidth)
-            // The grip keeps pointer capture for the whole gesture, so the resize
-            // survives re-renders and never leaks into a widget drag.
-            try { element.setPointerCapture(event.pointerId) } catch { /* capture is a nicety, not a requirement */ }
-            const move = (moveEvent: PointerEvent): void => {
-              if (moveEvent.pointerId !== event.pointerId) return
-              moveEvent.preventDefault()
-              setWidthDraft(canvasWidthFromDrag(startWidth, startX, moveEvent.clientX))
-            }
-            const finish = (): void => {
-              element.removeEventListener('pointermove', move)
-              element.removeEventListener('pointerup', finish)
-              element.removeEventListener('pointercancel', finish)
-              commitCanvasWidth(canvasWidthRef.current)
-            }
-            element.addEventListener('pointermove', move)
-            element.addEventListener('pointerup', finish)
-            element.addEventListener('pointercancel', finish)
-          }}>
-          <span className="dsh-canvas-grip-bar" aria-hidden="true" />
-        </div>}
+        {gripVisible && (['left', 'right'] as const).map(side => <CanvasWidthHandle key={side} side={side}
+          value={canvasWidth} onCommit={commitCanvasWidth}
+          label={t(side === 'left' ? 'canvas.widthLeft' : 'canvas.widthRight')} hint={t('canvas.widthHint')} />)}
       </div>
       {deleteInstance && <Modal open title={t('manager.deleteTitle', { title: deleteTitle })} description={t('manager.deleteDescription')}
         closeLabel={t('settings.cancel')} onClose={() => { if (!busy) setConfirmDelete(null) }} className="dsh-home-delete-modal"

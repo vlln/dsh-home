@@ -43,29 +43,52 @@ try {
   // The handle only exists while editing; reading mode must stay clean.
   assert.equal(await page.locator('.dsh-canvas-grip').count(), 0, 'no width handle outside edit mode')
   await page.getByRole('button', { name: /^(Edit layout|编辑布局)$/ }).click()
-  await page.locator('.dsh-canvas-grip').waitFor()
-  checks.push('width handle exists only in edit mode')
+  await page.locator('.dsh-canvas-grip').first().waitFor()
+  const sides = await page.locator('.dsh-canvas-grip').evaluateAll(nodes => nodes.map(node => node.dataset.side))
+  assert.deepEqual(sides.sort(), ['left', 'right'], `one strip on each side: ${sides}`)
+  const strips = await page.locator('.dsh-canvas-grip').evaluateAll(nodes => nodes.map(node => {
+    const box = node.getBoundingClientRect(), column = node.closest('.dsh-home-inner').getBoundingClientRect()
+    return { side: node.dataset.side, width: box.width, left: box.left, right: box.right, columnLeft: column.left, columnRight: column.right }
+  }))
+  for (const strip of strips) {
+    assert.equal(Math.round(strip.width), 10, 'col-resize strip width')
+    if (strip.side === 'left') assert(Math.abs(strip.right - strip.columnLeft) < 1, 'left strip hugs the column edge')
+    else assert(Math.abs(strip.left - strip.columnRight) < 1, 'right strip hugs the column edge')
+  }
+  checks.push('edit mode exposes a col-resize strip on each side of the column')
 
-  const grip = page.locator('.dsh-canvas-grip')
-  const bar = await page.locator('.dsh-canvas-grip-bar').boundingBox()
-  assert(bar && bar.width > 0, 'visible affordance')
+  const grip = page.locator('.dsh-canvas-grip[data-side="right"]')
+  const boxOf = async side => { const box = await page.locator(`.dsh-canvas-grip[data-side="${side}"]`).boundingBox(); assert(box); return box }
+  const preDragWidth = await saved()
+  const bar = await boxOf('right')
   const before = await column()
-  // Drag well past the left bound to prove both movement and clamping.
-  await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2)
+  const grabOffset = 5
+  await page.mouse.move(bar.x + grabOffset, bar.y + 240)
   await page.mouse.down()
-  await page.mouse.move(bar.x - 400, bar.y + bar.height / 2, { steps: 12 })
+  // A small inward move, before any clamp: the grabbed edge must sit exactly under
+  // the cursor, which is what "the line follows the mouse" means.
+  const trackedX = bar.x - 60
+  await page.mouse.move(trackedX, bar.y + 240, { steps: 4 })
+  await settle()
+  const tracked = await boxOf('right')
+  assert(Math.abs(tracked.x - (trackedX - grabOffset)) <= 2, `edge tracks the pointer: strip ${Math.round(tracked.x)} vs pointer ${trackedX}`)
+  const noEase = await page.locator('.dsh-home-widget').first().evaluate(el => getComputedStyle(el).transitionDuration)
+  assert(noEase.split(',').every(value => Number.parseFloat(value) === 0), `board must not ease while resizing: ${noEase}`)
+  assert.equal(await grip.getAttribute('data-dragging'), '', 'drag state is exposed while dragging')
+  // Then drag well past the lower bound to prove movement and clamping.
+  await page.mouse.move(bar.x - 500, bar.y + 240, { steps: 12 })
   await settle()
   const during = await column()
   assert(during <= before - 100, `live resize follows the pointer: ${before} -> ${during}`)
   await page.mouse.up()
-  await page.waitForFunction(() => !document.querySelector('.dsh-canvas-grip[data-active]'))
+  await page.waitForFunction(() => !document.querySelector('.dsh-canvas-grip[data-dragging]'))
   await page.waitForTimeout(400)
-  const persisted = await savedWhen(value => typeof value === 'number', 'a numeric width')
+  const persisted = await savedWhen(value => value !== preDragWidth, 'the width chosen by the drag')
   const afterDrag = await column()
   assert.equal(persisted, afterDrag, `drag persists the measured width: saved ${persisted} vs rendered ${afterDrag}`)
   assert(persisted >= 960, `clamped to the minimum, not an unusable sliver: ${persisted}`)
   await page.screenshot({ path: new URL('dragged.png', out).pathname, animations: 'disabled' })
-  checks.push(`drag resizes the board live and persists one bounded width (${before} -> ${afterDrag})`)
+  checks.push(`drag resizes the board live, tracks the pointer and persists one bounded width (${before} -> ${afterDrag})`)
 
   // Reload proves it is a saved preference, not session state.
   await page.reload()
@@ -77,7 +100,7 @@ try {
 
   // Keyboard path must reach the same value and stay bounded.
   await page.getByRole('button', { name: /^(Edit layout|编辑布局)$/ }).click()
-  await page.locator('.dsh-canvas-grip').waitFor()
+  await page.locator('.dsh-canvas-grip').first().waitFor()
   await grip.focus()
   const focused = await page.evaluate(() => document.activeElement?.className)
   assert.match(focused, /dsh-canvas-grip/)
@@ -98,9 +121,24 @@ try {
   assert.equal(await column(), 960, 'the same handle returns to the minimum')
   checks.push('keyboard arrows/Home/End resize the same bounded value and expose it as aria-valuenow')
 
+  // The left strip is an equal control: dragging it outward widens the same value.
+  await page.keyboard.press('Home'); await page.waitForTimeout(300)
+  const narrow = await column()
+  const leftBar = await boxOf('left')
+  await page.mouse.move(leftBar.x + leftBar.width / 2, leftBar.y + 240)
+  await page.mouse.down()
+  await page.mouse.move(leftBar.x - 100, leftBar.y + 240, { steps: 8 })
+  await settle()
+  const widened = await column()
+  assert(widened >= narrow + 150, `left strip widens the board too: ${narrow} -> ${widened}`)
+  await page.mouse.up(); await page.waitForTimeout(300)
+  const leftSaved = await savedWhen(value => value === widened, 'the width the left strip rendered')
+  assert.equal(leftSaved, widened, `left strip persists what it rendered: ${leftSaved} vs ${widened}`)
+  checks.push('left strip is an equal control: dragging it outward widens and persists')
+
   // Double-click restores the default without touching widgets.
   const geometry = await page.locator('.dsh-home-widget').evaluateAll(nodes => nodes.map(node => node.dataset.widgetId))
-  await page.locator('.dsh-canvas-grip-bar').dblclick()
+  await page.locator('.dsh-canvas-grip[data-side="left"]').dblclick()
   await page.waitForTimeout(400)
   assert.equal(await savedWhen(value => value === 1280, 'the default'), 1280, 'double-click restores the default width')
   assert.deepEqual(await page.locator('.dsh-home-widget').evaluateAll(nodes => nodes.map(node => node.dataset.widgetId)), geometry)

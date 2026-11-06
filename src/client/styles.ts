@@ -568,26 +568,34 @@ export const CSS = `
 /* Unified mobile-widget editing surface. Only the editing shell owns gestures. */
 /* The clearance is inside the sticky box, so nothing can slide above the header. */
 .dsh-home-head { position: sticky; top: 0; z-index: 8; background: var(--dsw-alias-bg-base); padding: calc(var(--dsh-frame-top-clearance, 0px) + 20px) 0 12px; }
-/* Edit-only board width handle. It resizes the whole column, never a widget, so it
-   stays outside the "no user resize" rule that governs cards. */
-.dsh-canvas-grip {
-  position: absolute; top: 0; bottom: 0; z-index: 9; width: 12px;
-  /* Sits in the container gutter just past the column edge, so a full-width card's
-     own delete button stays clickable. Kept inside the padding box: no horizontal scroll. */
-  right: -10px; cursor: col-resize; touch-action: none;
-  border-radius: var(--dsw-radius-pill, 999px);
+/* Edit-only board width handles, mirroring the host Conversation tab: a 10px
+   col-resize strip on each side of the centred column, with a 2px glow that follows
+   the captured pointer. They resize the whole column, never a widget, so they stay
+   outside the "no user resize" rule that governs cards. Both strips live in the
+   container gutter, inside the padding box, so they never extend the scroll range. */
+.dsh-canvas-grip { position: absolute; top: 0; bottom: 0; z-index: 9; width: 10px; cursor: col-resize; touch-action: none; user-select: none; }
+.dsh-canvas-grip[data-side="left"] { right: 100%; }
+.dsh-canvas-grip[data-side="right"] { left: 100%; }
+.dsh-canvas-grip::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 2px; border-radius: 2px; pointer-events: none; opacity: 0;
+  background: linear-gradient(to bottom,
+    transparent calc(var(--dsh-canvas-grip-y, 50%) - 36px),
+    var(--dsw-alias-scrollbar-bg-l1) calc(var(--dsh-canvas-grip-y, 50%) - 8px),
+    var(--dsw-alias-scrollbar-bg-l1) calc(var(--dsh-canvas-grip-y, 50%) + 8px),
+    transparent calc(var(--dsh-canvas-grip-y, 50%) + 36px));
+  transition: opacity 120ms ease-out;
 }
-.dsh-canvas-grip::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; border-radius: 999px; background: transparent; transition: background-color 120ms ease-out; }
-.dsh-canvas-grip:is(:hover, :focus-visible, [data-active])::before { background: var(--dsw-alias-state-business-primary); opacity: .45; }
-.dsh-canvas-grip[data-active]::before { opacity: .9; }
-.dsh-canvas-grip:focus-visible { outline: none; }
-.dsh-canvas-grip-bar {
-  position: sticky; display: block; top: 44vh; width: 10px; height: 52px; margin: 44vh auto 0;
-  border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 999px;
-  background: var(--dsw-alias-bg-layer-1); box-shadow: var(--dsw-shadow-lv2);
-}
-.dsh-canvas-grip:is(:hover, :focus-visible) .dsh-canvas-grip-bar { border-color: var(--dsw-alias-state-business-primary); }
-@media (prefers-reduced-motion: reduce) { .dsh-canvas-grip::before { transition: none; } }.dsh-home-widget { min-width: 0; }
+.dsh-canvas-grip[data-side="left"]::after { right: 3px; }
+.dsh-canvas-grip[data-side="right"]::after { left: 3px; }
+.dsh-canvas-grip[data-dragging]::after { opacity: 1; }
+.dsh-canvas-grip[data-dragging] { z-index: 10; }
+.dsh-canvas-grip:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; border-radius: var(--dsw-radius-sm); }
+@media (hover: hover) { .dsh-canvas-grip:hover::after { opacity: 1; } }
+/* The edge must track the pointer exactly, so the board does not ease into a new width. */
+.dsh-home[data-resizing] .react-grid-layout,
+.dsh-home[data-resizing] .react-grid-item { transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .dsh-canvas-grip::after { transition: none; } }
+.dsh-home-widget { min-width: 0; }
 .dsh-home-widget .dsh-focus, .dsh-home-widget .dsh-queue {
   border: 0; background: transparent; padding: 0; border-radius: 0; animation: none; margin: 0;
 }
@@ -792,8 +800,8 @@ body.dsh-home-dragging * { cursor: grabbing !important; }
 }
 @media (max-width: 720px) {
   .dsh-home { padding-right: 16px; padding-left: max(16px, var(--dsh-frame-leading-clearance, 0px)); }
-  /* Narrow gutters: keep the width handle inside the padding box. */
-  .dsh-canvas-grip { right: -6px; width: 10px; }
+  /* Narrow gutters: the 10px strips still fit inside the 16px padding. */
+  .dsh-canvas-grip { width: 8px; }
   .dsh-home-grid { grid-template-columns: minmax(0, 1fr); }
   .dsh-w, .dsh-w[data-size="m"], .dsh-w[data-size="l"] { grid-column: span 1; }
 }

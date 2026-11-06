@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   CANVAS_DEFAULT_WIDTH, CANVAS_MAX_WIDTH, CANVAS_MIN_WIDTH,
-  canvasWidthFromDrag, canvasWidthFromKey, clampCanvasWidth, resolveCanvasWidth,
+  canvasWidthFromEdgeDrag, canvasWidthFromKey, clampCanvasWidth, resolveCanvasWidth,
 } from '../src/client/canvas-width.ts'
 import { emptyPrefs, normalizePrefs } from '../src/state.mjs'
 
@@ -20,11 +20,15 @@ test('canvas width clamps to the usable range and falls back to the default', ()
   assert.equal(resolveCanvasWidth(2400), CANVAS_MAX_WIDTH)
 })
 
-test('dragging and keyboard move the same bounded value', () => {
-  assert.equal(canvasWidthFromDrag(1200, 500, 560), 1260)
-  assert.equal(canvasWidthFromDrag(1200, 500, 440), 1140)
-  assert.equal(canvasWidthFromDrag(1200, 500, -5000), CANVAS_MIN_WIDTH)
-  assert.equal(canvasWidthFromDrag(1200, 500, 5000), CANVAS_MAX_WIDTH)
+test('dragging either edge keeps that edge under the pointer, and stays bounded', () => {
+  // The column is centred, so an edge moving 20px outward widens the box by 40px.
+  assert.equal(canvasWidthFromEdgeDrag(1200, 500, 520, 'right'), 1240)
+  assert.equal(canvasWidthFromEdgeDrag(1200, 500, 480, 'right'), 1160)
+  assert.equal(canvasWidthFromEdgeDrag(1200, 500, 480, 'left'), 1240)
+  assert.equal(canvasWidthFromEdgeDrag(1200, 500, 520, 'left'), 1160)
+  assert.equal(canvasWidthFromEdgeDrag(1200, 500, -5000, 'right'), CANVAS_MIN_WIDTH)
+  assert.equal(canvasWidthFromEdgeDrag(1200, 500, 5000, 'right'), CANVAS_MAX_WIDTH)
+  assert.equal(canvasWidthFromEdgeDrag(1200, 500, 5000, 'left'), CANVAS_MIN_WIDTH)
   assert.equal(canvasWidthFromKey(1200, 'ArrowRight'), 1240)
   assert.equal(canvasWidthFromKey(1200, 'ArrowLeft'), 1160)
   assert.equal(canvasWidthFromKey(1200, 'Home'), CANVAS_MIN_WIDTH)
