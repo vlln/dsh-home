@@ -140,7 +140,7 @@ function ActivitySettings({ config, onConfigChange }: WidgetSettingsProps<Activi
 export function registerActivityWidget(registry: HomeWidgetRegistry, t: Translate) {
   return registry.register<ActivityConfig>({ typeId: '@vlln/dsh-home:activity', apiVersion: 1,
     title: () => t('activity.title'), description: () => t('activity.description'), source: '@vlln/dsh-home',
-    preview: { data: activityPreviewSnapshot() as unknown as JsonValue }, sizing: { default: {w:8,h:6}, supported: [{w:4,h:8},{w:8,h:6},{w:8,h:9},{w:12,h:6}] }, configVersion: 1,
+    preview: { data: activityPreviewSnapshot() as unknown as JsonValue }, sizing: { default: {w:8,h:6}, supported: [{w:4,h:8},{w:8,h:6},{w:8,h:8},{w:12,h:6}] }, configVersion: 1,
     defaultConfig: () => ({ cwd: '', range: 'auto' }), validateConfig: validateActivityConfig,
     Content: ActivityContent })
 }

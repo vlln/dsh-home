@@ -13,6 +13,14 @@ function plainData(input: unknown, keys: readonly string[], field: string): asse
   if (keys.some(key => !Object.hasOwn(input, key))) fail(`${field} requires ${keys.join(' and ')}`)
 }
 /** Compatibility strings are parsed as dimensions, never looked up in a catalog. */
+/** The fixed size ladder: like a phone grid, only these shapes exist. 4 divides the
+ * board unit so 4/8/12-wide cards always tile a row; heights step 112px. */
+export const CANVAS_SIZE_WIDTHS = Object.freeze([4, 8, 12])
+export const CANVAS_SIZE_HEIGHTS = Object.freeze([4, 6, 8, 10])
+export function isLadderShape(shape: GridShape): boolean {
+  return CANVAS_SIZE_WIDTHS.includes(shape.w) && CANVAS_SIZE_HEIGHTS.includes(shape.h)
+}
+
 function shapeFor(input: unknown): GridShape {
   let w: unknown, h: unknown
   if (typeof input === 'string') {
@@ -34,6 +42,10 @@ export function sameWidgetPreset(a: WidgetPreset, b: WidgetPreset): boolean {
 }
 
 export function normalizeWidgetSizing(input: WidgetSizing | WidgetSizingInput): Readonly<WidgetSizing> {
+  return normalizeShapes(input)
+}
+/** Kept separate from the exported name so legacy `defaults` share one code path. */
+function normalizeShapes(input: WidgetSizing | WidgetSizingInput): Readonly<WidgetSizing> {
   plainData(input, ['default', 'supported'], 'declaration')
   const values = input.supported
   if (!Array.isArray(values) || Object.getPrototypeOf(values) !== Array.prototype
@@ -60,7 +72,7 @@ export function normalizeWidgetSizing(input: WidgetSizing | WidgetSizingInput): 
 /** Legacy hints become one fixed declaration; do not round the original height. */
 export function legacyWidgetSizing(defaults: Readonly<WidgetDefaults>): Readonly<WidgetSizing> {
   const shape = { w: defaults.size === 's' ? 4 : defaults.size === 'm' ? 8 : 12, h: defaults.height }
-  return normalizeWidgetSizing({ default: shape, supported: [shape] })
+  return normalizeShapes({ default: shape, supported: [shape] })
 }
 export function presetGeometry(preset: WidgetPreset, cols: number): GridShape {
   // Grid domain (kept local so this helper stays free of runtime imports): the

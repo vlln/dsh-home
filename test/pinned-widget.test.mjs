@@ -42,6 +42,6 @@ test('native display title is preferred and service scope replacement unsubscrib
 test('pinned widget has complete rows, no ledger/recency pagination, isolated sample and fixed size',async()=>{
  const source=await readFile(new URL('../src/client/pinned-widget.tsx',import.meta.url),'utf8'),builtin=await readFile(new URL('../src/client/builtin-registration.tsx',import.meta.url),'utf8')
  assert.match(source,/rows\.map/);assert.doesNotMatch(source,/slice\(|recentPageSize|state\.ledger|saveConfig|pinSession\(/)
- assert.match(source,/actions\.openSession\(session\.id\)/);assert.match(builtin,/pinned: \{ default: \{ w:4,h:7 \}, supported: \[\{w:4,h:7\}\] \}/)
+ assert.match(source,/actions\.openSession\(session\.id\)/);assert.match(builtin,/pinned: \{ default: \{ w:4,h:8 \}, supported: \[\{w:4,h:8\},\{w:8,h:8\}\] \}/)
  assert.match(builtin,/nativePins: \{ ids: \['sample-0'/)
 })

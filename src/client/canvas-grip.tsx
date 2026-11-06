@@ -77,8 +77,9 @@ export function CanvasWidthHandle({ side, label, hint, value, onCommit }: {
       if (!state.dragging || !event.currentTarget.hasPointerCapture(event.pointerId)) return
       const box = event.currentTarget.getBoundingClientRect()
       event.currentTarget.style.setProperty('--dsh-canvas-grip-y', `${event.clientY - box.top}px`)
-      // Raw width: the edge follows the pointer; the column snap happens on release.
-      state.raw = canvasWidthFromEdgeDrag(state.base, state.origin, event.clientX, side)
+      // The board moves in whole grid units only: a free-pixel width could never be
+      // filled by widget spans, so the edge snaps as the pointer travels.
+      state.raw = snapCanvasWidth(canvasWidthFromEdgeDrag(state.base, state.origin, event.clientX, side))
       applyWidth(event.currentTarget, state.raw)
       centreOverflow(event.currentTarget)
     }}

@@ -141,7 +141,7 @@ export function registerPersonalWidgets(registry: HomeWidgets, t: Translate): ()
     disposers.push(registry.register<NotesConfig>({
       typeId: '@vlln/dsh-home:notes', apiVersion: 1, configVersion: 1, source: '@vlln/dsh-home',
       title: () => t('widget.notes.title'), description: () => t('widget.notes.description'), icon: IconEditOutlineRegular,
-      preview: { config: () => ({ title: t('gallery.sample.noteTitle'), text: t('gallery.sample.noteText') }) }, sizing: { default: {w:4,h:6}, supported: [{w:4,h:6},{w:6,h:7},{w:8,h:8},{w:8,h:12}] },
+      preview: { config: () => ({ title: t('gallery.sample.noteTitle'), text: t('gallery.sample.noteText') }) }, sizing: { default: {w:4,h:6}, supported: [{w:4,h:6},{w:4,h:8},{w:8,h:8},{w:8,h:12}] },
       defaultConfig: defaultNotesConfig, validateConfig: validateNotesConfig, Content: NotesContent,
     }))
     disposers.push(registry.register<ClockConfig>({
