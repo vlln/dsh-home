@@ -2,8 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
-  CANVAS_DEFAULT_WIDTH, CANVAS_MAX_WIDTH, CANVAS_MIN_WIDTH,
-  canvasWidthFromEdgeDrag, canvasWidthFromKey, clampCanvasWidth, resolveCanvasWidth,
+  CANVAS_DEFAULT_WIDTH, CANVAS_EDGE_BUDGET, CANVAS_MAX_WIDTH, CANVAS_MIN_WIDTH,
+  appliedCanvasWidth, canvasMaxFor, canvasWidthFromEdgeDrag, canvasWidthFromKey, clampCanvasWidth, resolveCanvasWidth,
 } from '../src/client/canvas-width.ts'
 import { emptyPrefs, normalizePrefs } from '../src/state.mjs'
 
@@ -17,7 +17,22 @@ test('canvas width clamps to the usable range and falls back to the default', ()
   assert.ok(CANVAS_MIN_WIDTH >= 950)
   assert.ok(resolveCanvasWidth(null) === CANVAS_DEFAULT_WIDTH && resolveCanvasWidth(undefined) === CANVAS_DEFAULT_WIDTH)
   assert.equal(resolveCanvasWidth(1100), 1100)
-  assert.equal(resolveCanvasWidth(2400), CANVAS_MAX_WIDTH)
+  assert.equal(resolveCanvasWidth(99999), CANVAS_MAX_WIDTH)
+})
+
+test('the widest reachable board leaves the reserved edge, like the host conversation tab', () => {
+  // Wide window: the limit is derived from the room, not a fixed number.
+  assert.equal(canvasMaxFor(2560), 2560 - CANVAS_EDGE_BUDGET)
+  assert.equal(canvasMaxFor(1200), 1200 - CANVAS_EDGE_BUDGET)
+  // A narrow window cannot produce a board below the minimum, and the board still fits.
+  assert.equal(canvasMaxFor(1000), CANVAS_MIN_WIDTH)
+  assert.equal(canvasMaxFor(400), CANVAS_MIN_WIDTH)
+  assert.equal(canvasMaxFor(Number.NaN), CANVAS_MAX_WIDTH)
+  // The applied width never exceeds what leaves a gutter, whatever was saved.
+  assert.equal(appliedCanvasWidth(3000, 2560), 2560 - CANVAS_EDGE_BUDGET)
+  assert.equal(appliedCanvasWidth(1280, 2560), 1280)
+  assert.equal(appliedCanvasWidth(1542, 1272), 1272 - CANVAS_EDGE_BUDGET)
+  assert.equal(appliedCanvasWidth(null, 2560), CANVAS_DEFAULT_WIDTH)
 })
 
 test('dragging either edge keeps that edge under the pointer, and stays bounded', () => {
@@ -29,10 +44,13 @@ test('dragging either edge keeps that edge under the pointer, and stays bounded'
   assert.equal(canvasWidthFromEdgeDrag(1200, 500, -5000, 'right'), CANVAS_MIN_WIDTH)
   assert.equal(canvasWidthFromEdgeDrag(1200, 500, 5000, 'right'), CANVAS_MAX_WIDTH)
   assert.equal(canvasWidthFromEdgeDrag(1200, 500, 5000, 'left'), CANVAS_MIN_WIDTH)
+  // A gesture stops at the room-derived limit, not at the sanity ceiling.
+  assert.equal(canvasWidthFromEdgeDrag(1200, 500, 5000, 'right', canvasMaxFor(2560)), 2560 - CANVAS_EDGE_BUDGET)
   assert.equal(canvasWidthFromKey(1200, 'ArrowRight'), 1240)
   assert.equal(canvasWidthFromKey(1200, 'ArrowLeft'), 1160)
   assert.equal(canvasWidthFromKey(1200, 'Home'), CANVAS_MIN_WIDTH)
   assert.equal(canvasWidthFromKey(1200, 'End'), CANVAS_MAX_WIDTH)
+  assert.equal(canvasWidthFromKey(1200, 'End', 40, canvasMaxFor(1600)), 1600 - CANVAS_EDGE_BUDGET)
   assert.equal(canvasWidthFromKey(1200, 'Enter'), 1200)
   assert.equal(canvasWidthFromKey(CANVAS_MIN_WIDTH, 'ArrowLeft'), CANVAS_MIN_WIDTH)
 })

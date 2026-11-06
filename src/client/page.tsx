@@ -19,7 +19,7 @@ import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
 import { legacyInstanceProjection } from './widget-sizing.ts'
 import { CanvasWidthHandle } from './canvas-grip.tsx'
-import { resolveCanvasWidth } from './canvas-width.ts'
+import { appliedCanvasWidth, resolveCanvasWidth } from './canvas-width.ts'
 
 export interface HomePageProps {
   t: Translate
@@ -165,11 +165,27 @@ export function HomePage(props: HomePageProps): ReactNode {
   // saved rectangles and breakpoints are untouched, and the grid simply measures the result.
   const canvasWidth = resolveCanvasWidth(state.prefs.canvasWidth)
   const homeRef = useRef<HTMLDivElement>(null)
+  const [boardRoom, setBoardRoom] = useState(0)
+  useEffect(() => {
+    const node = homeRef.current
+    if (node === null) return
+    const measure = (): void => {
+      const style = getComputedStyle(node)
+      const room = node.clientWidth - (Number.parseFloat(style.paddingLeft) || 0) - (Number.parseFloat(style.paddingRight) || 0)
+      setBoardRoom(previous => previous === room ? previous : room)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => { observer.disconnect() }
+  }, [])
+  // Reserve an edge even at the widest setting, like the host Conversation tab.
+  const appliedBoardWidth = boardRoom > 0 ? appliedCanvasWidth(state.prefs.canvasWidth, boardRoom) : canvasWidth
   // Written imperatively rather than through the style prop: the handle owns this variable
   // during a gesture, so React must not restore a stale value mid-drag.
   useLayoutEffect(() => {
-    homeRef.current?.style.setProperty('--dsh-home-max-width', `${canvasWidth}px`)
-  }, [canvasWidth])
+    homeRef.current?.style.setProperty('--dsh-home-max-width', `${appliedBoardWidth}px`)
+  }, [appliedBoardWidth])
   const gripVisible = editable && !interacting
   const commitCanvasWidth = (next: number): void => { store.setCanvasWidth(next) }
   const deleteInstance = confirmDelete === null ? undefined : instancesById.get(confirmDelete)

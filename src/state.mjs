@@ -18,9 +18,10 @@ import path from 'node:path'
 /** v3 adds durable instances; v2 is migrated in memory until the next normal commit. */
 export const STATE_VERSION = 3
 
-/** Bounds for the one user-chosen board width; must match client canvas-width.ts. */
+/** Bounds for the one user-chosen board width; must match client canvas-width.ts.
+ * The practical maximum is derived from the window, so this is only a sanity ceiling. */
 export const CANVAS_MIN_WIDTH = 960
-export const CANVAS_MAX_WIDTH = 1600
+export const CANVAS_MAX_WIDTH = 4096
 
 // Diagnostics are not document fields and cannot accidentally be persisted.
 const storageMetadata = new WeakMap()

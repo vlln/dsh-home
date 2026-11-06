@@ -93,7 +93,7 @@ try {
     const applied = Number.parseFloat(getComputedStyle(home).getPropertyValue('--dsh-home-max-width'))
     return { viewport: window.innerWidth, surface: surface.clientWidth, inner: box.width, applied, left: box.left - pad.left, right: pad.right - box.right }
   })
-  assert(Number.isFinite(wide.applied) && wide.applied >= 960 && wide.applied <= 1600, `cap stays in range: ${JSON.stringify(wide)}`)
+  assert(Number.isFinite(wide.applied) && wide.applied >= 960 && wide.applied <= 4096, `cap stays in range: ${JSON.stringify(wide)}`)
   assert(wide.surface <= wide.applied + 1, `content column must never exceed its cap: ${JSON.stringify(wide)}`)
   assert(Math.abs(wide.left - wide.right) <= 2, `capped column must be centred: ${JSON.stringify(wide)}`)
   checks.push(`2400px: content column stops at its ${wide.applied}px cap and centres instead of stretching widgets`)

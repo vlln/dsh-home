@@ -1,22 +1,31 @@
 /** Width handles for the whole board, mirroring the host Conversation tab: one 10px
  * col-resize strip on each side, a 2px glow that tracks the captured pointer, and a
  * direct CSS-variable write during the gesture so the edge never lags the cursor. */
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import {
-  CANVAS_DEFAULT_WIDTH, CANVAS_MAX_WIDTH, CANVAS_MIN_WIDTH,
-  canvasWidthFromEdgeDrag, canvasWidthFromKey,
+  CANVAS_DEFAULT_WIDTH, CANVAS_MIN_WIDTH,
+  canvasMaxFor, canvasWidthFromEdgeDrag, canvasWidthFromKey, clampCanvasWidth,
 } from './canvas-width.ts'
-
-/** Board width the layout is currently rendered at, which may be narrower than the
- * saved preference when the window offers less room. */
-function renderedWidth(handle: HTMLElement, fallback: number): number {
-  const column = handle.closest('.dsh-home-inner')?.getBoundingClientRect().width
-  return column !== undefined && Number.isFinite(column) && column > 0 ? Math.round(column) : fallback
-}
 
 function board(handle: HTMLElement): HTMLElement | null {
   return handle.closest<HTMLElement>('.dsh-home')
+}
+
+/** Room the board may occupy: the scroll container's content box, i.e. what is left
+ * after its own gutters, before the reserved edge is taken off. */
+function availableBoardWidth(handle: HTMLElement): number {
+  const home = board(handle)
+  if (home === null) return Number.NaN
+  const style = getComputedStyle(home)
+  return home.clientWidth - (Number.parseFloat(style.paddingLeft) || 0) - (Number.parseFloat(style.paddingRight) || 0)
+}
+
+/** Width the layout is currently rendered at, which may be narrower than the saved
+ * preference when the window (or the reserved edge) offers less room. */
+function renderedWidth(handle: HTMLElement, fallback: number): number {
+  const column = handle.closest('.dsh-home-inner')?.getBoundingClientRect().width
+  return column !== undefined && Number.isFinite(column) && column > 0 ? Math.round(column) : fallback
 }
 
 function applyWidth(handle: HTMLElement, width: number): void {
@@ -32,7 +41,23 @@ export function CanvasWidthHandle({ side, label, hint, value, onCommit }: {
   onCommit: (width: number) => void
 }): ReactNode {
   const gesture = useRef({ dragging: false, base: 0, origin: 0 })
-  const commit = (width: number): void => { if (width !== value) onCommit(width) }
+  const [max, setMax] = useState(value)
+  const handleRef = useRef<HTMLDivElement>(null)
+  // The practical maximum depends on the window, so it is measured rather than fixed.
+  useEffect(() => {
+    const node = handleRef.current
+    if (node === null) return
+    const measure = (): void => {
+      const next = canvasMaxFor(availableBoardWidth(node))
+      setMax(previous => previous === next ? previous : next)
+    }
+    measure()
+    const home = board(node)
+    if (home === null || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(home)
+    return () => { observer.disconnect() }
+  }, [])
   const finish = useCallback((handle: HTMLElement, persist: boolean): void => {
     const state = gesture.current
     if (!state.dragging) return
@@ -43,13 +68,15 @@ export function CanvasWidthHandle({ side, label, hint, value, onCommit }: {
     if (!persist) applyWidth(handle, value)
   }, [value])
   return <div
+    ref={handleRef}
     className="dsh-canvas-grip" data-side={side} data-canvas-grip={side}
     role="separator" aria-orientation="vertical" tabIndex={0}
-    aria-label={label} aria-valuemin={CANVAS_MIN_WIDTH} aria-valuemax={CANVAS_MAX_WIDTH} aria-valuenow={value}
+    aria-label={label} aria-valuemin={CANVAS_MIN_WIDTH} aria-valuemax={max} aria-valuenow={value}
     title={hint}
     onDoubleClick={() => onCommit(CANVAS_DEFAULT_WIDTH)}
     onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
-      const next = canvasWidthFromKey(value, event.key)
+      const limit = canvasMaxFor(availableBoardWidth(event.currentTarget))
+      const next = canvasWidthFromKey(value, event.key, 40, limit)
       if (next === value) return
       event.preventDefault(); event.stopPropagation()
       onCommit(next)
@@ -69,9 +96,10 @@ export function CanvasWidthHandle({ side, label, hint, value, onCommit }: {
       const state = gesture.current
       if (!state.dragging || !event.currentTarget.hasPointerCapture(event.pointerId)) return
       const box = event.currentTarget.getBoundingClientRect()
+      const limit = canvasMaxFor(availableBoardWidth(event.currentTarget))
       event.currentTarget.style.setProperty('--dsh-canvas-grip-y', `${event.clientY - box.top}px`)
       // Written straight to the board: a React round trip would trail the pointer.
-      applyWidth(event.currentTarget, canvasWidthFromEdgeDrag(state.base, state.origin, event.clientX, side))
+      applyWidth(event.currentTarget, canvasWidthFromEdgeDrag(state.base, state.origin, event.clientX, side, limit))
     }}
     onPointerUp={(event: ReactPointerEvent<HTMLDivElement>) => {
       const state = gesture.current
@@ -82,8 +110,11 @@ export function CanvasWidthHandle({ side, label, hint, value, onCommit }: {
       // does not undo the width we are about to persist.
       finish(handle, moved)
       if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId)
-      if (moved) onCommit(canvasWidthFromEdgeDrag(state.base, state.origin, event.clientX, side))
-      else applyWidth(handle, value)
+      // Persist what is actually on screen: past the limit the edge stops moving, and
+      // storing the pointer's wish would silently record an unreachable width.
+      const applied = clampCanvasWidth(renderedWidth(handle, value), canvasMaxFor(availableBoardWidth(handle)))
+      if (moved && applied !== value) onCommit(applied)
+      else if (!moved) applyWidth(handle, value)
     }}
     onPointerCancel={(event: ReactPointerEvent<HTMLDivElement>) => { finish(event.currentTarget, false) }}
     onLostPointerCapture={(event: ReactPointerEvent<HTMLDivElement>) => { finish(event.currentTarget, false) }}

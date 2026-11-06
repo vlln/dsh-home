@@ -113,13 +113,27 @@ try {
   await page.keyboard.press('Home'); await page.waitForTimeout(300)
   assert.equal(await valueOf(), 960, 'Home clamps to the minimum')
   assert.equal(await column(), 960, 'minimum is renderable')
+  // End must reach the widest board that still leaves the reserved edge, not a fixed cap.
+  const roomFor = () => page.evaluate(() => {
+    const home = document.querySelector('.dsh-home')
+    const style = getComputedStyle(home)
+    return home.clientWidth - (Number.parseFloat(style.paddingLeft) || 0) - (Number.parseFloat(style.paddingRight) || 0)
+  })
+  const expectedMax = Math.max(960, (await roomFor()) - 176)
   await page.keyboard.press('End'); await page.waitForTimeout(300)
-  assert.equal(await valueOf(), 1600, 'End reaches the maximum preference')
-  const room = await column()
-  assert(room >= 960 && room <= 1600, `a narrower window shows only what fits: ${room}`)
+  assert.equal(await valueOf(), expectedMax, `End reaches the room-derived maximum (${expectedMax})`)
+  const widest = await column()
+  assert.equal(widest, expectedMax, 'the widest board renders at that maximum')
+  const gutters = await page.evaluate(() => {
+    const home = document.querySelector('.dsh-home'), inner = document.querySelector('.dsh-home-inner')
+    const box = inner.getBoundingClientRect(), pad = home.getBoundingClientRect()
+    return { left: Math.round(box.left - pad.left), right: Math.round(pad.right - box.right) }
+  })
+  assert(gutters.left >= 40 && gutters.right >= 40, `widest board keeps a real gutter: ${JSON.stringify(gutters)}`)
+  assert(Math.abs(gutters.left - gutters.right) <= 2, `gutters stay symmetric: ${JSON.stringify(gutters)}`)
   await page.keyboard.press('Home'); await page.waitForTimeout(300)
   assert.equal(await column(), 960, 'the same handle returns to the minimum')
-  checks.push('keyboard arrows/Home/End resize the same bounded value and expose it as aria-valuenow')
+  checks.push(`keyboard arrows/Home/End reach the room-derived maximum (${expectedMax}) with a reserved edge of ${gutters.left}px per side`)
 
   // The left strip is an equal control: dragging it outward widens the same value.
   await page.keyboard.press('Home'); await page.waitForTimeout(300)
@@ -127,10 +141,11 @@ try {
   const leftBar = await boxOf('left')
   await page.mouse.move(leftBar.x + leftBar.width / 2, leftBar.y + 240)
   await page.mouse.down()
-  await page.mouse.move(leftBar.x - 100, leftBar.y + 240, { steps: 8 })
+  // A short outward drag, small enough to stay under the room-derived maximum.
+  await page.mouse.move(leftBar.x - 40, leftBar.y + 240, { steps: 8 })
   await settle()
   const widened = await column()
-  assert(widened >= narrow + 150, `left strip widens the board too: ${narrow} -> ${widened}`)
+  assert(widened >= narrow + 60, `left strip widens the board too: ${narrow} -> ${widened}`)
   await page.mouse.up(); await page.waitForTimeout(300)
   const leftSaved = await savedWhen(value => value === widened, 'the width the left strip rendered')
   assert.equal(leftSaved, widened, `left strip persists what it rendered: ${leftSaved} vs ${widened}`)
