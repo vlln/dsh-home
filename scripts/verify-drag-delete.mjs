@@ -165,27 +165,26 @@ try {
     await moving.locator('.dsh-debris').waitFor({ timeout: 3000 })
     const burst = await moving.evaluate(() => {
       const layer = document.querySelector('.dsh-debris')
-      const host = layer?.parentElement
       return {
-        tiles: layer?.querySelectorAll('.dsh-debris-tile').length ?? 0,
-        chips: layer?.querySelectorAll('.dsh-debris-chip').length ?? 0,
-        realContent: layer?.textContent.includes('Disposable delete target') ?? false,
-        inBoard: host !== null && host !== undefined && host.closest('.dsh-home') !== null,
+        particles: layer?.querySelectorAll('.dsh-debris-particle').length ?? 0,
+        halo: layer?.querySelectorAll('.dsh-debris-halo').length ?? 0,
+        clonesCard: layer?.querySelector('.dsh-home-widget') !== null,
+        onBody: layer?.parentElement === document.body,
         zIndex: layer === null ? -1 : Number(getComputedStyle(layer).zIndex),
       }
     })
-    assert.equal(burst.tiles, 9, 'the card is diced into nine tiles')
-    assert.ok(burst.chips >= 20, `small chips scatter too (${burst.chips})`)
-    assert.equal(burst.realContent, true, 'the tiles carry the real card, not a blank block')
-    assert.equal(burst.inBoard, true, 'the debris layer keeps the board scoped card paint')
-    assert.ok(burst.zIndex >= 50, `the burst paints above the board (z ${burst.zIndex})`)
+    assert.ok(burst.particles >= 20, `a cloud of dust lifts off (${burst.particles})`)
+    assert.equal(burst.halo, 1, 'one soft halo blooms behind it')
+    assert.equal(burst.clonesCard, false, 'the card itself is not duplicated: only debris appears around it')
+    assert.equal(burst.onBody, true, 'the puff is a viewport layer')
+    assert.ok(burst.zIndex >= 50, `the puff paints above the board (z ${burst.zIndex})`)
     await moving.screenshot({ path: new URL('debris.png', out).pathname })
-    // The card itself is gone; only its pieces exist.
-    assert.equal(await moving.locator('[data-widget-id="drag-delete"]').count(), 0, 'the source card is removed while the debris flies')
+    // The card itself is gone while the dust is still in the air.
+    assert.equal(await moving.locator('[data-widget-id="drag-delete"]').count(), 0, 'the card is removed while the debris flies')
     await moving.waitForFunction(() => document.querySelector('.dsh-debris') === null, null, { timeout: 5000 })
-    assert.equal(await moving.locator('.dsh-debris').count(), 0, 'the burst cleans itself up')
+    assert.equal(await moving.locator('.dsh-debris').count(), 0, 'the puff cleans itself up')
     await instanceGone(moving)
-    checks.push(`dropping on the target shatters the card into ${burst.tiles} tiles and ${burst.chips} chips, then deletes it`)
+    checks.push(`dropping on the target removes the card and puffs ${burst.particles} debris particles around it`)
   } finally {
     await motion.close()
   }

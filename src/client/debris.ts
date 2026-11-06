@@ -1,35 +1,31 @@
 /**
- * Geometry for the delete shatter. The card is diced into tiles that fly apart and fall
- * while a handful of small chips (碎屑) scatter with it. Everything here is pure and
- * seeded: the burst is reproducible, and the DOM runner in `debris-burst.ts` only turns
- * these numbers into elements and animations.
+ * Geometry for the delete puff: the card itself is gone the moment it is dropped, and a
+ * small cloud of debris lifts off around where it was — the same read as deleting an app
+ * on a phone. Everything here is pure and seeded so the burst can be replayed in tests;
+ * `debris-burst.ts` only turns these numbers into elements and animations.
  */
 
-export interface DebrisTile {
-  left: number
-  top: number
-  width: number
-  height: number
-  /** Horizontal escape distance, in pixels, away from the card's middle. */
+export interface DebrisParticle {
+  /** Where the dust lifts off inside the card footprint. */
+  x: number
+  y: number
+  size: number
+  /** Outward travel away from the card's middle. */
   dx: number
-  /** Vertical drop; always downward, because debris falls. */
   dy: number
-  rotate: number
   delay: number
   duration: number
+  /** Which sampled card colour the particle uses: 0 label, 1 border, 2 accent. */
+  tone: number
+  /** Starting alpha; the dust is translucent, it is not a solid object. */
+  opacity: number
 }
 
-export interface DebrisChip {
-  left: number
-  top: number
-  size: number
-  dx: number
-  dy: number
-  rotate: number
-  delay: number
-  duration: number
-  /** Which sampled card colour the chip uses: 0 background, 1 border, 2 accent. */
-  tone: number
+export interface DebrisPuff {
+  particles: DebrisParticle[]
+  /** Diameter of the soft halo that blooms behind the dust, centred on the card. */
+  halo: number
+  haloDuration: number
 }
 
 /** Deterministic PRNG (mulberry32) so a burst can be replayed in tests. */
@@ -44,54 +40,43 @@ export function seededRandom(seed: number): () => number {
   }
 }
 
-/** Tiles must exactly cover the card: rounding happens on the shared borders. */
-export function debrisTiles(width: number, height: number, random: () => number, columns = 3, rows = 3): DebrisTile[] {
-  const tiles: DebrisTile[] = []
-  const edge = (total: number, index: number, count: number): number => Math.round(total * index / count)
-  for (let row = 0; row < rows; row++) {
-    for (let column = 0; column < columns; column++) {
-      const left = edge(width, column, columns)
-      const right = edge(width, column + 1, columns)
-      const top = edge(height, row, rows)
-      const bottom = edge(height, row + 1, rows)
-      const awayX = (left + right) / 2 - width / 2
-      const awayY = (top + bottom) / 2 - height / 2
-      // Pieces leave the middle sideways, then gravity wins: dy is always downward.
-      const spread = 0.85 + random() * 0.8
-      tiles.push({
-        left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top),
-        dx: Math.round(awayX * spread + (random() - 0.5) * 24),
-        dy: Math.max(12, Math.round(awayY * 0.3 + 54 + random() * 110)),
-        rotate: Math.round((random() - 0.5) * 34),
-        delay: Math.round(random() * 40),
-        duration: 560 + Math.round(random() * 200),
-      })
-    }
-  }
-  return tiles
-}
-
-/** Small chips that leave the card faster and fade earlier than the big tiles. */
-export function debrisChips(width: number, height: number, random: () => number, count = 26): DebrisChip[] {
-  const chips: DebrisChip[] = []
+/**
+ * Mostly uniform across the card, with a bias toward its edges so the cloud reads as a
+ * rim of dust around the footprint rather than a dot in the middle.
+ */
+export function debrisParticles(width: number, height: number, random: () => number, count = 46): DebrisParticle[] {
+  const particles: DebrisParticle[] = []
   for (let index = 0; index < count; index++) {
-    const left = random() * width
-    const top = random() * height
-    chips.push({
-      left: Math.round(left), top: Math.round(top), size: 3 + Math.floor(random() * 6),
-      dx: Math.round((left - width / 2) * (0.6 + random() * 0.9)),
-      dy: Math.round((top - height / 2) * 0.5 + 60 + random() * 120),
-      rotate: Math.round((random() - 0.5) * 180),
-      delay: Math.round(random() * 60),
-      duration: 620 + Math.round(random() * 240),
-      tone: Math.floor(random() * 3),
+    const edge = index % 3 === 0
+    const x = edge ? (random() < 0.5 ? random() * width * 0.18 : width - random() * width * 0.18) : random() * width
+    const y = edge ? (random() < 0.5 ? random() * height * 0.18 : height - random() * height * 0.18) : random() * height
+    const awayX = x - width / 2
+    const awayY = y - height / 2
+    const reach = 0.35 + random() * 0.55
+    particles.push({
+      x: Math.round(x), y: Math.round(y), size: 2 + Math.floor(random() * 6),
+      // Dust drifts outward and slightly up, then settles; it is not thrown like a shard.
+      dx: Math.round(awayX * reach + (random() - 0.5) * 26),
+      dy: Math.round(awayY * reach * 0.45 - 6 - random() * 34),
+      delay: Math.round(random() * 70),
+      duration: 380 + Math.round(random() * 240),
+      tone: index % 5 === 0 ? 2 : index % 3 === 0 ? 1 : 0,
+      opacity: 0.45 + random() * 0.4,
     })
   }
-  return chips
+  return particles
 }
 
-/** Longest animation in the burst; the runner keeps the layer alive this long. */
-export function debrisLifetime(tiles: readonly DebrisTile[], chips: readonly DebrisChip[]): number {
-  const longest = Math.max(0, ...tiles.map(tile => tile.delay + tile.duration), ...chips.map(chip => chip.delay + chip.duration))
-  return longest + 120
+/** @param width source card width so the bloom roughly matches its footprint. */
+export function debrisPuff(width: number, height: number, random: () => number, count = 46): DebrisPuff {
+  const particles = debrisParticles(width, height, random, count)
+  // Slightly smaller than the footprint: the bloom is a glow at the centre, not a disc
+  // that covers the whole card area with a hard edge.
+  return { particles, halo: Math.round(Math.min(width, height) * 0.95), haloDuration: 420 }
+}
+
+/** How long the layer must stay alive: the slowest particle plus a small grace. */
+export function debrisLifetime(puff: DebrisPuff): number {
+  const slowest = Math.max(0, ...puff.particles.map(particle => particle.delay + particle.duration))
+  return Math.max(slowest, puff.haloDuration) + 140
 }

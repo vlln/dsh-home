@@ -19,7 +19,7 @@ import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
 import { legacyInstanceProjection } from './widget-sizing.ts'
 import { CanvasWidthHandle } from './canvas-grip.tsx'
 import { boardColumnsFor, boardWidthForColumns, resolveCanvasWidth, widgetWidthForColumns } from './canvas-width.ts'
-import { shatterWidget } from './debris-burst.ts'
+import { scatterDebris } from './debris-burst.ts'
 
 export interface HomePageProps {
   t: Translate
@@ -180,7 +180,7 @@ export function HomePage(props: HomePageProps): ReactNode {
     if (!editable) return
     setManagementError(false)
     const node = source ?? document.querySelector<HTMLElement>(`.dsh-home-widget[data-widget-id="${CSS.escape(instanceId)}"]`)
-    if (node !== null) shatterWidget(node)
+    if (node !== null) scatterDebris(node)
     setDeleting(previous => { const next = new Set(previous); next.add(instanceId); return next })
     store.removeInstanceDurably(instanceId).catch(() => {
       setManagementError(true)

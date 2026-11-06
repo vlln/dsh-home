@@ -8,7 +8,7 @@ test('deleting a card never closes or remounts the widget library', async () => 
   assert(handler, 'the page owns one delete request handler')
   assert.doesNotMatch(handler, /setTrayOpen/)
   assert.match(handler, /removeInstanceDurably/)
-  assert.match(handler, /shatterWidget/)
+  assert.match(handler, /scatterDebris/)
 })
 test('deletion is a drag onto the page target, not a header button', async () => {
   const frame = await source('widget-frame.tsx')

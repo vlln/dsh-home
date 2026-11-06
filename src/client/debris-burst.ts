@@ -1,35 +1,31 @@
 /**
- * Visual half of the delete gesture: dice the card into tiles and throw the pieces away.
+ * Visual half of the delete gesture: the card is gone the moment it is dropped, and a
+ * small puff of debris lifts off around its footprint — the same read as deleting an app
+ * on a phone, not a picture of the card breaking apart.
  *
- * The layer is imperative and self-cleaning: it appends one absolutely positioned root,
- * clones the card once per tile (clipped by the tile), animates with the Web Animations
- * API and removes itself when the last piece lands. Reduced motion deletes silently —
- * the removal itself never waits for the animation.
+ * The layer is imperative and self-cleaning: one absolutely positioned root over the old
+ * card rect, a soft halo, a cloud of small translucent particles sampled from the card's
+ * own colours, and removal once the last animation lands. Reduced motion deletes silently.
  */
-import { debrisChips, debrisLifetime, debrisTiles, seededRandom } from './debris.ts'
+import { debrisLifetime, debrisPuff, seededRandom } from './debris.ts'
 
 const prefersReducedMotion = (): boolean => typeof window !== 'undefined'
   && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/** Sample the card's own material so the chips do not look like generic confetti. */
+/** Sample the card's own material so the dust does not look like generic confetti. */
 function cardTones(node: HTMLElement): string[] {
   const style = getComputedStyle(node)
   const label = style.color
   const border = style.borderTopColor
-  const background = style.backgroundColor
   const accent = style.getPropertyValue('--dsw-alias-state-business-primary').trim()
-  return [
-    background !== '' && !background.startsWith('rgba(0, 0, 0, 0') ? background : label,
-    border !== '' ? border : label,
-    accent !== '' ? accent : border !== '' ? border : label,
-  ].filter(tone => tone !== '')
+  return [label, border !== '' ? border : label, accent !== '' ? accent : label].filter(tone => tone !== '')
 }
 
 /**
  * @param node card element, still in place (drag position is fine)
  * @returns whether a burst was started; `false` means "reduce motion" or nothing to show
  */
-export function shatterWidget(node: HTMLElement, options: { seed?: number; reducedMotion?: boolean } = {}): boolean {
+export function scatterDebris(node: HTMLElement, options: { seed?: number; reducedMotion?: boolean } = {}): boolean {
   const box = node.getBoundingClientRect()
   if (options.reducedMotion ?? prefersReducedMotion()) return false
   if (!(box.width >= 24 && box.height >= 24) || typeof node.animate !== 'function') return false
@@ -40,59 +36,42 @@ export function shatterWidget(node: HTMLElement, options: { seed?: number; reduc
   layer.style.top = `${box.top}px`
   layer.style.width = `${box.width}px`
   layer.style.height = `${box.height}px`
-  // Inside the board's column when possible: the cloned card keeps its `.dsh-home`
-  // scoped paint (editing dashed border, content overflow) instead of half its styles.
-  const host = node.closest('.dsh-home-inner') ?? node.ownerDocument.body
-  host.append(layer)
+  document.body.append(layer)
   const random = seededRandom(options.seed ?? Math.floor(performance.now() * 1000) % 2147483647)
-  const tiles = debrisTiles(box.width, box.height, random)
-  const chips = debrisChips(box.width, box.height, random)
+  const puff = debrisPuff(box.width, box.height, random)
   const tones = cardTones(node)
   const animations: Animation[] = []
-  const motion = (duration: number, delay: number, easing: string): KeyframeAnimationOptions => ({ duration, delay, easing, fill: 'forwards' })
-  for (const tile of tiles) {
-    const cell = document.createElement('div')
-    cell.className = 'dsh-debris-tile'
-    cell.style.clipPath = `inset(${tile.top}px ${Math.round(box.width - tile.left - tile.width)}px ${Math.round(box.height - tile.top - tile.height)}px ${tile.left}px)`
-    const clone = node.cloneNode(true) as HTMLElement
-    clone.removeAttribute('id')
-    // The pieces must never answer a `[data-widget-id]` query: the live card is gone.
-    clone.removeAttribute('data-widget-id')
-    clone.setAttribute('aria-hidden', 'true')
-    // Replace the RGL inline geometry (position/transform/px size) with a static copy.
-    clone.style.cssText = `position:absolute;left:0;top:0;margin:0;width:${box.width}px;height:${box.height}px;transform:none;transition:none;animation:none;`
-    cell.append(clone)
-    layer.append(cell)
-    // Move and fade are separate timelines: the tiles stay opaque while they tear away
-    // and only fade once they are clearly pieces. A single eased timeline faded them
-    // almost immediately, which read as a ghostly dissolve instead of a shatter.
-    animations.push(
-      cell.animate([{ transform: 'translate3d(0,0,0) rotate(0deg)' },
-        { transform: `translate3d(${tile.dx}px,${tile.dy}px,0) rotate(${tile.rotate}deg)` }],
-      motion(tile.duration, tile.delay, 'cubic-bezier(.22,.75,.28,1)')),
-      cell.animate([{ opacity: 1, offset: 0 }, { opacity: 1, offset: .62 }, { opacity: 0, offset: 1 }],
-        motion(tile.duration, tile.delay, 'linear')))
-  }
+  const halo = document.createElement('div')
+  halo.className = 'dsh-debris-halo'
+  halo.style.left = `${Math.round((box.width - puff.halo) / 2)}px`
+  halo.style.top = `${Math.round((box.height - puff.halo) / 2)}px`
+  halo.style.width = `${puff.halo}px`
+  halo.style.height = `${puff.halo}px`
+  // A gradient instead of a solid disc: a hard-edged circle reads as a coloured spotlight.
+  halo.style.background = `radial-gradient(circle, ${tones[tones.length - 1]} 0%, transparent 68%)`
+  layer.append(halo)
+  animations.push(halo.animate([
+    { transform: 'scale(.65)', opacity: .5 },
+    { transform: 'scale(1.05)', opacity: 0 },
+  ], { duration: puff.haloDuration, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' }))
   if (tones.length > 0) {
-    for (const chip of chips) {
+    for (const particle of puff.particles) {
       const element = document.createElement('i')
-      element.className = 'dsh-debris-chip'
-      element.style.left = `${chip.left}px`
-      element.style.top = `${chip.top}px`
-      element.style.width = `${chip.size}px`
-      element.style.height = `${chip.size}px`
-      element.style.background = tones[chip.tone % tones.length]
+      element.className = 'dsh-debris-particle'
+      element.style.left = `${particle.x}px`
+      element.style.top = `${particle.y}px`
+      element.style.width = `${particle.size}px`
+      element.style.height = `${particle.size}px`
+      element.style.background = tones[particle.tone % tones.length]
       layer.append(element)
-      animations.push(
-        element.animate([{ transform: 'translate3d(0,0,0) rotate(0deg)' },
-          { transform: `translate3d(${chip.dx}px,${chip.dy}px,0) rotate(${chip.rotate}deg)` }],
-        motion(chip.duration, chip.delay, 'cubic-bezier(.3,.55,.4,1)')),
-        element.animate([{ opacity: .95, offset: 0 }, { opacity: .95, offset: .35 }, { opacity: 0, offset: 1 }],
-          motion(chip.duration, chip.delay, 'linear')))
+      animations.push(element.animate([
+        { transform: 'translate3d(0,0,0) scale(1)', opacity: particle.opacity },
+        { transform: `translate3d(${particle.dx}px,${particle.dy}px,0) scale(.7)`, opacity: 0 },
+      ], { duration: particle.duration, delay: particle.delay, easing: 'cubic-bezier(.25,.55,.4,1)', fill: 'forwards' }))
     }
   }
   const remove = (): void => { layer.remove() }
-  const timer = setTimeout(remove, debrisLifetime(tiles, chips) + 240)
+  const timer = setTimeout(remove, debrisLifetime(puff) + 240)
   void Promise.allSettled(animations.map(animation => animation.finished))
     .then(() => { clearTimeout(timer); remove() })
   return true

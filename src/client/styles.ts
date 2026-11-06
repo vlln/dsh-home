@@ -89,11 +89,11 @@ export const CSS = `
 .dsh-home-delete-zone-armed { display: none; }
 .dsh-home-delete-zone[data-armed="true"] .dsh-home-delete-zone-idle { display: none; }
 .dsh-home-delete-zone[data-armed="true"] .dsh-home-delete-zone-armed { display: inline; }
-/* Delete shatter: one fixed layer over the card's drop position, a clipped clone per
-   tile, plus small sampled chips. Pointer-transparent and short-lived. */
+/* Delete puff: one fixed, pointer-transparent layer over where the card was, holding a
+   soft halo and a cloud of small sampled particles. The card itself is already gone. */
 .dsh-debris { position: fixed; z-index: 90; pointer-events: none; user-select: none; }
-.dsh-debris-tile { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: center; will-change: transform, opacity; }
-.dsh-debris-chip { position: absolute; border-radius: 1px; display: block; will-change: transform, opacity; }
+.dsh-debris-particle { position: absolute; display: block; border-radius: 50%; will-change: transform, opacity; }
+.dsh-debris-halo { position: absolute; border-radius: 50%; transform-origin: center; will-change: transform, opacity; }
 
 .dsh-home-grid {
   margin-top: 20px;

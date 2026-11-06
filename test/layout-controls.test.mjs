@@ -13,7 +13,7 @@ test('shell owns only geometry/deletion, never settings or reset', async () => {
   // Deletion is immediate: no confirmation surface, the card is shattered and removed.
   assert.doesNotMatch(page, /dsh-home-delete-modal|manager\.deleteTitle|manager\.confirmDelete/)
   assert.match(page, /removeInstanceDurably/)
-  assert.match(page, /shatterWidget/)
+  assert.match(page, /scatterDebris/)
   assert.match(page, /event\.defaultPrevented/)
   assert.match(page, /store\.compactSpatialLayout\(geometry, cols\)/)
 })
