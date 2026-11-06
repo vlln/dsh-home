@@ -84,24 +84,28 @@ try {
   assert((await rows.count()) >= 3, 'the sample shows session rows')
   assert.equal(await recent.locator('.dsh-recent-id, .dsh-recent-path').count(), 0, 'no short id or path line any more')
   const first = rows.first()
+  assert.equal(await first.locator('.dsh-directory-badge').count(), 1, 'the workspace keeps its colored directory mark')
   assert.equal(await first.locator('.dsh-session-workspace').count(), 1)
   assert.equal(await first.locator('.dsh-session-title').count(), 1)
   assert.equal(await first.locator('.dsh-session-status svg, .dsh-session-status [class*="dot"]').count(), 1, 'a native state dot')
   const palette = await rows.evaluateAll(nodes => nodes.map(node => {
-    const workspace = node.querySelector('.dsh-session-workspace'), title = node.querySelector('.dsh-session-title')
+    const badge = node.querySelector('.dsh-directory-badge'), title = node.querySelector('.dsh-session-title')
     return {
-      workspace: workspace === null ? null : getComputedStyle(workspace).backgroundColor,
+      badge: badge === null ? null : getComputedStyle(badge).backgroundColor,
       title: title === null ? null : getComputedStyle(title).backgroundColor,
       trailing: node.querySelector('.dsh-session-trailing')?.textContent ?? '',
       status: node.getAttribute('data-status'),
     }
   }))
   for (const row of palette) {
-    assert.notEqual(row.workspace, row.title, 'workspace and session name use different surfaces')
+    // The old visual language: the workspace keeps its tinted directory tile, the
+    // session name stays plain card text — no extra plate or new hue.
+    assert.notEqual(row.badge, 'rgba(0, 0, 0, 0)', `the directory mark is tinted (${row.badge})`)
+    assert.equal(row.title, 'rgba(0, 0, 0, 0)', 'the session name is plain text')
     assert.match(row.trailing, /^(now|now ago|\d+(min|h|d|mo|y)|\d+(分钟|小时|天|个月|年)|Approval|Plan review|Answer|待审批|计划待审|待回答)$/u, `compact native trailing: ${row.trailing}`)
   }
   assert(palette.some(row => row.status === 'approval'), 'the sample includes a pending interaction')
-  checks.push('会话行：工作区与会话名两种底色，原生状态点，原生紧凑时间，不再显示 ID/路径')
+  checks.push('会话行：沿用目录色块与纯文字（旧配色），原生状态点，原生紧凑时间，不再显示 ID/路径')
   await recent.screenshot({ path: new URL('recent-rows.png', out).pathname, animations: 'disabled' })
   assert.deepEqual(errors, [])
 } catch (error) {

@@ -377,12 +377,8 @@ export const CSS = `
 .dsh-active-toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .dsh-active-range { height: 22px; padding: 0 10px; font-size: 11px; line-height: 22px; }
 .dsh-active-hero { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.dsh-active-bars { display: flex; align-items: flex-end; gap: 4px; flex: 1 1 auto; min-height: 26px; max-height: 120px; }
-.dsh-active-col { display: flex; align-items: flex-end; flex: 1 1 0; min-width: 0; height: 100%; }
-.dsh-active-bar { display: block; width: 100%; border-radius: 3px 3px 0 0; background: var(--dsw-alias-state-business-primary); opacity: .45; }
-.dsh-active-bar[data-today="true"] { opacity: 1; }
-.dsh-active-days { display: flex; gap: 4px; margin-top: -2px; font-size: 9px; line-height: 12px; color: var(--dsw-alias-label-caption); }
-.dsh-active-days span { flex: 1 1 0; min-width: 0; text-align: center; overflow: hidden; }
+.dsh-active-bars { flex: 1 1 auto; min-height: 40px; max-height: 72px; }
+.dsh-active-days { margin-top: -2px; }
 .dsh-active-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; margin-top: auto; }
 .dsh-active-band { margin-top: 2px; }
 .dsh-active-band-empty { flex: 1 1 auto; display: flex; align-items: center; font-size: 12px; color: var(--dsw-alias-label-tertiary); }
@@ -574,12 +570,12 @@ export const CSS = `
   outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: 2px;
 }
-/* One-line session row: a two-tone name plate (workspace on a tinted segment, title on
-   the card surface), the native status dot, and the native compact trailing label. */
-.dsh-session-row { flex-direction: row; align-items: center; gap: 8px; padding: 4px 8px; }
-.dsh-session-plate { display: flex; align-items: stretch; flex: 1 1 auto; min-width: 0; border-radius: var(--dsw-radius-sm); overflow: hidden; }
-.dsh-session-workspace { flex: 0 1 auto; max-width: 42%; padding: 2px 7px; background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, var(--dsw-alias-bg-layer-2)); color: var(--dsw-alias-label-primary); font-size: 11px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dsh-session-title { flex: 1 1 auto; min-width: 0; padding: 2px 8px; box-shadow: inset 1px 0 0 var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* One-line session row in the existing language: directory mark, workspace label,
+   plain session title, native state dot, native compact trailing label. */
+.dsh-session-row { flex-direction: row; align-items: center; gap: 8px; padding: 3px 8px; }
+.dsh-session-row .dsh-directory-badge { width: 24px; height: 24px; font: var(--dsw-font-xxs-strong-12); }
+.dsh-session-workspace { flex: 0 1 auto; max-width: 32%; color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dsh-session-title { flex: 1 1 auto; min-width: 0; color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dsh-session-status { flex: none; display: inline-flex; align-items: center; }
 .dsh-session-trailing { flex: none; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
 .dsh-session-row[data-status="approval"] .dsh-session-trailing,

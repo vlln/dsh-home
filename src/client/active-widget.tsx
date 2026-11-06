@@ -16,15 +16,15 @@ import { ACTIVE_DAY_COUNT as DAY_COUNT, ACTIVE_RANGES as RANGES, activePreviewDa
 function Bars({ days, t }: { days: readonly DayBucket[]; t: Translate }): ReactNode {
   const peak = Math.max(1, ...days.map(day => day.activeMs))
   return <>
-    <div className="dsh-active-bars" role="img" aria-label={t('active.chart')}>
+    <div className="dsh-rhythm dsh-active-bars" role="img" aria-label={t('active.chart')}>
       {days.map(day => (
-        <span key={day.key} className="dsh-active-col" title={`${shortDay(day.key)} · ${formatDuration(day.activeMs, t)}`}>
-          <span className="dsh-active-bar" data-today={day === days[days.length - 1] ? 'true' : 'false'}
-            style={{ height: `${Math.max(day.activeMs > 0 ? 6 : 2, (day.activeMs / peak) * 100)}%` }} />
+        <span key={day.key} className="dsh-rhythm-col" title={`${shortDay(day.key)} · ${formatDuration(day.activeMs, t)}`}>
+          <span className="dsh-rhythm-bar dsh-active-bar" data-today={day === days[days.length - 1] ? 'true' : 'false'}
+            style={{ height: `${Math.max(day.activeMs > 0 ? 4 : 1, (day.activeMs / peak) * 100)}%` }} />
         </span>
       ))}
     </div>
-    <div className="dsh-active-days" aria-hidden="true">
+    <div className="dsh-rhythm-days dsh-active-days" aria-hidden="true">
       {days.map(day => <span key={day.key}>{day.key.slice(8)}</span>)}
     </div>
   </>
