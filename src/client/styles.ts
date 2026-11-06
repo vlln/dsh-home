@@ -80,6 +80,15 @@ export const CSS = `
 }
 .dsh-home-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--dsw-alias-label-caption); flex: none; }
 .dsh-home-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Drag-to-delete target. Fixed to the top of the viewport so it stays reachable no
+   matter how far the board is scrolled or how wide it is; it exists only while a card
+   is being dragged, and the grid arms it from the live pointer position. */
+.dsh-home-delete-zone { position: fixed; top: calc(var(--dsh-frame-top-clearance, 0px) + 12px); left: 50%; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; border: 1px dashed var(--dsw-alias-border-l4); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary); box-shadow: var(--dsw-shadow-lv2); font: var(--dsw-font-xs-13); pointer-events: none; user-select: none; }
+.dsh-home-delete-zone svg { flex: none; }
+.dsh-home-delete-zone[data-armed="true"] { border-style: solid; border-color: var(--dsw-alias-state-error-primary); background: var(--dsw-alias-interactive-bg-hover-danger); color: var(--dsw-alias-state-error-primary); }
+.dsh-home-delete-zone-armed { display: none; }
+.dsh-home-delete-zone[data-armed="true"] .dsh-home-delete-zone-idle { display: none; }
+.dsh-home-delete-zone[data-armed="true"] .dsh-home-delete-zone-armed { display: inline; }
 
 .dsh-home-grid {
   margin-top: 20px;
@@ -512,8 +521,6 @@ export const CSS = `
 .dsh-manager-info > strong { font: var(--dsw-font-xs-strong-13); }
 .dsh-manager-description { color: var(--dsw-alias-label-secondary); font-size: var(--dsh-content-font-size-secondary, 13px); line-height: 1.6; }
 .dsh-manager-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-.dsh-tool.dsh-delete-widget { color: var(--dsw-alias-state-error-primary); }
-.dsh-tool.dsh-delete-widget:hover { color: var(--dsw-alias-state-error-primary); background: var(--dsw-alias-interactive-bg-hover-danger); }
 /* Button has no danger variant; preserve the official control geometry, override semantic colors only. */
 .dsh-home-danger-button { background: var(--dsw-alias-state-error-primary) !important; color: var(--dsw-alias-label-primary-foreground) !important; }
 .dsh-home-danger-button:hover { filter: brightness(.92); }

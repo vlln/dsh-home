@@ -7,7 +7,9 @@ test('shell owns only geometry/deletion, never settings or reset', async () => {
   const page = await source('page.tsx'), frame = await source('widget-frame.tsx')
   assert.doesNotMatch(page, /WidgetSettingsPanel|definition\??\.Settings|onEdit=|confirmReset|store\.reset\(/)
   assert.doesNotMatch(frame, /onEdit|library\.edit/)
-  assert.match(frame, /IconTrashOutlineRegular/)
+  // Deletion moved out of the header: the page owns the drag target and the modal.
+  assert.doesNotMatch(frame, /IconTrashOutlineRegular|dsh-delete-widget/)
+  assert.match(frame, /onKeyDelete/)
   assert.match(page, /<Modal open title=\{t\('manager\.deleteTitle'/)
   assert.match(page, /removeInstanceDurably/)
   assert.match(page, /data-modal-autofocus/)

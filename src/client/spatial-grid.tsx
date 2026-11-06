@@ -1,7 +1,8 @@
 /** RGL supplies pixel dragging/resize; a snapshot-based compactor previews local displacement. */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { observeDragRelease } from './drag-release.ts'
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
+import { insideDropZone } from './drop-zone.ts'
 import { createPortal } from 'react-dom'
 import type { LibraryDrag } from './library-drag-model.ts'
 import { libraryPointerInside } from './library-drag-model.ts'
@@ -26,6 +27,9 @@ export interface SpatialGridProps {
   libraryGhost?: ReactNode
   onLibraryDrop?: (drag: LibraryDrag, layout: SpatialItem[]) => void
   onLibraryEnd?: () => void
+  /** Viewport-anchored delete target; dropping a card inside it never moves it. */
+  deleteZone?: RefObject<HTMLElement | null>
+  onDeleteRequest?: (instanceId: string) => void
 }
 interface Gesture {
   id: string
@@ -43,10 +47,16 @@ interface Gesture {
 const items = (value: EngineLayout, cols: number): SpatialItem[] => value.map(item => ({
   ...item, minW: item.minW ?? Math.min(3, cols), minH: item.minH ?? 3, maxW: Math.min(item.maxW ?? cols, cols),
 }))
-export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, children, libraryDrag, libraryGhost, onLibraryDrop, onLibraryEnd }: SpatialGridProps): ReactNode {
+export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, children, libraryDrag, libraryGhost, onLibraryDrop, onLibraryEnd, deleteZone, onDeleteRequest }: SpatialGridProps): ReactNode {
   const [libraryVisual, setLibraryVisual] = useState<{x:number;y:number;w:number;h:number;inside:boolean} | null>(null)
   const [libraryOutline,setLibraryOutline]=useState<{x:number;y:number;w:number;h:number;pending:boolean}|null>(null)
   const libraryRef = useRef(libraryDrag)
+  const zoneRef = useRef(deleteZone)
+  zoneRef.current = deleteZone
+  const deleteRequest = useRef(onDeleteRequest)
+  deleteRequest.current = onDeleteRequest
+  /** Visual armed state of the delete target while a card hovers it. */
+  const armed = useRef(false)
   const latestLayout = useRef(layout)
   latestLayout.current = layout
   libraryRef.current = libraryDrag
@@ -113,6 +123,20 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     hoverTimer.current = null
     if (root.current) { delete root.current.dataset.hoverPending; delete root.current.dataset.dropRejected }
   }
+  /** True while the live pointer sits on the page's delete target; a drop there aborts. */
+  const overDeleteZone = (): boolean => {
+    const zone = zoneRef.current?.current
+    if (zone === null || zone === undefined || libraryRef.current) return false
+    return insideDropZone(pointer.current, zone.getBoundingClientRect())
+  }
+  /** Mirror the pointer state onto the target so the affordance follows the gesture. */
+  const armDeleteZone = (next: boolean): void => {
+    armed.current = next
+    const zone = zoneRef.current?.current
+    if (zone === null || zone === undefined) return
+    if (next) zone.dataset.armed = 'true'
+    else delete zone.dataset.armed
+  }
   useEffect(() => { if (!active.current) setCurrent(layout) }, [layout])
   useEffect(() => {
     clearHover()
@@ -141,6 +165,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
   cancelGesture.current = () => {
     if (!active.current) return
     clearHover()
+    armDeleteZone(false)
     desktopRelease.current?.()
     cancelled.current = true
     active.current = false
@@ -181,8 +206,14 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
       pointer.current = { x: touch?.clientX ?? (event as MouseEvent).clientX, y: touch?.clientY ?? (event as MouseEvent).clientY, touch: touch !== undefined }
       if ('touches' in event) lastTouch.current = event
     }
+    // The release point is authoritative: a fast drop can arrive without a final move.
+    const release = (event: PointerEvent): void => {
+      if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return
+      pointer.current = { x: event.clientX, y: event.clientY, touch: event.pointerType !== 'mouse' }
+    }
     const scroll = (): void => {
       const p = pointer.current
+      armDeleteZone(active.current && gesture.current?.kind === 'drag' && !libraryRef.current && overDeleteZone())
       const container = root.current?.closest('.dsh-home') as HTMLElement | null
       if (active.current && gesture.current?.kind === 'drag' && p && !p.touch && container) {
         const bounds = container.getBoundingClientRect()
@@ -207,10 +238,12 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     }
     document.addEventListener('mousemove', track, true)
     document.addEventListener('touchmove', track, { capture: true, passive: true })
+    document.addEventListener('pointerup', release, true)
     frame = requestAnimationFrame(scroll)
     return () => {
       document.removeEventListener('mousemove', track, true)
       document.removeEventListener('touchmove', track, true)
+      document.removeEventListener('pointerup', release, true)
       cancelAnimationFrame(frame)
     }
   }, [editing])
@@ -224,6 +257,7 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     const mouse = touch ?? event as MouseEvent
     const box = node?.getBoundingClientRect()
     clearHover()
+    armDeleteZone(false)
     gesture.current = { id: item.i, kind, snapshot, candidate: { x: item.x, y: item.y, w: item.w, h: item.h }, preview: snapshot, intent: null, pending: false, direction: 'y', rejected: false, node,
       grab: box && Number.isFinite(mouse.clientX) ? { x: mouse.clientX - box.left, y: mouse.clientY - box.top } : undefined }
     if (Number.isFinite(mouse.clientX)) pointer.current = { x: mouse.clientX, y: mouse.clientY, touch: touch !== undefined }
@@ -328,8 +362,17 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
   }), [])
   const stop = (value: EngineLayout): void => {
     if (cancelled.current || !active.current || !gesture.current) return
-    desktopRelease.current?.()
     const session = gesture.current
+    // Dropping on the delete target is an abort, never a move: restore the card where it
+    // was grabbed and let the page confirm the deletion.
+    if (!libraryRef.current && overDeleteZone()) {
+      const id = session.id
+      desktopRelease.current?.()
+      cancelGesture.current()
+      deleteRequest.current?.(id)
+      return
+    }
+    desktopRelease.current?.()
     const result = session?.preview ?? items(value, cols)
     const restoreEngine = session?.pending || session?.rejected
     clearHover()

@@ -1,7 +1,7 @@
 /** Registry-driven widget instances. The page owns layout, not widget business logic. */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
-import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, IconTrashOutlineRegular, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { formatAgo, formatDay, type Translate } from './format.ts'
 import type { WidgetActions } from './widgets.tsx'
 import type { SessionStatusMap } from './focus.tsx'
@@ -168,6 +168,10 @@ export function HomePage(props: HomePageProps): ReactNode {
   // One board width the user may drag in edit mode. It is a preference, not widget geometry:
   // saved rectangles and breakpoints are untouched, and the grid is sized from `cols`.
   const homeRef = useRef<HTMLDivElement>(null)
+  // Deletion is a gesture: drag a card onto this viewport-anchored target. The target
+  // only exists during a card drag, so it can never be mistaken for a button.
+  const deleteZoneRef = useRef<HTMLDivElement | null>(null)
+  const requestDelete = useCallback((instanceId: string) => { setManagementError(false); setConfirmDelete(instanceId) }, [])
   // Written imperatively rather than through the style prop: the handle owns this variable
   // during a gesture, so React must not restore a stale value mid-drag.
   useLayoutEffect(() => {
@@ -203,6 +207,11 @@ export function HomePage(props: HomePageProps): ReactNode {
             </>}
           </div>
         </header>
+        {editable && interacting && libraryDrag === null && <div ref={deleteZoneRef} className="dsh-home-delete-zone" aria-hidden="true">
+          <IconTrashOutlineRegular size={16}/>
+          <span className="dsh-home-delete-zone-idle">{t('edit.deleteZone')}</span>
+          <span className="dsh-home-delete-zone-armed">{t('edit.deleteZoneArmed')}</span>
+        </div>}
         {!state.workbenchLoaded && <p className="dsh-workbench-notice" role="status">{t('workbench.loading')}</p>}
         {state.workbenchLoaded && !state.storage.writable && <div className="dsh-workbench-notice" role="alert">{t('workbench.readOnly')}{state.storage.error !== null && <span>{state.storage.error.message}</span>}</div>}
         {state.storage.status === 'write-error' && <div className="dsh-error" role="alert">{t('workbench.writeError')}</div>}
@@ -229,6 +238,7 @@ export function HomePage(props: HomePageProps): ReactNode {
           }} />}
         <div className="dsh-spatial-container" data-layout-surface="spatial" data-cols={cols}>
           {state.workbenchLoaded && <SpatialGrid width={boardWidth} cols={cols} layout={geometry} editing={editable} onCommit={commit} onActive={activeChanged}
+            deleteZone={deleteZoneRef} onDeleteRequest={requestDelete}
             libraryDrag={libraryDrag} onLibraryEnd={() => setLibraryDrag(null)}
             onLibraryDrop={(drag,accepted) => {try {if(registry.get(drag.definition.typeId)!==drag.definition||JSON.stringify(store.getSnapshot().layout)!==drag.baseLayout)throw new Error('Widget or layout changed');store.dropInstance(drag.definition,drag.id,accepted,cols)}catch{setManagementError(true)}}}
             libraryGhost={libraryDrag && <><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
@@ -248,7 +258,7 @@ export function HomePage(props: HomePageProps): ReactNode {
               data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
               <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!writable || busy || interacting} gripDisabled={!writable || busy}
                 icon={definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition}/></CardBoundary>}
-                onDelete={() => { setManagementError(false); setConfirmDelete(instance.instanceId) }} onNudge={key => nudge(instance.instanceId,key)} />
+                onKeyDelete={() => requestDelete(instance.instanceId)} onNudge={key => nudge(instance.instanceId,key)} />
               <div className="dsh-w-body dsh-home-widget-content" inert={editing || undefined}>
                 {definition === undefined ? <div className="dsh-empty" role="status">{t('widget.unavailable', { typeId: instance.typeId })}</div>
                   : <CardBoundary key={renderKey(instance, definition)} fallback={<div className="dsh-error" role="alert">{t('error.card')}</div>}>
