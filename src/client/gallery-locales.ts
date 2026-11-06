@@ -1,6 +1,7 @@
 export const zhGallery = {
   'gallery.description.pinned': '按原生置顶顺序列出全部置顶会话，点击继续。',
-  'library.edit':'编辑内容', 'library.close':'关闭组件库', 'library.hint':'拖动标题或把手到桌面。悬停稳定 0.5 秒让位，Esc 取消。',
+  'library.edit':'编辑内容', 'library.close':'关闭组件库', 'library.hint':'拖动卡片到桌面即可添加。悬停稳定 0.5 秒让位，Esc 取消；拖动本窗口标题可移动，双击复位。',
+  'library.move':'移动窗口', 'library.moveHint':'拖动标题移动窗口，双击复位位置',
   'gallery.description.recent': '跨工作目录找回最近的会话。', 'gallery.description.tasks': '预填常用任务草稿，由你确认发送。',
   'gallery.description.today': '用时间带回顾今天的在场活动。', 'gallery.description.running': '查看当前正在运行的会话。',
   'gallery.description.areas': '看看今天在哪些工作目录投入时间。', 'gallery.description.rhythm': '近两周每日活跃时长的变化。',
@@ -17,7 +18,8 @@ export const zhGallery = {
 } as const
 export const enGallery: Record<keyof typeof zhGallery, string> = {
   'gallery.description.pinned': 'All native pinned sessions in pin order. Select one to continue.',
-  'library.edit':'Edit content', 'library.close':'Close widget library', 'library.hint':'Drag a title or grip onto the desktop. Hold 0.5s to make room; Esc cancels.',
+  'library.edit':'Edit content', 'library.close':'Close widget library', 'library.hint':'Drag a card onto the desktop to add it. Hold 0.5s to make room; Esc cancels. Drag this title to move the window; double-click to reset.',
+  'library.move':'Move window', 'library.moveHint':'Drag the title to move this window, double-click to reset',
   'gallery.description.recent': 'Find recent conversations across working directories.', 'gallery.description.tasks': 'Prepare a task draft, then review and send yourself.',
   'gallery.description.today': 'Review today’s activity on a timeline.', 'gallery.description.running': 'See which sessions are running right now.',
   'gallery.description.areas': 'See where you spent time across working directories.', 'gallery.description.rhythm': 'Daily activity over the last two weeks.',

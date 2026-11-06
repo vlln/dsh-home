@@ -9,6 +9,10 @@ let page,backup,prefs;const errors=[],checks=[]
 const api=async(op,extra={})=>{const r=await context.request.post(new URL('/plugins/dsh-home/api',url).href,{headers:{Origin:url.origin},data:{op,...extra}}),j=await r.json();assert(j.ok,JSON.stringify(j));return j.value}
 try{
  await context.request.get(url.href);backup=await api('workbench.get');prefs=await api('prefs.get');await writeFile(new URL('backup.json',out),JSON.stringify({backup,prefs},null,2))
+ // The fixture writes into the 12-column breakpoint, so pin the board to the default
+ // 12 columns instead of inheriting whatever width the station was last left at
+ // (another breakpoint's map is intentionally independent and would not hold this id).
+ await api('prefs.set',{prefs:{...prefs.prefs,canvasWidth:null}})
  const fixture={instanceId:'fixed-note',typeId:'@vlln/dsh-home:notes',configVersion:1,config:{title:'Fixed-size widget',text:'Keep my original custom dimensions and text.'}}
  const original={x:0,y:0,w:5,h:7},layout={...backup.layout,instanceLayout:true,hidden:backup.instances.map(i=>i.instanceId),order:[...backup.layout.order,fixture.instanceId],positions:{...backup.layout.positions,12:{...backup.layout.positions?.[12],[fixture.instanceId]:original}}}
  await api('workbench.set',{instances:[...backup.instances,fixture],layout})

@@ -23,6 +23,9 @@ const specs = [
 ]
 try {
   await context.request.get(url.href); backup = await api('workbench.get'); prefs = await api('prefs.get'); await writeFile(new URL('backup.json', out), JSON.stringify({ backup, prefs }, null, 2))
+  // The fixture writes its rectangles into the 12-column breakpoint; pin the board to the
+  // default 12 columns instead of inheriting the width the station was last left at.
+  await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
   const instances = specs.map(([name, config]) => ({ instanceId: `visual-${name}`, typeId: `@vlln/dsh-home:${name}`, configVersion: name === 'quick' ? 2 : 1, config }))
   const positions = Object.fromEntries(specs.map(([name, , x, y, w, h]) => [`visual-${name}`, { x, y, w, h }]))
   await api('workbench.set', { instances: [...backup.instances, ...instances], layout: { ...backup.layout, instanceLayout: true, order: [...backup.layout.order, ...instances.map(i => i.instanceId)], hidden: backup.instances.map(i => i.instanceId), positions: { ...backup.layout.positions, 12: { ...backup.layout.positions?.[12], ...positions } } } })

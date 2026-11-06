@@ -96,21 +96,25 @@ try {
   const startX = bar.x + grabOffset
   await page.mouse.move(startX, bar.y + 240)
   await page.mouse.down()
-  // Widen: the raw preview must sit under the pointer before any snap happens.
+  // Widen: the preview snaps to whole column units as it travels, so the edge sits at
+  // the nearest 4-column boundary rather than at the raw pointer (deliberate: a stray
+  // column could never be tiled, and the user asked for cell-by-cell width steps).
   const trackedX = startX + dragOut
   await page.mouse.move(trackedX, bar.y + 240, { steps: 4 })
   await settle()
   const tracked = await boxOf('right')
-  assert(Math.abs(tracked.x - (trackedX - grabOffset)) <= 2, `edge tracks the pointer: strip ${Math.round(tracked.x)} vs pointer ${trackedX}`)
+  const previewed = await column()
+  assert.equal((previewed + 12) % 96, 0, `live preview is already a whole column (${previewed})`)
+  assert(Math.abs(tracked.x - (trackedX - grabOffset)) <= 192 + 2, `edge follows the nearest column unit: strip ${Math.round(tracked.x)} vs pointer ${trackedX}`)
   const noEase = await page.locator('.dsh-home-widget').first().evaluate(el => getComputedStyle(el).transitionDuration)
   assert(noEase.split(',').every(value => Number.parseFloat(value) === 0), `board must not ease while resizing: ${noEase}`)
   assert.equal(await gripOf('right').getAttribute('data-dragging'), '', 'drag state is exposed while dragging')
   const during = await column()
-  assert(during >= before + 200, `raw preview follows the pointer: ${before} -> ${during}`)
+  assert(during >= before + 300, `snapped preview follows the pointer: ${before} -> ${during}`)
   await page.mouse.up()
   await page.waitForFunction(() => !document.querySelector('.dsh-canvas-grip[data-dragging]'))
   await page.waitForTimeout(400)
-  // The commit snaps: the raw preview (before + 2*120) is not what gets stored.
+  // The commit keeps the width the user already saw; nothing is re-snapped at release.
   const expected = (() => {
     const raw = Math.min(32, Math.max(12, Math.floor((during + 12) / 96)))
     const cols = Math.max(4, Math.round(raw / 4) * 4)
@@ -120,9 +124,9 @@ try {
   const afterDrag = await column()
   assert.equal(persisted, afterDrag, `drag persists the snapped width: saved ${persisted} vs rendered ${afterDrag}`)
   await assertSnapped(persisted, 'drag commit')
-  assert.notEqual(persisted, during, `commit snaps the raw preview (${during}) to a column (${persisted})`)
+  assert.equal(persisted, during, `the already-snapped preview is what gets stored (${during})`)
   await page.screenshot({ path: new URL('dragged.png', out).pathname, animations: 'disabled' })
-  checks.push(`drag previews raw and commits one whole column (${before} -> ${afterDrag}, ${initialCols} -> ${(afterDrag + 12) / 96} cols)`)
+  checks.push(`drag previews whole column units and stores the previewed width (${before} -> ${afterDrag}, ${initialCols} -> ${(afterDrag + 12) / 96} cols)`)
 
   // Reload proves it is a saved preference, not session state.
   await page.reload()
@@ -160,14 +164,16 @@ try {
   assert.equal(await column(), 1140, 'the same handle returns to the minimum')
 
   // The left strip is an equal control: dragging it outward widens the same value.
+  // The live preview snaps, so the drag must clear half a row unit (192px of width) to
+  // land on the next 4-column boundary; a shorter drag is deliberately a no-op.
   const narrow = await column()
   const leftBar = await boxOf('left')
   await page.mouse.move(leftBar.x + leftBar.width / 2, leftBar.y + 240)
   await page.mouse.down()
-  await page.mouse.move(leftBar.x - 48, leftBar.y + 240, { steps: 8 })
+  await page.mouse.move(leftBar.x - 220, leftBar.y + 240, { steps: 12 })
   await settle()
   const widened = await column()
-  assert(widened >= narrow + 60, `left strip widens the board too: ${narrow} -> ${widened}`)
+  assert(widened >= narrow + 300, `left strip widens the board too: ${narrow} -> ${widened}`)
   await page.mouse.up(); await page.waitForTimeout(300)
   // The left strip previews raw during the drag and commits the same column snap.
   const leftExpected = (() => {
@@ -180,7 +186,11 @@ try {
   await assertSnapped(leftExpected, 'left strip')
   checks.push('left strip is an equal control: dragging it outward widens and persists one row unit')
 
-  // Double-click restores the default without touching widgets.
+  // Double-click restores the default without touching widgets. A board wider than the
+  // window is centred inside the scroll port, so both grips sit outside the visible strip;
+  // give the window room before exercising the pointer reset.
+  await page.setViewportSize({ width: 2000, height: 1200 })
+  await page.waitForTimeout(300)
   const geometry = await page.locator('.dsh-home-widget').evaluateAll(nodes => nodes.map(node => node.dataset.widgetId))
   await gripOf('left').dblclick()
   await page.waitForTimeout(400)

@@ -7,7 +7,7 @@ import { HomeWidgetRegistry } from '../src/client/widget-registry.ts'
 
 const READY = { writable: true, status: 'ready', error: null }
 const READONLY = { writable: false, status: 'read-only', error: { code: 'state-version', message: 'Saved version is unsupported' } }
-const originalPrefs = () => ({ lastSeenAt: 5, dismissed: { existing: 123 } })
+const originalPrefs = () => ({ lastSeenAt: 5, dismissed: { existing: 123 }, libraryPosition: null })
 const definition = (overrides = {}) => ({ typeId: 'test/widgets:notes', apiVersion: 1, title: 'Notes', configVersion: 1,
   defaultConfig: () => ({ text: 'old' }), validateConfig: config => typeof config.text === 'string', Content: () => null, ...overrides })
 function deferred() {

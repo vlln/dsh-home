@@ -9,6 +9,7 @@
  */
 
 import { isGridColumns } from './canvas-width.ts'
+import type { LibraryPoint } from './library-position.ts'
 import { homeOrder } from './layout-model.ts'
 import type { WorkspaceSource } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { JsonValue, WidgetDefinition, WidgetInstance, RegisteredWidgetDefinition, WidgetPreset } from './widget-contract.ts'
@@ -285,6 +286,16 @@ export class HomeStore {
     if (!this.canWritePrefs()) return
     if (this.state.prefs.canvasWidth === width) return
     this.set({ prefs: { ...this.state.prefs, canvasWidth: width } })
+    this.persistPrefsSoon()
+  }
+
+  /** Where the floating widget library was parked; `null` restores its default corner. */
+  setLibraryPosition(position: LibraryPoint | null): void {
+    if (!this.canWritePrefs()) return
+    const current = this.state.prefs.libraryPosition
+    if (current === position) return
+    if (current !== null && position !== null && current.x === position.x && current.y === position.y) return
+    this.set({ prefs: { ...this.state.prefs, libraryPosition: position } })
     this.persistPrefsSoon()
   }
 

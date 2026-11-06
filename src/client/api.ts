@@ -5,6 +5,8 @@
  * @module @vlln/dsh-home/client/api
  */
 
+import type { LibraryPoint } from './library-position.ts'
+
 /** 与 src/index.mjs 的 API_PATH 同源。 */
 export const API_PATH = '/plugins/dsh-home/api'
 
@@ -140,11 +142,13 @@ export interface Prefs {
   dismissed: Record<string, number>
   /** Whole-board content width chosen in edit mode; null means the default. */
   canvasWidth: number | null
+  /** Corner of the floating widget library; null means its default corner. */
+  libraryPosition: LibraryPoint | null
 }
 
 /** 空偏好。 */
 export function emptyPrefs(): Prefs {
-  return { lastSeenAt: null, dismissed: {}, canvasWidth: null }
+  return { lastSeenAt: null, dismissed: {}, canvasWidth: null, libraryPosition: null }
 }
 
 /** 空布局。 */
@@ -176,10 +180,15 @@ export async function fetchPrefs(): Promise<Prefs> {
     // Absent means "never chosen", so hosts predating this preference stay readable.
     || (prefs.canvasWidth !== null && prefs.canvasWidth !== undefined && (typeof prefs.canvasWidth !== 'number' || !Number.isFinite(prefs.canvasWidth)))
     || prefs.dismissed === null || typeof prefs.dismissed !== 'object' || Array.isArray(prefs.dismissed)
-    || Object.values(prefs.dismissed).some(at => typeof at !== 'number' || !Number.isFinite(at))) {
+    || Object.values(prefs.dismissed).some(at => typeof at !== 'number' || !Number.isFinite(at))
+    // Absent means the default corner; a present-but-malformed value is a corrupt document.
+    || (prefs.libraryPosition !== null && prefs.libraryPosition !== undefined
+      && (typeof prefs.libraryPosition !== 'object' || Array.isArray(prefs.libraryPosition)
+        || typeof prefs.libraryPosition.x !== 'number' || !Number.isFinite(prefs.libraryPosition.x)
+        || typeof prefs.libraryPosition.y !== 'number' || !Number.isFinite(prefs.libraryPosition.y)))) {
     throw new HomeApiError('Invalid saved preferences response', 'bad-prefs-response')
   }
-  return prefs
+  return { ...prefs, libraryPosition: prefs.libraryPosition ?? null }
 }
 
 /** 写首页偏好。 */

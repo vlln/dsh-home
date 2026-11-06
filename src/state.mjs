@@ -88,7 +88,7 @@ function writeJson(file, value) {
 
 /** 空偏好。 */
 export function emptyPrefs() {
-  return { lastSeenAt: null, dismissed: {}, canvasWidth: null }
+  return { lastSeenAt: null, dismissed: {}, canvasWidth: null, libraryPosition: null }
 }
 
 /** 空状态文档。 */
@@ -227,7 +227,7 @@ export function normalizeLayout(raw) {
 /**
  * 校验并规整首页偏好。
  * @param raw 前端提交的偏好
- * @returns `{ lastSeenAt, dismissed, canvasWidth }`
+ * @returns `{ lastSeenAt, dismissed, canvasWidth, libraryPosition }`
  */
 export function normalizePrefs(raw) {
   const prefs = emptyPrefs()
@@ -236,6 +236,18 @@ export function normalizePrefs(raw) {
   // One whole-board width; bounded here so a hand-edited file cannot produce an unusable canvas.
   if (typeof raw.canvasWidth === 'number' && Number.isFinite(raw.canvasWidth)) {
     prefs.canvasWidth = Math.round(Math.min(CANVAS_MAX_WIDTH, Math.max(CANVAS_MIN_WIDTH, raw.canvasWidth)))
+  }
+  // Corner of the floating widget library; bounded so a hand-edited file cannot park
+  // it off the reachable area. Missing or malformed means the default corner.
+  if (raw.libraryPosition !== null && raw.libraryPosition !== undefined
+    && typeof raw.libraryPosition === 'object' && !Array.isArray(raw.libraryPosition)) {
+    const { x, y } = raw.libraryPosition
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      prefs.libraryPosition = {
+        x: Math.round(Math.min(20000, Math.max(0, x))),
+        y: Math.round(Math.min(20000, Math.max(0, y))),
+      }
+    }
   }
   if (raw.dismissed !== null && typeof raw.dismissed === 'object' && !Array.isArray(raw.dismissed)) {
     for (const [id, at] of Object.entries(raw.dismissed)) {

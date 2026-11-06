@@ -219,6 +219,7 @@ export function HomePage(props: HomePageProps): ReactNode {
           <span>{t('error.load')}</span><Button variant="ghost" size="sm" onClick={() => { void store.refresh() }}>{t('error.retry')}</Button>
         </div>}
         {editing && trayOpen && <WidgetGallery definitions={definitions} t={t} disabled={!writable || busy || interacting || confirmDelete !== null}
+          position={state.prefs.libraryPosition} onPositionChange={position => { store.setLibraryPosition(position) }}
           onClose={() => setTrayOpen(false)} onDrag={(definition,point,grab) => {
             if(!editable || interacting)return
             try {

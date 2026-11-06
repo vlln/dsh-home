@@ -121,7 +121,7 @@ test('workbench, compatibility layout and prefs commits preserve each other, ret
   await call({ op: 'prefs.set', prefs: { lastSeenAt: 99, dismissed: { test: 20 } } })
   await call({ op: 'layout.set', layout: layout({ order: ['clock-B'], hidden: ['clock-A'] }) })
   assert.deepEqual(loadState().instances, configs)
-  assert.deepEqual(loadState().prefs, { lastSeenAt: 99, dismissed: { test: 20 }, canvasWidth: null })
+  assert.deepEqual(loadState().prefs, { lastSeenAt: 99, dismissed: { test: 20 }, canvasWidth: null, libraryPosition: null })
   const service = createHomeService({})
   const fetched = service.getWorkbench()
   fetched.instances[0].config.timeZone = 'changed'
@@ -239,7 +239,7 @@ test('oversized full documents fail before save instead of becoming unreadable o
   const dismissed = Object.fromEntries(Array.from({ length: 6000 }, (_, i) => [`${i}-${'s'.repeat(100)}`, i]))
   assert.throws(() => service.setPrefs({ lastSeenAt: 10, dismissed }), { code: 'state-write-error' })
   assert.equal(readFileSync(stateFile(), 'utf8'), before)
-  assert.deepEqual(service.getPrefs(), { lastSeenAt: null, dismissed: {}, canvasWidth: null })
+  assert.deepEqual(service.getPrefs(), { lastSeenAt: null, dismissed: {}, canvasWidth: null, libraryPosition: null })
   assert.equal(stateStorage(loadState()).writable, true)
 }))
 
