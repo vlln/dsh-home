@@ -24,6 +24,9 @@ try {
   await context.request.get(url.href)
   backup = await api('workbench.get'); prefs = await api('prefs.get')
   await writeFile(new URL('backup.json', out), JSON.stringify({ backup, prefs }, null, 2))
+  // The fixture writes the 12-column breakpoint; pin the board so its geometry is not
+  // inherited from whatever width the station was last left at.
+  await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
   assert(!backup.instances.some(instance => instance.instanceId === id))
   const fixture = { instanceId: id, typeId: '@vlln/dsh-home:notes', configVersion: 1, config: { title: 'Extending canvas regression', text: 'Disposable fixture' } }
   const initial = { x: 0, y: 0, w: 4, h: 6 }

@@ -29,7 +29,8 @@ export interface SpatialGridProps {
   onLibraryEnd?: () => void
   /** Viewport-anchored delete target; dropping a card inside it never moves it. */
   deleteZone?: RefObject<HTMLElement | null>
-  onDeleteRequest?: (instanceId: string) => void
+  /** The dragged card element is handed over so the page can shatter what the user saw. */
+  onDeleteRequest?: (instanceId: string, node: HTMLElement | null) => void
 }
 interface Gesture {
   id: string
@@ -366,10 +367,10 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     // Dropping on the delete target is an abort, never a move: restore the card where it
     // was grabbed and let the page confirm the deletion.
     if (!libraryRef.current && overDeleteZone()) {
-      const id = session.id
+      const id = session.id, node = session.node
       desktopRelease.current?.()
       cancelGesture.current()
-      deleteRequest.current?.(id)
+      deleteRequest.current?.(id, node)
       return
     }
     desktopRelease.current?.()

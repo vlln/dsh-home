@@ -8,6 +8,10 @@ const api=async(op,extra={})=>{const r=await c.request.post(new URL('/plugins/ds
 const until=async(fn)=>{let error;for(let i=0;i<100;i++){try{if(await fn())return}catch(e){error=e}await new Promise(r=>setTimeout(r,50))}throw error??Error('condition timeout')}
 try{
  await c.request.get(url.href);backup=await api('workbench.get');prefs=await api('prefs.get');await writeFile(new URL('backup.json',out),JSON.stringify({backup,prefs},null,2))
+ // The fixture writes into the 12-column breakpoint; pin the board to the default width
+ // instead of inheriting whatever the station was last left at (a wide board scrolls the
+ // fixture under the sidebar, where a grip drag cannot start).
+ await api('prefs.set',{prefs:{...prefs.prefs,canvasWidth:null}})
  // A disposable geometry fixture, never replacing original instances or configs.
  const fixture={...backup.layout,hidden:backup.instances.map(i=>i.instanceId)}
  await api('workbench.set',{layout:fixture,instances:backup.instances})
@@ -55,7 +59,7 @@ try{
  await p.mouse.move(delGrip.x+6,delGrip.y+6);await p.mouse.down();await p.mouse.move(delGrip.x+6,delGrip.y-24,{steps:4});await p.locator('.dsh-home-delete-zone').waitFor()
  const delZone=await p.locator('.dsh-home-delete-zone').boundingBox();assert(delZone)
  await p.mouse.move(delZone.x+delZone.width/2,delZone.y+delZone.height/2,{steps:8});await p.locator('.dsh-home-delete-zone[data-armed="true"]').waitFor();await p.mouse.up()
- await p.locator('.dsh-home-delete-modal').waitFor();await p.locator('.dsh-home-delete-modal').getByRole('button',{name:/^(Confirm delete|确认删除)$/}).click();await until(async()=>!(await api('workbench.get')).instances.some(i=>i.instanceId===added.instanceId));checks.push('widget-owned note editing and drag-to-delete confirmation')
+ await until(async()=>!(await api('workbench.get')).instances.some(i=>i.instanceId===added.instanceId));assert.equal(await p.locator('.dsh-home-delete-modal').count(),0);checks.push('widget-owned note editing and immediate drag-to-delete')
  await p.locator('.dsh-edit-bar').getByRole('button',{name:/^(Widgets|小组件)$/}).click();await p.locator('.dsh-library-panel').waitFor();await p.locator('.dsh-directory-item').first().evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished.catch(()=>{})))});await p.screenshot({path:new URL('library.png',out).pathname,fullPage:true,animations:'disabled'});assert.deepEqual(errors,[]);assert.equal(activityRequests.length,0);checks.push('real Content preview mounts without activity requests in isolated empty runtime')
 }catch(e){errors.push(e.stack??String(e));process.exitCode=1;await p?.screenshot({path:new URL('failure.png',out).pathname}).catch(()=>{})}
 finally{await p?.close();if(backup)await api('workbench.set',{layout:backup.layout,instances:backup.instances});if(prefs)await api('prefs.set',{prefs:prefs.prefs});await b.close();await writeFile(new URL('report.json',out),JSON.stringify({checks,errors},null,2));console.log(out.pathname,JSON.stringify({checks,errors}));}

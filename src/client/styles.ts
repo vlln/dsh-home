@@ -89,6 +89,11 @@ export const CSS = `
 .dsh-home-delete-zone-armed { display: none; }
 .dsh-home-delete-zone[data-armed="true"] .dsh-home-delete-zone-idle { display: none; }
 .dsh-home-delete-zone[data-armed="true"] .dsh-home-delete-zone-armed { display: inline; }
+/* Delete shatter: one fixed layer over the card's drop position, a clipped clone per
+   tile, plus small sampled chips. Pointer-transparent and short-lived. */
+.dsh-debris { position: fixed; z-index: 90; pointer-events: none; user-select: none; }
+.dsh-debris-tile { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: center; will-change: transform, opacity; }
+.dsh-debris-chip { position: absolute; border-radius: 1px; display: block; will-change: transform, opacity; }
 
 .dsh-home-grid {
   margin-top: 20px;
@@ -521,10 +526,6 @@ export const CSS = `
 .dsh-manager-info > strong { font: var(--dsw-font-xs-strong-13); }
 .dsh-manager-description { color: var(--dsw-alias-label-secondary); font-size: var(--dsh-content-font-size-secondary, 13px); line-height: 1.6; }
 .dsh-manager-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-/* Button has no danger variant; preserve the official control geometry, override semantic colors only. */
-.dsh-home-danger-button { background: var(--dsw-alias-state-error-primary) !important; color: var(--dsw-alias-label-primary-foreground) !important; }
-.dsh-home-danger-button:hover { filter: brightness(.92); }
-.dsh-home-delete-target { margin: 0; overflow-wrap: anywhere; font: var(--dsw-font-s-strong-14); color: var(--dsw-alias-label-primary); }
 .dsh-widget-own-editor { display: flex; justify-content: flex-end; margin-top: 8px; }
 .dsh-widget-config-modal .dsh-widget-settings { margin: 0; padding: 0; border: 0; }
 .dsh-widget-settings { margin-top: 16px; padding-top: 4px; border-top: 0.5px solid var(--dsw-alias-border-l3); }

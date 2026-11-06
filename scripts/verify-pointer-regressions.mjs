@@ -15,6 +15,9 @@ const poll = async fn => { for (let n = 0; n < 80; n++) { if (await fn()) return
 try {
   await context.request.get(url.href); backup = await api('workbench.get'); prefs = await api('prefs.get')
   await writeFile(new URL('backup.json', out), JSON.stringify({ backup, prefs }, null, 2))
+  // Pin the board to the 12-column default: the fixture rectangle lives in that breakpoint,
+  // and a wider inherited board scrolls it under the sidebar where no grip drag can start.
+  await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
   const fixture = { instanceId: 'pointer-note', typeId: '@vlln/dsh-home:notes', configVersion: 1, config: { title: 'Drag regression', text: 'Disposable test note' } }
   await api('workbench.set', { instances: [...backup.instances, fixture], layout: { ...backup.layout, instanceLayout: true, hidden: backup.instances.map(i => i.instanceId), order: [...backup.layout.order, fixture.instanceId], positions: { ...backup.layout.positions, 12: { ...backup.layout.positions?.[12], [fixture.instanceId]: { x: 0, y: 8, w: 4, h: 6 } } } } })
   page = await context.newPage(); page.on('pageerror', e => errors.push(e.message))
@@ -61,7 +64,8 @@ try {
   await poll(async () => await page.getByRole('tooltip').count() === 1)
   assert.equal(await activitySource.locator('.dsh-w-head [title]').count(), 1, 'only the grip has a native action title, not description ancestors')
   await page.screenshot({ path: new URL('single-tooltip.png', out).pathname, fullPage: true, animations: 'disabled' })
-  const modal = page.locator('.dsh-home-delete-modal')
+  // Armed over the delete target, then Esc: nothing is deleted and the open library
+  // keeps its panel and its filter.
   const openGrip = await page.locator('[data-widget-id="pointer-note"] .dsh-tools .dsh-widget-grip').boundingBox()
   assert(openGrip)
   await page.mouse.move(openGrip.x + 6, openGrip.y + 6); await page.mouse.down()
@@ -69,15 +73,14 @@ try {
   await page.locator('.dsh-home-delete-zone').waitFor()
   const openZone = await page.locator('.dsh-home-delete-zone').boundingBox(); assert(openZone)
   await page.mouse.move(openZone.x + openZone.width / 2, openZone.y + openZone.height / 2, { steps: 8 })
-  await page.mouse.up()
-  await modal.waitFor()
-  assert.equal(await panel.count(), 1)
-  assert.equal(await search.inputValue(), 'activity')
-  await page.screenshot({ path: new URL('library-with-delete-modal.png', out).pathname, fullPage: true, animations: 'disabled' })
-  await page.keyboard.press('Escape'); await modal.waitFor({ state: 'hidden' })
+  await page.locator('.dsh-home-delete-zone[data-armed="true"]').waitFor()
+  await page.screenshot({ path: new URL('library-with-armed-target.png', out).pathname, fullPage: true, animations: 'disabled' })
+  await page.keyboard.press('Escape'); await page.mouse.up()
+  await poll(async () => await page.locator('.dsh-home-delete-zone').count() === 0)
   assert.equal(await panel.count(), 1); assert.equal(await search.inputValue(), 'activity')
   assert.equal(await page.locator('.dsh-home').getAttribute('data-editing'), 'true')
-  checks.push('delete modal preserves mounted library and its search state across Escape')
+  assert.ok((await api('workbench.get')).instances.some(i => i.instanceId === 'pointer-note'))
+  checks.push('deleting is a drag gesture; Esc over the target keeps the card and the mounted library')
   // Outside release cancels and a later move cannot resurrect a ghost.
   start = await activitySource.locator('.dsh-w-title').boundingBox()
   const before = (await api('workbench.get')).instances.length
@@ -111,12 +114,10 @@ try {
   await page.mouse.move(delZone.x + delZone.width / 2, delZone.y + delZone.height / 2, { steps: 8 })
   await page.locator('.dsh-home-delete-zone[data-armed="true"]').waitFor()
   await page.mouse.up()
-  await modal.waitFor()
-  assert.equal(await panel.count(), 1); assert.equal(await search.inputValue(), 'activity')
-  await modal.getByRole('button', { name: /^(Confirm delete|确认删除)$/ }).click()
   await poll(async () => !(await api('workbench.get')).instances.some(i => i.instanceId === 'pointer-note'))
+  assert.equal(await page.locator('.dsh-home-delete-modal').count(), 0, 'deletion needs no confirmation')
   assert.equal(await panel.count(), 1); assert.equal(await search.inputValue(), 'activity')
-  checks.push('successful confirmed deletion also preserves the library and current filter')
+  checks.push('deleting a card immediately also preserves the library and current filter')
   assert.deepEqual(errors, [])
 } catch (error) { errors.push(error.stack ?? String(error)); process.exitCode = 1; await page?.screenshot({ path: new URL('failure.png', out).pathname, fullPage: true }).catch(() => {}) }
 finally {

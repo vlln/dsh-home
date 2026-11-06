@@ -10,9 +10,10 @@ test('shell owns only geometry/deletion, never settings or reset', async () => {
   // Deletion moved out of the header: the page owns the drag target and the modal.
   assert.doesNotMatch(frame, /IconTrashOutlineRegular|dsh-delete-widget/)
   assert.match(frame, /onKeyDelete/)
-  assert.match(page, /<Modal open title=\{t\('manager\.deleteTitle'/)
+  // Deletion is immediate: no confirmation surface, the card is shattered and removed.
+  assert.doesNotMatch(page, /dsh-home-delete-modal|manager\.deleteTitle|manager\.confirmDelete/)
   assert.match(page, /removeInstanceDurably/)
-  assert.match(page, /data-modal-autofocus/)
+  assert.match(page, /shatterWidget/)
   assert.match(page, /event\.defaultPrevented/)
   assert.match(page, /store\.compactSpatialLayout\(geometry, cols\)/)
 })

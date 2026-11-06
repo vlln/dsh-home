@@ -1,7 +1,7 @@
 /** Registry-driven widget instances. The page owns layout, not widget business logic. */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
-import { Button, IconTrashOutlineRegular, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, IconTrashOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { formatAgo, formatDay, type Translate } from './format.ts'
 import type { WidgetActions } from './widgets.tsx'
 import type { SessionStatusMap } from './focus.tsx'
@@ -19,6 +19,7 @@ import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
 import { legacyInstanceProjection } from './widget-sizing.ts'
 import { CanvasWidthHandle } from './canvas-grip.tsx'
 import { boardColumnsFor, boardWidthForColumns, resolveCanvasWidth, widgetWidthForColumns } from './canvas-width.ts'
+import { shatterWidget } from './debris-burst.ts'
 
 export interface HomePageProps {
   t: Translate
@@ -81,7 +82,8 @@ export function HomePage(props: HomePageProps): ReactNode {
   const [editing, setEditing] = useState(false)
   const [trayOpen, setTrayOpen] = useState(false)
   const [libraryDrag, setLibraryDrag] = useState<LibraryDrag | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  /** Cards already dropped on the delete target: hidden immediately, persisted after. */
+  const [deleting, setDeleting] = useState<ReadonlySet<string>>(() => new Set())
   const [sinceCount, setSinceCount] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(false)
@@ -90,7 +92,7 @@ export function HomePage(props: HomePageProps): ReactNode {
   const seenRef = useRef(false)
   const writable = state.workbenchLoaded && state.storage.writable
   const busy = saving || state.workbenchBusy
-  const editable = editing && writable && !busy && confirmDelete === null
+  const editable = editing && writable && !busy
   useEffect(() => { void store.refresh() }, [store])
   useEffect(() => {
     if (seenRef.current || state.ledger === null || !state.prefsLoaded || !writable) return
@@ -123,14 +125,16 @@ export function HomePage(props: HomePageProps): ReactNode {
   const boardWidth = boardWidthForColumns(cols)
   useEffect(() => { setLibraryDrag(null) }, [cols])
   useEffect(() => { if(!editing || !writable || busy) setLibraryDrag(null) },[editing,writable,busy])
-  const geometry = useMemo(() => state.workbenchLoaded ? buildSpatialLayout(state.layout, metas, cols) : [], [state.workbenchLoaded, state.layout, metas, cols])
+  const geometry = useMemo(() => state.workbenchLoaded
+    ? buildSpatialLayout(state.layout, metas, cols).filter(item => !deleting.has(item.i))
+    : [], [state.workbenchLoaded, state.layout, metas, cols, deleting])
   const instancesById = useMemo(() => new Map(state.instances.map(instance => [instance.instanceId, instance])), [state.instances])
   const activeChanged = useCallback((value: boolean) => { setInteracting(value) }, [])
   const commit = useCallback((value: typeof geometry) => {
     if (editable) store.setSpatialLayout(value, cols)
   }, [editable, store, cols])
   const finish = useCallback(async () => {
-    if (interacting || busy || !writable || confirmDelete !== null) return
+    if (interacting || busy || !writable) return
     setSaving(true)
     setSaveError(false)
     try {
@@ -138,21 +142,18 @@ export function HomePage(props: HomePageProps): ReactNode {
       await store.flushLayout()
       setEditing(false)
       setTrayOpen(false)
-      setConfirmDelete(null)
     } catch { setSaveError(true) }
     finally { setSaving(false) }
-  }, [geometry, cols, interacting, busy, writable, confirmDelete, store])
+  }, [geometry, cols, interacting, busy, writable, store])
   useEffect(() => {
     const keydown = (event: KeyboardEvent): void => {
       if (event.defaultPrevented || event.key !== 'Escape' || interacting || busy) return
-      // The modal owns Escape and focus restoration.
-      if (confirmDelete !== null) return
       if (trayOpen) { event.preventDefault(); setTrayOpen(false); return }
       if (editing) { event.preventDefault(); void finish() }
     }
     window.addEventListener('keydown', keydown)
     return () => { window.removeEventListener('keydown', keydown) }
-  }, [editing, finish, busy, trayOpen, interacting, confirmDelete])
+  }, [editing, finish, busy, trayOpen, interacting])
   const nudge = (id: string, key: string): void => {
     if (!editable || interacting) return
     const dx = key === 'ArrowLeft' ? -1 : key === 'ArrowRight' ? 1 : 0
@@ -171,7 +172,21 @@ export function HomePage(props: HomePageProps): ReactNode {
   // Deletion is a gesture: drag a card onto this viewport-anchored target. The target
   // only exists during a card drag, so it can never be mistaken for a button.
   const deleteZoneRef = useRef<HTMLDivElement | null>(null)
-  const requestDelete = useCallback((instanceId: string) => { setManagementError(false); setConfirmDelete(instanceId) }, [])
+  /**
+   * Deletion is immediate: the card is hidden in the same frame (so the drag's restore
+   * pass never flashes it back), shattered where the user let go, then persisted.
+   */
+  const requestDelete = useCallback((instanceId: string, source?: HTMLElement | null) => {
+    if (!editable) return
+    setManagementError(false)
+    const node = source ?? document.querySelector<HTMLElement>(`.dsh-home-widget[data-widget-id="${CSS.escape(instanceId)}"]`)
+    if (node !== null) shatterWidget(node)
+    setDeleting(previous => { const next = new Set(previous); next.add(instanceId); return next })
+    store.removeInstanceDurably(instanceId).catch(() => {
+      setManagementError(true)
+      setDeleting(previous => { const next = new Set(previous); next.delete(instanceId); return next })
+    })
+  }, [editable, store])
   // Written imperatively rather than through the style prop: the handle owns this variable
   // during a gesture, so React must not restore a stale value mid-drag.
   useLayoutEffect(() => {
@@ -179,8 +194,6 @@ export function HomePage(props: HomePageProps): ReactNode {
   }, [boardWidth])
   const gripVisible = editable && !interacting
   const commitCanvasWidth = (next: number): void => { store.setCanvasWidth(next) }
-  const deleteInstance = confirmDelete === null ? undefined : instancesById.get(confirmDelete)
-  const deleteTitle = deleteInstance ? widgetText(byType.get(deleteInstance.typeId)?.title, deleteInstance.typeId) : ''
   return (
     <div ref={homeRef} className="dsh-home" data-editing={editing ? 'true' : 'false'}>
       <div className="dsh-home-inner">
@@ -197,7 +210,7 @@ export function HomePage(props: HomePageProps): ReactNode {
             </div>
           </div>
           <div className="dsh-home-actions" role="group" aria-label={t('aria.actions')}>
-            <Button variant={editing ? 'primary' : 'outline'} size="sm" disabled={!writable || busy || interacting || confirmDelete !== null} aria-pressed={editing}
+            <Button variant={editing ? 'primary' : 'outline'} size="sm" disabled={!writable || busy || interacting} aria-pressed={editing}
               onClick={() => { if (editing) void finish(); else { setEditing(true); setSaveError(false) } }}>
               {t(saving ? 'edit.saving' : editing ? 'action.done' : 'action.edit')}
             </Button>
@@ -227,7 +240,7 @@ export function HomePage(props: HomePageProps): ReactNode {
         {state.error !== null && <div className="dsh-error" role="alert">
           <span>{t('error.load')}</span><Button variant="ghost" size="sm" onClick={() => { void store.refresh() }}>{t('error.retry')}</Button>
         </div>}
-        {editing && trayOpen && <WidgetGallery definitions={definitions} t={t} disabled={!writable || busy || interacting || confirmDelete !== null}
+        {editing && trayOpen && <WidgetGallery definitions={definitions} t={t} disabled={!writable || busy || interacting}
           position={state.prefs.libraryPosition} onPositionChange={position => { store.setLibraryPosition(position) }}
           onClose={() => setTrayOpen(false)} onDrag={(definition,point,grab) => {
             if(!editable || interacting)return
@@ -275,16 +288,6 @@ export function HomePage(props: HomePageProps): ReactNode {
           value={boardWidth} onCommit={commitCanvasWidth}
           label={t(side === 'left' ? 'canvas.widthLeft' : 'canvas.widthRight')} hint={t('canvas.widthHint')} />)}
       </div>
-      {deleteInstance && <Modal open title={t('manager.deleteTitle', { title: deleteTitle })} description={t('manager.deleteDescription')}
-        closeLabel={t('settings.cancel')} onClose={() => { if (!busy) setConfirmDelete(null) }} className="dsh-home-delete-modal"
-        footer={<><Button variant="outline" data-modal-autofocus disabled={busy} onClick={() => setConfirmDelete(null)}>{t('settings.cancel')}</Button>
-          <Button variant="primary" className="dsh-home-danger-button" disabled={busy || !writable} onClick={() => {
-            if (busy || !writable || interacting) return
-            void store.removeInstanceDurably(deleteInstance.instanceId).then(() => setConfirmDelete(null)).catch(() => setManagementError(true))
-          }}>{t('manager.confirmDelete')}</Button></>}>
-        <p className="dsh-home-delete-target">{deleteTitle}</p>
-        {managementError && <p className="dsh-error" role="alert">{t('manager.error')}</p>}
-      </Modal>}
     </div>
   )
 }

@@ -1,6 +1,6 @@
-/** Deleting a card is a drag onto the page-level target, not a trash button in the
- * header. Private station only; the original instances, layout and preferences are
- * restored in `finally`. */
+/** Deleting a card is an immediate drag onto the page-level target that shatters the
+ * card where it was dropped — no trash button, no confirmation dialog. Private station
+ * only; original instances, layout and preferences are restored in `finally`. */
 import { chromium } from 'playwright'
 import assert from 'node:assert/strict'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -22,126 +22,173 @@ const api = async (op, extra = {}) => {
 }
 const fixture = { instanceId: 'drag-delete', typeId: '@vlln/dsh-home:notes', configVersion: 1, config: { title: 'Disposable delete target', text: 'Only this disposable card may be deleted.' } }
 const original = { x: 0, y: 6, w: 4, h: 6 }
-const card = () => page.locator('[data-widget-id="drag-delete"]')
-const modal = () => page.locator('.dsh-home-delete-modal')
-const zone = () => page.locator('.dsh-home-delete-zone')
-const cols = () => page.locator('.dsh-spatial-container').getAttribute('data-cols')
-const storedRect = async () => (await api('workbench.get')).layout.positions?.[await cols()]?.[fixture.instanceId] ?? null
+const card = target => target.locator('[data-widget-id="drag-delete"]')
+const zone = target => target.locator('.dsh-home-delete-zone')
+const cols = target => target.locator('.dsh-spatial-container').getAttribute('data-cols')
+const storedRect = async target => (await api('workbench.get')).layout.positions?.[await cols(target)]?.[fixture.instanceId] ?? null
 /** Layout writes are debounced, so poll the API instead of reading right after a drop. */
-const storedWhen = async (predicate, label) => {
+const storedWhen = async (target, predicate, label) => {
   let value = null
-  for (let attempt = 0; attempt < 80; attempt++) {
-    value = await storedRect()
+  for (let attempt = 0; attempt < 100; attempt++) {
+    value = await storedRect(target)
     if (predicate(value)) return value
-    await page.waitForTimeout(50)
+    await target.waitForTimeout(50)
   }
   throw new Error(`stored rectangle never satisfied ${label}: ${JSON.stringify(value)}`)
 }
-const gripBox = async () => { const box = await card().locator('.dsh-tools .dsh-widget-grip').boundingBox(); assert(box); return box }
-const zoneBox = async () => { await zone().waitFor(); const box = await zone().boundingBox(); assert(box); return box }
-const armed = async () => await page.locator('.dsh-home-delete-zone[data-armed="true"]').count() > 0
-const pressGrip = async () => { const box = await gripBox(); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down(); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 18, { steps: 4 }) }
-const settle = () => page.waitForTimeout(120)
+const instanceGone = async (target, timeout = 5000) => {
+  const until = Date.now() + timeout
+  while (Date.now() < until) {
+    if (!(await api('workbench.get')).instances.some(instance => instance.instanceId === fixture.instanceId)) return
+    await target.waitForTimeout(50)
+  }
+  throw new Error('the instance was never removed')
+}
+/** Re-create the disposable card after a deletion. */
+const installFixture = async (instanceId = fixture.instanceId) => {
+  const current = await api('workbench.get')
+  const hidden = current.instances.map(instance => instance.instanceId).filter(id => id !== instanceId)
+  await api('workbench.set', {
+    instances: [...current.instances.filter(instance => instance.instanceId !== instanceId), { ...fixture, instanceId }],
+    layout: { ...current.layout, instanceLayout: true, hidden,
+      order: [...current.layout.order.filter(id => id !== instanceId), instanceId],
+      positions: { ...current.layout.positions, 12: { ...current.layout.positions?.['12'], [instanceId]: original } } },
+  })
+}
+const openEditor = async target => {
+  await target.getByRole('button', { name: /^(Home|首页)$/ }).first().click()
+  await target.locator('[data-widget-id="drag-delete"]').waitFor()
+  await target.getByRole('button', { name: /^(Edit layout|编辑布局)$/ }).click()
+  await target.locator('.dsh-edit-bar').waitFor()
+}
+const gripBox = async target => { const box = await card(target).locator('.dsh-tools .dsh-widget-grip').boundingBox(); assert(box); return box }
+const pressGrip = async target => {
+  const box = await gripBox(target)
+  await target.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await target.mouse.down()
+  await target.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 18, { steps: 4 })
+}
+const zoneBox = async target => { await zone(target).waitFor(); const box = await zone(target).boundingBox(); assert(box); return box }
+const armed = async target => await target.locator('.dsh-home-delete-zone[data-armed="true"]').count() > 0
+const moveOntoZone = async target => {
+  const box = await zoneBox(target)
+  await target.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 10 })
+  await target.waitForTimeout(140)
+}
+const settle = target => target.waitForTimeout(160)
+
 try {
   await context.request.get(url.href)
   backup = await api('workbench.get'); prefs = await api('prefs.get')
   await writeFile(new URL('backup.json', out), JSON.stringify({ backup, prefs }, null, 2))
   await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
-  await api('workbench.set', {
-    instances: [...backup.instances, fixture],
-    layout: { ...backup.layout, instanceLayout: true, hidden: backup.instances.map(instance => instance.instanceId),
-      order: [...backup.layout.order, fixture.instanceId],
-      positions: { ...backup.layout.positions, 12: { ...backup.layout.positions?.[12], [fixture.instanceId]: original } } },
-  })
+  await installFixture()
   page = await context.newPage()
   page.on('pageerror', error => errors.push(error.message))
   await page.goto(url.href)
-  await page.getByRole('button', { name: /^(Home|首页)$/ }).first().click()
-  await card().waitFor()
-  // Reading mode offers no delete affordance and no drop target.
+  await openEditor(page)
+
+  // No trash button anywhere, no target before a drag, no confirmation surface at all.
   assert.equal(await page.locator('.dsh-delete-widget').count(), 0, 'the header trash button is gone')
-  assert.equal(await zone().count(), 0, 'no delete target outside a drag')
-  await page.getByRole('button', { name: /^(Edit layout|编辑布局)$/ }).click()
-  await page.locator('.dsh-edit-bar').waitFor()
-  assert.equal(await page.locator('.dsh-delete-widget').count(), 0, 'still no trash button in edit mode')
-  checks.push('no delete button in either mode, and no target before a drag')
+  assert.equal(await zone(page).count(), 0, 'no delete target outside a drag')
+  assert.equal(await page.locator('.dsh-home-delete-modal').count(), 0, 'no confirmation dialog exists')
+  checks.push('no trash button, no target before a drag, no confirmation dialog')
 
   // A drag that ends on the board stays a move: the target may appear, it must not arm.
-  await pressGrip()
-  await zone().waitFor()
-  assert.equal(await armed(), false, 'the target is dormant while the pointer is on the board')
+  await pressGrip(page)
+  await zone(page).waitFor()
+  assert.equal(await armed(page), false, 'the target is dormant while the pointer is on the board')
   const grid = await page.locator('.dsh-spatial-grid').boundingBox(); assert(grid)
   await page.mouse.move(grid.x + 500, grid.y + 520, { steps: 12 })
-  await settle()
-  assert.equal(await armed(), false, 'moving over the board never arms the target')
+  await settle(page)
+  assert.equal(await armed(page), false, 'moving over the board never arms the target')
   await page.mouse.up()
-  await settle()
-  assert.equal(await modal().count(), 0, 'a board drop never asks to delete')
-  const movedRect = await storedWhen(rect => rect !== null && (rect.x !== original.x || rect.y !== original.y), 'a moved card')
-  assert.notDeepEqual(movedRect, original, 'the board drop moved the card instead')
+  await settle(page)
+  const movedRect = await storedWhen(page, rect => rect !== null && (rect.x !== original.x || rect.y !== original.y), 'a moved card')
+  assert.notDeepEqual(movedRect, original, 'the board drop moved the card instead of deleting it')
   assert.ok((await api('workbench.get')).instances.some(instance => instance.instanceId === fixture.instanceId), 'the card still exists')
-  checks.push('a board drop moves the card and never opens the delete confirmation')
+  checks.push('a board drop moves the card and never deletes it')
   await page.screenshot({ path: new URL('moved.png', out).pathname, animations: 'disabled' })
 
-  // Escape aborts an armed drag: no move, no confirmation.
-  const afterMove = await storedRect()
-  await pressGrip()
-  const target = await zoneBox()
-  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 10 })
-  await settle()
-  assert.equal(await armed(), true, 'the target arms when the pointer enters it')
+  // Escape aborts an armed drag: no move, no deletion.
+  const afterMove = await storedRect(page)
+  await pressGrip(page)
+  await moveOntoZone(page)
+  assert.equal(await armed(page), true, 'the target arms when the pointer enters it')
+  assert.equal(await page.locator('.dsh-home-delete-zone-armed').isVisible(), true, 'the armed label replaces the idle one')
   await page.screenshot({ path: new URL('armed.png', out).pathname, animations: 'disabled' })
   await page.keyboard.press('Escape')
   await page.mouse.up()
-  await settle()
-  assert.equal(await modal().count(), 0, 'Esc cancels instead of deleting')
-  assert.deepEqual(await storedRect(), afterMove, 'Esc leaves the stored rectangle untouched')
+  await settle(page)
+  assert.deepEqual(await storedRect(page), afterMove, 'Esc leaves the stored rectangle untouched')
+  assert.ok((await api('workbench.get')).instances.some(instance => instance.instanceId === fixture.instanceId), 'Esc keeps the card')
   checks.push('Esc over the target cancels the drag without deleting or moving')
 
-  // Dropping on the target asks for confirmation and restores the pre-drag position.
-  await pressGrip()
-  const drop = await zoneBox()
-  await page.mouse.move(drop.x + drop.width / 2, drop.y + drop.height / 2, { steps: 10 })
-  await settle()
-  await page.mouse.up()
-  await modal().waitFor()
-  assert.equal(await zone().count(), 0, 'the drop target disappears with the gesture')
-  await page.screenshot({ path: new URL('confirm.png', out).pathname, animations: 'disabled' })
-  assert.deepEqual(await storedRect(), afterMove, 'a delete drop never writes the dragged position')
-  assert.ok((await api('workbench.get')).instances.some(instance => instance.instanceId === fixture.instanceId), 'the instance still exists while confirming')
-  await modal().locator('[data-modal-autofocus]').click()
-  await settle()
-  assert.equal(await modal().count(), 0)
-  assert.ok((await api('workbench.get')).instances.some(instance => instance.instanceId === fixture.instanceId), 'cancelling keeps the instance')
-  assert.deepEqual(await storedRect(), afterMove)
-  checks.push('a delete drop asks first, never moves the card, and cancelling keeps it')
-
-  // Keyboard parity: Delete on the focused grip asks for confirmation too.
-  await card().locator('.dsh-tools .dsh-widget-grip').focus()
+  // Keyboard parity: Delete on the focused grip deletes immediately.
+  await card(page).locator('.dsh-tools .dsh-widget-grip').focus()
   await page.keyboard.press('Delete')
-  await modal().waitFor()
-  await modal().locator('[data-modal-autofocus]').click()
-  await settle()
-  checks.push('Delete on the focused grip opens the same confirmation')
+  await instanceGone(page)
+  assert.equal(await card(page).count(), 0, 'the card is gone from the board')
+  assert.equal(await page.locator('.dsh-home-delete-modal').count(), 0, 'the keyboard path asks nothing')
+  assert.equal(await storedRect(page), null, 'its rectangle is gone from the active breakpoint')
+  checks.push('Delete on the focused grip removes the card immediately')
 
-  // Confirming removes the instance and its coordinates.
-  await pressGrip()
-  const finalDrop = await zoneBox()
-  await page.mouse.move(finalDrop.x + finalDrop.width / 2, finalDrop.y + finalDrop.height / 2, { steps: 10 })
-  await settle()
+  // Drop on the target: deleted on release, no confirmation, no burst under reduced motion.
+  await installFixture()
+  await page.reload()
+  await openEditor(page)
+  assert.deepEqual(await storedRect(page), original, 'the re-installed card is back at its rectangle')
+  await pressGrip(page)
+  await moveOntoZone(page)
   await page.mouse.up()
-  await modal().waitFor()
-  await modal().getByRole('button', { name: /^(Confirm delete|确认删除)$/ }).click()
-  for (let attempt = 0; attempt < 100 && (await api('workbench.get')).instances.some(instance => instance.instanceId === fixture.instanceId); attempt++) await page.waitForTimeout(50)
-  const removed = await api('workbench.get')
-  assert.equal(removed.instances.some(instance => instance.instanceId === fixture.instanceId), false, 'the confirmed instance is gone')
-  assert.equal(await storedRect(), null, 'its rectangle is gone from the active breakpoint')
-  for (let attempt = 0; attempt < 100 && await card().count() > 0; attempt++) await page.waitForTimeout(50)
-  assert.equal(await card().count(), 0, 'the card is gone from the board')
-  checks.push('confirming the drop removes the instance and its saved rectangle')
+  await instanceGone(page)
+  assert.equal(await page.locator('.dsh-home-delete-modal').count(), 0, 'dropping on the target never asks')
+  assert.equal(await card(page).count(), 0, 'the card disappeared with the drop')
+  assert.equal(await storedRect(page), null, 'its rectangle is gone')
+  assert.equal(await page.locator('.dsh-debris').count(), 0, 'reduced motion deletes without a burst')
+  checks.push('a delete drop removes the card immediately, with no dialog')
+  await page.screenshot({ path: new URL('after-delete.png', out).pathname, animations: 'disabled' })
 
   assert.deepEqual(errors, [])
-  await page.screenshot({ path: new URL('after-delete.png', out).pathname, animations: 'disabled' })
+
+  // The shatter itself needs a context that allows motion.
+  await installFixture()
+  const motion = await browser.newContext({ viewport: { width: 1440, height: 1100 }, reducedMotion: 'no-preference' })
+  const moving = await motion.newPage()
+  moving.on('pageerror', error => errors.push(`motion: ${error.message}`))
+  try {
+    await moving.goto(url.href)
+    await openEditor(moving)
+    await pressGrip(moving)
+    await moveOntoZone(moving)
+    await moving.mouse.up()
+    await moving.locator('.dsh-debris').waitFor({ timeout: 3000 })
+    const burst = await moving.evaluate(() => {
+      const layer = document.querySelector('.dsh-debris')
+      const host = layer?.parentElement
+      return {
+        tiles: layer?.querySelectorAll('.dsh-debris-tile').length ?? 0,
+        chips: layer?.querySelectorAll('.dsh-debris-chip').length ?? 0,
+        realContent: layer?.textContent.includes('Disposable delete target') ?? false,
+        inBoard: host !== null && host !== undefined && host.closest('.dsh-home') !== null,
+        zIndex: layer === null ? -1 : Number(getComputedStyle(layer).zIndex),
+      }
+    })
+    assert.equal(burst.tiles, 9, 'the card is diced into nine tiles')
+    assert.ok(burst.chips >= 20, `small chips scatter too (${burst.chips})`)
+    assert.equal(burst.realContent, true, 'the tiles carry the real card, not a blank block')
+    assert.equal(burst.inBoard, true, 'the debris layer keeps the board scoped card paint')
+    assert.ok(burst.zIndex >= 50, `the burst paints above the board (z ${burst.zIndex})`)
+    await moving.screenshot({ path: new URL('debris.png', out).pathname })
+    // The card itself is gone; only its pieces exist.
+    assert.equal(await moving.locator('[data-widget-id="drag-delete"]').count(), 0, 'the source card is removed while the debris flies')
+    await moving.waitForFunction(() => document.querySelector('.dsh-debris') === null, null, { timeout: 5000 })
+    assert.equal(await moving.locator('.dsh-debris').count(), 0, 'the burst cleans itself up')
+    await instanceGone(moving)
+    checks.push(`dropping on the target shatters the card into ${burst.tiles} tiles and ${burst.chips} chips, then deletes it`)
+  } finally {
+    await motion.close()
+  }
 } catch (error) {
   errors.push(error.stack ?? String(error))
   process.exitCode = 1
