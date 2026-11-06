@@ -18,7 +18,7 @@ import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
 import { legacyInstanceProjection } from './widget-sizing.ts'
 import { CanvasWidthHandle } from './canvas-grip.tsx'
-import { boardWidthForColumns, columnsForWidth, resolveCanvasWidth, widgetWidthForColumns } from './canvas-width.ts'
+import { boardColumnsFor, boardWidthForColumns, resolveCanvasWidth, widgetWidthForColumns } from './canvas-width.ts'
 
 export interface HomePageProps {
   t: Translate
@@ -119,7 +119,7 @@ export function HomePage(props: HomePageProps): ReactNode {
   // The board's column count comes from the user's width preference, never from the
   // window: a narrow window scrolls horizontally instead of re-projecting the layout.
   const canvasWidth = resolveCanvasWidth(state.prefs.canvasWidth)
-  const cols = columnsForWidth(canvasWidth)
+  const cols = boardColumnsFor(canvasWidth)
   const boardWidth = boardWidthForColumns(cols)
   useEffect(() => { setLibraryDrag(null) }, [cols])
   useEffect(() => { if(!editing || !writable || busy) setLibraryDrag(null) },[editing,writable,busy])

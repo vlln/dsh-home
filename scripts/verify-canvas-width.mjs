@@ -48,6 +48,8 @@ const assertSnapped = async (width, label) => {
   assert.equal((width + 12) % 96, 0, `${label}: width is a whole column (${width})`)
   assert.equal(board.cols, (width + 12) / 96, `${label}: cols derive from the width`)
   assert.ok(board.cols >= 12 && board.cols <= 32, `${label}: columns stay in 12..32 (${board.cols})`)
+  // A board is a whole number of ROW UNITS: a stray column can never be filled.
+  assert.equal(board.cols % 4, 0, `${label}: board is a whole 4-column unit (${board.cols})`)
   assert.equal(board.documentOverflow, false, `${label}: the document never overflows horizontally`)
 }
 const gripOf = side => page.locator(`.dsh-canvas-grip[data-side="${side}"]`)
@@ -109,7 +111,11 @@ try {
   await page.waitForFunction(() => !document.querySelector('.dsh-canvas-grip[data-dragging]'))
   await page.waitForTimeout(400)
   // The commit snaps: the raw preview (before + 2*120) is not what gets stored.
-  const expected = (() => { const cols = Math.min(32, Math.max(12, Math.floor((during + 12) / 96))); return cols * 96 - 12 })()
+  const expected = (() => {
+    const raw = Math.min(32, Math.max(12, Math.floor((during + 12) / 96)))
+    const cols = Math.max(4, Math.round(raw / 4) * 4)
+    return cols * 96 - 12
+  })()
   const persisted = await savedWhen(value => value === expected, 'the snapped width chosen by the drag')
   const afterDrag = await column()
   assert.equal(persisted, afterDrag, `drag persists the snapped width: saved ${persisted} vs rendered ${afterDrag}`)
@@ -136,8 +142,8 @@ try {
   const valueOf = async () => Number(await gripOf('right').getAttribute('aria-valuenow'))
   const startKey = await valueOf()
   await page.keyboard.press('ArrowRight'); await page.waitForTimeout(300)
-  assert.equal(await valueOf(), startKey + 96, 'arrow key widens the board by one whole column')
-  await assertSnapped(startKey + 96, 'ArrowRight')
+  assert.equal(await valueOf(), startKey + 384, 'arrow key widens the board by one whole row unit')
+  await assertSnapped(startKey + 384, 'ArrowRight')
   await page.keyboard.press('Home'); await page.waitForTimeout(300)
   assert.equal(await valueOf(), 1140, 'Home clamps to the 12-column minimum')
   assert.equal(await column(), 1140, 'minimum is renderable')
@@ -164,11 +170,15 @@ try {
   assert(widened >= narrow + 60, `left strip widens the board too: ${narrow} -> ${widened}`)
   await page.mouse.up(); await page.waitForTimeout(300)
   // The left strip previews raw during the drag and commits the same column snap.
-  const leftExpected = (() => { const cols = Math.min(32, Math.max(12, Math.floor((widened + 12) / 96))); return cols * 96 - 12 })()
+  const leftExpected = (() => {
+    const raw = Math.min(32, Math.max(12, Math.floor((widened + 12) / 96)))
+    const cols = Math.max(4, Math.round(raw / 4) * 4)
+    return cols * 96 - 12
+  })()
   const leftSaved = await savedWhen(value => value === leftExpected, 'the snapped width the left strip committed')
   assert.equal(leftSaved, leftExpected, `left strip persists the snapped width: ${leftSaved} vs ${widened}`)
   await assertSnapped(leftExpected, 'left strip')
-  checks.push('left strip is an equal control: dragging it outward widens and persists one column step')
+  checks.push('left strip is an equal control: dragging it outward widens and persists one row unit')
 
   // Double-click restores the default without touching widgets.
   const geometry = await page.locator('.dsh-home-widget').evaluateAll(nodes => nodes.map(node => node.dataset.widgetId))

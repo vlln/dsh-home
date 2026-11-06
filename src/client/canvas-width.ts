@@ -50,9 +50,25 @@ export function widgetWidthForColumns(span: number): number {
   return boardWidth(span)
 }
 
-/** Snap any width to the nearest (floor) whole column: `cols*96 - 12`. */
+/** A board is a whole number of ROW UNITS, never an arbitrary column count: one
+ * stray column can never be filled by the declared spans (4 + 8 = 12), so every row
+ * would end with a gap. 4 divides the declared 4/8/12 widths, so any mix tiles. */
+export const CANVAS_COLUMN_UNIT = 4
+
+/** Nearest whole row unit, never below one unit. */
+function unitColumns(columns: number): number {
+  return Math.max(CANVAS_COLUMN_UNIT, Math.round(columns / CANVAS_COLUMN_UNIT) * CANVAS_COLUMN_UNIT)
+}
+
+/** The column count actually used: a whole row unit, so a saved 12-column layout keeps
+ * its own breakpoint instead of drifting onto a stray 13-column board. */
+export function boardColumnsFor(width: number): number {
+  return unitColumns(columnsForWidth(width))
+}
+
+/** Snap any width to a whole row unit: the board the user actually gets. */
 export function snapCanvasWidth(width: number): number {
-  return boardWidthForColumns(columnsForWidth(width))
+  return boardWidthForColumns(boardColumnsFor(width))
 }
 
 export function clampCanvasWidth(value: unknown): number {
@@ -76,9 +92,9 @@ export function canvasWidthFromEdgeDrag(startWidth: number, startX: number, curr
 
 /** Keyboard equivalent: one whole column per press. Home and End reach the bounds. */
 export function canvasWidthFromKey(width: number, key: string): number {
-  const columns = columnsForWidth(width)
-  if (key === 'ArrowLeft') return boardWidthForColumns(columns - 1)
-  if (key === 'ArrowRight') return boardWidthForColumns(columns + 1)
+  const columns = boardColumnsFor(width)
+  if (key === 'ArrowLeft') return boardWidthForColumns(columns - CANVAS_COLUMN_UNIT)
+  if (key === 'ArrowRight') return boardWidthForColumns(columns + CANVAS_COLUMN_UNIT)
   if (key === 'Home') return CANVAS_MIN_WIDTH
   if (key === 'End') return CANVAS_MAX_WIDTH
   return width

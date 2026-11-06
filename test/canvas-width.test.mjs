@@ -51,12 +51,13 @@ test('board and widget pixel widths are exact and independent of any window widt
     const cols = columnsForWidth(W)
     assert.equal(widgetWidthForColumns(4), 372, `4-wide card stays 372px at W=${W} (${cols} cols)`)
   }
-  // Snapping is floor-to-column: `cols*96 - 12`, never a proportional pixel width.
+  // Snapping lands on a whole 4-column row unit: a stray column could never be
+  // filled by the declared spans (4 + 8 = 12), so every row would end one column short.
   assert.equal(snapCanvasWidth(1140), 1140)
   assert.equal(snapCanvasWidth(1180), 1140)
-  assert.equal(snapCanvasWidth(1236), 1236)
-  assert.equal(snapCanvasWidth(1280), 1236)
-  assert.equal(snapCanvasWidth(1500), 1428)
+  assert.equal(snapCanvasWidth(1236), 1140)
+  assert.equal(snapCanvasWidth(1360), 1524)
+  assert.equal(snapCanvasWidth(1500), 1524)
   assert.equal(snapCanvasWidth(99999), 3060)
 })
 
@@ -87,15 +88,17 @@ test('dragging previews a raw width and only the commit snaps to a whole column'
   const raw = canvasWidthFromEdgeDrag(1140, 500, 507, 'right')
   assert.equal(raw, 1154)
   assert.equal(snapCanvasWidth(raw), 1140)
-  assert.equal(snapCanvasWidth(canvasWidthFromEdgeDrag(1140, 500, 560, 'right')), 1236)
+  // One row unit of movement is what actually changes the board.
+  assert.equal(snapCanvasWidth(canvasWidthFromEdgeDrag(1140, 500, 560, 'right')), 1140)
+  assert.equal(snapCanvasWidth(canvasWidthFromEdgeDrag(1140, 500, 700, 'right')), 1524)
   // Keyboard moves exactly one column; Home / End reach the fixed bounds.
-  assert.equal(canvasWidthFromKey(1140, 'ArrowRight'), 1236)
+  assert.equal(canvasWidthFromKey(1140, 'ArrowRight'), 1524)
   assert.equal(canvasWidthFromKey(1140, 'ArrowLeft'), 1140)
-  assert.equal(canvasWidthFromKey(1236, 'ArrowLeft'), 1140)
+  assert.equal(canvasWidthFromKey(1524, 'ArrowLeft'), 1140)
   assert.equal(canvasWidthFromKey(1140, 'End'), CANVAS_MAX_WIDTH)
   assert.equal(canvasWidthFromKey(3060, 'ArrowRight'), 3060)
   assert.equal(canvasWidthFromKey(1140, 'Home'), CANVAS_MIN_WIDTH)
-  assert.equal(canvasWidthFromKey(1236, 'Enter'), 1236)
+  assert.equal(canvasWidthFromKey(1524, 'Enter'), 1524)
 })
 
 test('saved preferences carry the board width across a host round trip', () => {
