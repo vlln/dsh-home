@@ -22,6 +22,7 @@ export const STYLE_ID = 'dsh-home-styles'
 
 export const CSS = `
 .dsh-home {
+  --dsh-home-max-width: 1280px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -38,7 +39,11 @@ export const CSS = `
   scrollbar-color: var(--dsw-alias-scrollbar-thumb, var(--dsw-alias-border-l3)) transparent;
 }
 .dsh-home * { box-sizing: border-box; }
-.dsh-home-inner { width: 100%; max-width: none; min-width: 0; flex: none; }
+/* A capped, centred content column. Widget width otherwise scales with the window
+   (a 4-column card spanned 309px..736px), so no single layout could fit every width.
+   Below the cap the canvas still follows the window; above it the extra space is
+   margin, so saved rectangles and breakpoints stay exactly as they are. */
+.dsh-home-inner { width: 100%; max-width: var(--dsh-home-max-width, 1280px); margin-inline: auto; min-width: 0; flex: none; }
 
 .dsh-home-head {
   display: flex;

@@ -81,6 +81,20 @@ try {
       }
     }
   }
+  // Wide windows must stop widening widgets: the content column is capped and centred,
+  // otherwise one layout has to fit both a 309px and a 736px four-column card.
+  await page.setViewportSize({ width: 2400, height: 1700 }); await page.locator('.dsh-home').evaluate(el => { el.scrollTop = 0 })
+  await page.waitForFunction(() => (document.querySelector('.dsh-spatial-container')?.clientWidth ?? 0) > 0)
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+  const wide = await page.evaluate(() => {
+    const home = document.querySelector('.dsh-home'), inner = document.querySelector('.dsh-home-inner'), surface = document.querySelector('.dsh-spatial-container')
+    const box = inner.getBoundingClientRect(), pad = home.getBoundingClientRect()
+    return { viewport: window.innerWidth, surface: surface.clientWidth, inner: box.width, left: box.left - pad.left, right: pad.right - box.right }
+  })
+  assert(wide.surface <= 1281, `content column must be capped: ${JSON.stringify(wide)}`)
+  assert(Math.abs(wide.left - wide.right) <= 2, `capped column must be centred: ${JSON.stringify(wide)}`)
+  checks.push('2400px: content column caps at 1280px and centres instead of stretching widgets')
+  await page.screenshot({ path: new URL('widgets-2400-light.png', out).pathname, fullPage: true, animations: 'disabled' })
   await page.setViewportSize({ width: 1600, height: 1700 }); await page.locator('.dsh-home').evaluate(el => { el.scrollTop = 0 })
   await page.waitForFunction(() => { const surface = document.querySelector('.dsh-spatial-container'); const grid = document.querySelector('.dsh-spatial-grid'); return surface?.dataset.cols === '12' && Math.abs((grid?.getBoundingClientRect().width ?? 0) - (surface?.clientWidth ?? 0)) < 2 })
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))

@@ -36,12 +36,21 @@ test('registry accepts optional static preview without mounting it and rejects i
  const legacy={...d,typeId:'@test/pkg:no-preview'};delete legacy.Preview
  registry.register(legacy);assert.equal(registry.get(legacy.typeId).Preview,undefined)
 })
-test('gallery uses isolated real Content preview and wide desktop has no fixed content cap',()=>{
+test('gallery uses isolated real Content preview and the desktop column stops widening past its cap',()=>{
  const gallery=readFileSync(new URL('../src/client/widget-gallery.tsx',import.meta.url),'utf8')
  assert.ok(!gallery.includes('definition.Content'))
  assert.ok(!gallery.includes('defaultConfig('))
  assert.match(gallery,/<WidgetPreview definition=/)
  assert.ok(!gallery.includes('onAdd'))
+ // 0.22.5 replaces the earlier "no fixed content cap" decision: widget width used to
+ // scale with the window (a 4-column card spanned 309px..736px), so the content column
+ // is now capped and centred while still following the window below the cap.
  const styles=readFileSync(new URL('../src/client/styles.ts',import.meta.url),'utf8')
- assert.match(styles,/\.dsh-home-inner \{ width: 100%; max-width: none; min-width: 0; flex: none;/)
+ const cap=styles.match(/--dsh-home-max-width:\s*(\d+)px/)
+ assert.ok(cap,'one explicit, documented cap')
+ const value=Number(cap[1])
+ assert.ok(value >= 1000 && value <= 1400, `cap stays in the usable range: ${value}`)
+ assert.match(styles,/\.dsh-home-inner \{[^}]*max-width: var\(--dsh-home-max-width/)
+ assert.match(styles,/\.dsh-home-inner \{[^}]*margin-inline: auto/)
+ assert.ok(!styles.includes('max-width: none'))
 })
