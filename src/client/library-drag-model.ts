@@ -1,5 +1,6 @@
 /** Gallery pointer transport uses the same grid coordinates and snap model as existing cards. */
 import type { RegisteredWidgetDefinition } from './widget-contract.ts'
+import { isGridColumns } from './canvas-width.ts'
 import { buildSpatialLayout, canPlace, type SpatialItem } from './spatial-model.ts'
 import { emptyLayout } from './api.ts'
 import { snapCandidate } from './collision-preview.ts'
@@ -15,7 +16,7 @@ export interface LibraryDrag {
   baseLayout: string
 }
 export function libraryItem(definition: RegisteredWidgetDefinition, id: string, cols: number, layout: SpatialItem[]): SpatialItem {
-  if(![2,6,12].includes(cols)||layout.some(item=>item.i===id))throw new Error('Invalid library drag identity or columns')
+  if(!isGridColumns(cols)||layout.some(item=>item.i===id))throw new Error('Invalid library drag identity or columns')
   if(layout.some(item=>![item.x,item.y,item.w,item.h].every(Number.isInteger)||item.x<0||item.y<0||item.w<1||item.h<3))throw new Error('Invalid peer geometry')
   const d = definition.defaults
   const item = buildSpatialLayout(emptyLayout(), [{ id, sizing:definition.sizing, defaultSize:d.size, defaultHeight:d.height,

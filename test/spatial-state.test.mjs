@@ -41,12 +41,20 @@ test('old state shape does not gain positions when absent, null, scalar or array
   }
 })
 
-test('positions reject unsupported breakpoints and malformed breakpoint maps', () => {
+test('positions accept canonical breakpoints 1..32 and reject everything else', () => {
   const normalized = normalizeLayout(layout({ positions: {
-    12: { ok: rect() }, 6: [], 2: null, 4: { ignored: rect() }, desktop: { ignored: rect() },
+    12: { ok: rect() }, 6: [], 2: null, 4: { legacy: rect() },
+    13: { wide: rect(0, 10) }, 24: { wide: rect(20, 20) }, 32: { wide: rect(0, 0, 32) },
+    0: { ignored: rect() }, 33: { ignored: rect() }, '06': { ignored: rect() }, desktop: { ignored: rect() },
   } }))
-  assert.deepEqual(normalized.positions, { 12: { ok: rect() } })
+  assert.deepEqual(normalized.positions, {
+    12: { ok: rect() }, 4: { legacy: rect() },
+    13: { wide: rect(0, 10) }, 24: { wide: rect(20, 20) }, 32: { wide: rect(0, 0, 32) },
+  })
   assert.deepEqual(normalizeLayout(layout({ positions: {} })).positions, {})
+  // 6/2 stay preserved verbatim for old data.
+  const legacy = layout({ positions: { 6: { a: rect(0, 4, 6) }, 2: { a: rect(0, 8, 2) } } })
+  assert.deepEqual(normalizeLayout(legacy).positions, legacy.positions)
 })
 
 test('bad, noninteger, negative and unsafe rectangles are filtered rather than coerced or clamped', () => {

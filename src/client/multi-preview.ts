@@ -2,6 +2,7 @@
 import type { GridRect } from './api.ts'
 import type { SpatialItem } from './spatial-model.ts'
 import { canPlace } from './spatial-model.ts'
+import { CANVAS_MAX_COLUMNS } from './canvas-width.ts'
 
 type Point = { x: number; y: number }
 type Axis = 'x' | 'y'
@@ -75,7 +76,7 @@ function solveAxis(
 ): SpatialItem[] | undefined {
   const clone = () => snapshot.map(item => ({ ...item }))
   const activeIndex = snapshot.findIndex(item => item.i === id)
-  if ((axis !== 'x' && axis !== 'y') || !Number.isInteger(cols) || cols < 1 || cols > 12 || activeIndex < 0
+  if ((axis !== 'x' && axis !== 'y') || !Number.isInteger(cols) || cols < 1 || cols > CANVAS_MAX_COLUMNS || activeIndex < 0
     || !canPlace([], id, rect, cols)
     || (pointer !== undefined && (!pointer || !Number.isFinite(pointer.x) || !Number.isFinite(pointer.y)))) {
     return undefined

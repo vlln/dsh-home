@@ -53,7 +53,7 @@ test('locally tight shape-constrained holes stay unchanged even when rebuilding 
 })
 
 test('all public breakpoints compact independently, including full-width and maximum-height cards', () => {
-  for (const cols of [2, 6, 12]) {
+  for (const cols of [2, 6, 12, 13, 24, 32]) {
     const current = freeze([item('a', 0, 300, cols, 30, cols), item('b', 0, 900, cols, 3, cols)])
     const packed = compactSpatialLayout(current, cols)
     assert.deepEqual(packed.map(shape), [rect(0, 0, cols, 30), rect(0, 30, cols, 3)])
@@ -66,9 +66,11 @@ test('all public breakpoints compact independently, including full-width and max
 })
 
 test('invalid breakpoint, duplicate ids, overlap and malformed geometry reject without repairing or resizing', () => {
-  for (const cols of [0, 1, 3, 8, 13, NaN, Infinity, 6.5, '12', undefined]) {
+  for (const cols of [0, 1, 3, 11, 33, -1, 40, NaN, Infinity, 6.5, '12', undefined]) {
     assert.throws(() => compactSpatialLayout([], cols), /columns/)
   }
+  // Every fixed-stride canvas column count is accepted, not just the legacy 12.
+  for (const cols of [2, 6, 12, 13, 16, 24, 32]) assert.deepEqual(compactSpatialLayout([], cols), [])
   const invalid = [
     null, undefined, {}, [null], [item('', 0, 0)], [item('a', 0, 0), item('a', 4, 0)],
     [item('a', 0, 0), item('b', 0, 1)], [item('a', -1, 0)], [item('a', 0, -1)],

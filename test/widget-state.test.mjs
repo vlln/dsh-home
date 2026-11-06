@@ -6,7 +6,7 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { apply, createHomeService } from '../src/index.mjs'
 import { emptyState, loadState, saveState, stateFile, stateStorage } from '../src/state.mjs'
-import { BUILTIN_WIDGET_IDS, initialInstances, validateInstances } from '../src/widget-state.mjs'
+import { BUILTIN_WIDGET_IDS, initialInstances, validateInstances, validateWorkbenchLayout } from '../src/widget-state.mjs'
 
 const layout = (overrides = {}) => ({ order: [], focusOrder: [], hidden: [], size: {}, ...overrides })
 const instance = (instanceId = 'one', overrides = {}) => ({ instanceId, typeId: '@example/widgets:clock', configVersion: 1, config: {}, ...overrides })
@@ -164,6 +164,34 @@ test('validation is all-or-nothing and concurrent API calls return their canonic
   const responses = await Promise.all(['A', 'B'].map(id => call({ op: 'workbench.set', layout: layout({ order: [id] }), instances: [instance(id)] })))
   responses.forEach((response, i) => assert.equal(response.value.instances[0].instanceId, ['A', 'B'][i]))
   assert.equal(loadState().instances[0].instanceId, 'B')
+}))
+
+test('layout validator accepts canonical breakpoints 1..32 and enforces x+w per breakpoint', () => {
+  const identity = raw => raw
+  for (const cols of ['1', '2', '6', '12', '13', '16', '24', '32']) {
+    assert.doesNotThrow(() => validateWorkbenchLayout({ positions: { [cols]: { a: rect(0, 0, Math.min(4, Number(cols))) } } }, identity))
+  }
+  for (const cols of ['0', '33', '06', 'desktop', '-1']) {
+    assert.throws(() => validateWorkbenchLayout({ positions: { [cols]: { a: rect() } } }, identity), { code: 'bad-workbench' })
+  }
+  assert.throws(() => validateWorkbenchLayout({ positions: { 32: { a: rect(29, 0, 4) } } }, identity), { code: 'bad-workbench' })
+  assert.throws(() => validateWorkbenchLayout({ positions: { 12: { a: rect(9, 0, 4) } } }, identity), { code: 'bad-workbench' })
+  assert.doesNotThrow(() => validateWorkbenchLayout({ positions: { 32: { a: rect(28, 0, 4) } } }, identity))
+})
+
+test('workbench round trip keeps fixed-stride breakpoints 13..32 instead of dropping them', async () => isolated(async () => {
+  const call = route()
+  const geometry = layout({ positions: {
+    12: { one: rect(0, 0, 4) },
+    13: { one: rect(0, 12, 4) },
+    24: { one: rect(20, 24, 4) },
+    32: { one: rect(28, 36, 4) },
+  } })
+  const saved = await call({ op: 'workbench.set', layout: geometry, instances: [instance()] })
+  assert.equal(saved.status, 200)
+  assert.deepEqual(saved.value.layout.positions, geometry.positions)
+  assert.deepEqual(loadState().layout.positions, geometry.positions)
+  assert.deepEqual(createHomeService({}).getWorkbench().layout.positions, geometry.positions)
 }))
 
 test('real filesystem write failures propagate to API and roll back layout, instances and prefs', async () => isolated(async () => {

@@ -6,7 +6,6 @@ import { formatAgo, formatDay, type Translate } from './format.ts'
 import type { WidgetActions } from './widgets.tsx'
 import type { SessionStatusMap } from './focus.tsx'
 import { CardBoundary } from './boundary.tsx'
-import { useContainerWidth } from 'react-grid-layout'
 import { SpatialGrid } from './spatial-grid.tsx'
 import { buildSpatialLayout, moveSpatialItem, sizeFromRect, SPATIAL_GAP, SPATIAL_ROW_HEIGHT, type SpatialItem } from './spatial-model.ts'
 import type { HomeStore } from './store.ts'
@@ -19,7 +18,7 @@ import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
 import { legacyInstanceProjection } from './widget-sizing.ts'
 import { CanvasWidthHandle } from './canvas-grip.tsx'
-import { appliedCanvasWidth, resolveCanvasWidth } from './canvas-width.ts'
+import { boardWidthForColumns, columnsForWidth, resolveCanvasWidth, widgetWidthForColumns } from './canvas-width.ts'
 
 export interface HomePageProps {
   t: Translate
@@ -64,10 +63,12 @@ function WidgetIcon({ definition }: { definition: RegisteredWidgetDefinition }):
 function boundaryKey(instance: WidgetInstance, definition: RegisteredWidgetDefinition | undefined): string {
   return `${instance.instanceId}:${instance.typeId}:${instance.configVersion}:${definition?.configVersion ?? 'missing'}:${JSON.stringify(instance.config)}`
 }
-function contentProps(instance: WidgetInstance, rect: SpatialItem | undefined, width: number, cols: number, editing: boolean, visible: boolean): WidgetContentProps {
+function contentProps(instance: WidgetInstance, rect: SpatialItem | undefined, boardWidth: number, cols: number, editing: boolean, visible: boolean): WidgetContentProps {
   return {
     instance, config: instance.config, size: rect === undefined ? 'm' : sizeFromRect(rect, cols),
-    width: rect === undefined ? width : (width - SPATIAL_GAP * (cols - 1)) / cols * rect.w + SPATIAL_GAP * (rect.w - 1),
+    // Fixed pixel width: a card's width depends only on its column span, never on the
+    // window or the board width.
+    width: rect === undefined ? boardWidth : widgetWidthForColumns(rect.w),
     height: rect === undefined ? 4 * SPATIAL_ROW_HEIGHT + 3 * SPATIAL_GAP : rect.h * SPATIAL_ROW_HEIGHT + (rect.h - 1) * SPATIAL_GAP,
     editing, visible,
   }
@@ -115,9 +116,12 @@ export function HomePage(props: HomePageProps): ReactNode {
       ...(defaults === undefined ? {} : { minWidth: defaults.minWidth, maxWidth: defaults.maxWidth, minHeight: defaults.minHeight, maxHeight: defaults.maxHeight }),
     }
   }), [state.instances, state.layout, byType])
-  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true, initialWidth: 1100 })
-  const cols = width >= 950 ? 12 : width >= 580 ? 6 : 2
-  useEffect(() => { setLibraryDrag(null) }, [cols,width])
+  // The board's column count comes from the user's width preference, never from the
+  // window: a narrow window scrolls horizontally instead of re-projecting the layout.
+  const canvasWidth = resolveCanvasWidth(state.prefs.canvasWidth)
+  const cols = columnsForWidth(canvasWidth)
+  const boardWidth = boardWidthForColumns(cols)
+  useEffect(() => { setLibraryDrag(null) }, [cols])
   useEffect(() => { if(!editing || !writable || busy) setLibraryDrag(null) },[editing,writable,busy])
   const geometry = useMemo(() => state.workbenchLoaded ? buildSpatialLayout(state.layout, metas, cols) : [], [state.workbenchLoaded, state.layout, metas, cols])
   const instancesById = useMemo(() => new Map(state.instances.map(instance => [instance.instanceId, instance])), [state.instances])
@@ -162,30 +166,13 @@ export function HomePage(props: HomePageProps): ReactNode {
     try { change() } catch { setManagementError(true) }
   }
   // One board width the user may drag in edit mode. It is a preference, not widget geometry:
-  // saved rectangles and breakpoints are untouched, and the grid simply measures the result.
-  const canvasWidth = resolveCanvasWidth(state.prefs.canvasWidth)
+  // saved rectangles and breakpoints are untouched, and the grid is sized from `cols`.
   const homeRef = useRef<HTMLDivElement>(null)
-  const [boardRoom, setBoardRoom] = useState(0)
-  useEffect(() => {
-    const node = homeRef.current
-    if (node === null) return
-    const measure = (): void => {
-      const style = getComputedStyle(node)
-      const room = node.clientWidth - (Number.parseFloat(style.paddingLeft) || 0) - (Number.parseFloat(style.paddingRight) || 0)
-      setBoardRoom(previous => previous === room ? previous : room)
-    }
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(node)
-    return () => { observer.disconnect() }
-  }, [])
-  // Reserve an edge even at the widest setting, like the host Conversation tab.
-  const appliedBoardWidth = boardRoom > 0 ? appliedCanvasWidth(state.prefs.canvasWidth, boardRoom) : canvasWidth
   // Written imperatively rather than through the style prop: the handle owns this variable
   // during a gesture, so React must not restore a stale value mid-drag.
   useLayoutEffect(() => {
-    homeRef.current?.style.setProperty('--dsh-home-max-width', `${appliedBoardWidth}px`)
-  }, [appliedBoardWidth])
+    homeRef.current?.style.setProperty('--dsh-home-board-width', `${boardWidth}px`)
+  }, [boardWidth])
   const gripVisible = editable && !interacting
   const commitCanvasWidth = (next: number): void => { store.setCanvasWidth(next) }
   const deleteInstance = confirmDelete === null ? undefined : instancesById.get(confirmDelete)
@@ -236,21 +223,21 @@ export function HomePage(props: HomePageProps): ReactNode {
             if(!editable || interacting)return
             try {
               const id=crypto.randomUUID(),item=libraryItem(definition,id,cols,geometry)
-              setLibraryDrag({id,definition,item,start:{x:point.x,y:point.y},grab:{x:grab.x*((width+12)/cols*item.w-12),y:grab.y},touch:point.touch,pointerId:point.pointerId,baseLayout:JSON.stringify(state.layout)})
+              setLibraryDrag({id,definition,item,start:{x:point.x,y:point.y},grab:{x:grab.x*widgetWidthForColumns(item.w),y:grab.y},touch:point.touch,pointerId:point.pointerId,baseLayout:JSON.stringify(state.layout)})
             } catch {setManagementError(true)}
           }} />}
-        <div ref={containerRef} className="dsh-spatial-container" data-layout-surface="spatial" data-cols={cols}>
-          {state.workbenchLoaded && mounted && width > 0 && <SpatialGrid width={width} cols={cols} layout={geometry} editing={editable} onCommit={commit} onActive={activeChanged}
+        <div className="dsh-spatial-container" data-layout-surface="spatial" data-cols={cols}>
+          {state.workbenchLoaded && <SpatialGrid width={boardWidth} cols={cols} layout={geometry} editing={editable} onCommit={commit} onActive={activeChanged}
             libraryDrag={libraryDrag} onLibraryEnd={() => setLibraryDrag(null)}
             onLibraryDrop={(drag,accepted) => {try {if(registry.get(drag.definition.typeId)!==drag.definition||JSON.stringify(store.getSnapshot().layout)!==drag.baseLayout)throw new Error('Widget or layout changed');store.dropInstance(drag.definition,drag.id,accepted,cols)}catch{setManagementError(true)}}}
             libraryGhost={libraryDrag && <><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
-              <CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetPreview definition={libraryDrag.definition} t={t} size={libraryDrag.definition.defaults.size} width={Math.max(0,(width+12)/cols*libraryDrag.item.w-44)} height={Math.max(0,libraryDrag.item.h*56-80)}/></CardBoundary></>}>
+              <CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetPreview definition={libraryDrag.definition} t={t} size={libraryDrag.definition.defaults.size} width={Math.max(0,widgetWidthForColumns(libraryDrag.item.w)-32)} height={Math.max(0,libraryDrag.item.h*56-80)}/></CardBoundary></>}>
           {geometry.map(rect => {
             const instance = instancesById.get(rect.i)
             if (instance === undefined) return null
             const definition = byType.get(instance.typeId)
             const title = widgetText(definition?.title, instance.typeId)
-            const widgetProps: WidgetContentProps = { ...contentProps(instance, rect, width, cols, editing, true),
+            const widgetProps: WidgetContentProps = { ...contentProps(instance, rect, boardWidth, cols, editing, true),
               ...(!editing && writable && !busy && definition ? { saveConfig: async config => {
                 if (registry.get(instance.typeId) !== definition) throw new Error('Widget provider changed')
                 await store.saveInstanceConfig(instance.instanceId, definition, config)
@@ -274,7 +261,7 @@ export function HomePage(props: HomePageProps): ReactNode {
         {state.workbenchLoaded && geometry.length === 0 && <div className="dsh-empty"><span>{t('empty.noWidgets')}</span><Button variant="outline" size="sm" disabled={!writable || busy} onClick={() => { setEditing(true); setTrayOpen(true) }}>{t('action.widgets')}</Button></div>}
         {editing && <p className="dsh-muted dsh-edit-footnote">{t('edit.keyboard')}</p>}
         {gripVisible && (['left', 'right'] as const).map(side => <CanvasWidthHandle key={side} side={side}
-          value={canvasWidth} onCommit={commitCanvasWidth}
+          value={boardWidth} onCommit={commitCanvasWidth}
           label={t(side === 'left' ? 'canvas.widthLeft' : 'canvas.widthRight')} hint={t('canvas.widthHint')} />)}
       </div>
       {deleteInstance && <Modal open title={t('manager.deleteTitle', { title: deleteTitle })} description={t('manager.deleteDescription')}

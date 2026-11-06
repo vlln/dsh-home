@@ -284,12 +284,18 @@ try {
   await screenshot('builtin-zh-dark.png')
   check('real isolated-host locale/theme settings render English/light and Chinese/dark screenshots')
   await page.setViewportSize({ width: 600, height: 1000 })
-  await eventually(async () => await page.locator('.dsh-spatial-container').getAttribute('data-cols') === '2', 'responsive two-column measurement')
+  await eventually(async () => {
+    const state = await page.evaluate(() => {
+      const home = document.querySelector('.dsh-home'), surface = document.querySelector('.dsh-spatial-container')
+      return { cols: Number(surface.dataset.cols), boardScrolls: home.scrollWidth > home.clientWidth + 1,
+        documentOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 }
+    })
+    return state.cols >= 12 && state.boardScrolls && !state.documentOverflow
+  }, 'narrow window scrolls the fixed board without document overflow')
   await eventually(async () => await card(activityId).locator('button[data-date]').count() === 365, 'explicit year retained narrow')
-  await eventually(async () => await page.locator('.dsh-home').evaluate(el => el.scrollWidth <= el.clientWidth + 1), 'narrow page settled without horizontal overflow')
-  await eventually(async () => await card(activityId).evaluate(el => el.scrollWidth <= el.clientWidth + 1), 'narrow activity card settled without horizontal overflow')
+  await eventually(async () => await card(activityId).evaluate(el => el.scrollWidth <= el.clientWidth + 1), 'narrow activity card settled without internal overflow')
   await screenshot('builtin-narrow.png')
-  check('600px viewport has no page/card horizontal overflow; year remains internally scrollable')
+  check('600px viewport keeps the fixed 12+ column board, scrolls it horizontally and never overflows the document; year retained')
   assert.equal(promptAttempts, 0)
   assert.deepEqual(report.errors, [])
   assert(!/did not activate|plugin tree failed|BUILTIN.*Error/.test(host.output), 'Host contains activation failure')

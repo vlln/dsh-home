@@ -160,6 +160,47 @@ test('restore helper can relocate an earlier ordered hidden card without disturb
   assertValid(next, 12)
 })
 
+test('a canvas breakpoint with no saved rows reads the nearest saved one verbatim', () => {
+  const saved = deepFreeze(layout({ positions: { 12: { a: rect(0, 12, 8, 6), b: rect(8, 12, 4, 6) } } }))
+  const at12 = buildSpatialLayout(saved, metas(['a', 'b']), 12)
+  for (const cols of [13, 14, 16, 20, 24, 32]) {
+    const geometry = buildSpatialLayout(saved, metas(['a', 'b']), cols)
+    assert.deepEqual(geometry.map(getRect), at12.map(getRect), `cols ${cols} reuses the 12-column rectangles`)
+    assert.equal(geometry[0].w, 8, 'columns are never scaled')
+    assert.equal(geometry[0].viewportCols, cols)
+  }
+  const two = layout({ positions: { 12: { a: rect(0, 0, 8, 6) }, 16: { a: rect(12, 0, 4, 6) } } })
+  assert.deepEqual(getRect(buildSpatialLayout(two, metas(['a']), 16)[0]), rect(12, 0, 4, 6), 'exact key wins')
+  assert.deepEqual(getRect(buildSpatialLayout(two, metas(['a']), 20)[0]), rect(12, 0, 4, 6), 'largest key <= cols')
+  assert.deepEqual(getRect(buildSpatialLayout(two, metas(['a']), 13)[0]), rect(0, 0, 8, 6), 'largest key <= cols can be legacy 12')
+  assert.deepEqual(getRect(buildSpatialLayout(two, metas(['a']), 32)[0]), rect(12, 0, 4, 6), 'largest stored key wins over the lower bound')
+  // No key at or below cols: fall back to the smallest existing one above.
+  const above = layout({ positions: { 24: { a: rect(0, 40, 4, 4) } } })
+  assert.deepEqual(getRect(buildSpatialLayout(above, metas(['a']), 13)[0]), rect(0, 40, 4, 4))
+})
+
+test('a saved rectangle that no longer fits the current columns is relocated, never dropped', () => {
+  const saved = layout({ positions: { 16: { a: rect(12, 0, 4, 4) } } })
+  assert.deepEqual(getRect(buildSpatialLayout(saved, metas(['a']), 16)[0]), rect(12, 0, 4, 4))
+  const narrow = buildSpatialLayout(saved, metas(['a']), 13)
+  assert.equal(narrow.length, 1)
+  assert.deepEqual(getRect(narrow[0]), rect(0, 0, 4, 4))
+})
+
+test('32-column canvases accept full-width geometry and write only the active key', () => {
+  const saved = deepFreeze(layout({ positions: { 32: { a: rect(28, 0, 4, 4) } } }))
+  const geometry = buildSpatialLayout(saved, metas(['a']), 32)
+  assert.deepEqual(getRect(geometry[0]), rect(28, 0, 4, 4))
+  assert.equal(geometry[0].viewportCols, 32)
+  assertValid(geometry, 32)
+  const moved = moveSpatialItem(geometry, 'a', -1, 0)
+  assert.deepEqual(getRect(moved[0]), rect(27, 0, 4, 4))
+  assert.equal(moveSpatialItem(geometry, 'a', 1, 0), geometry, 'cannot leave the 32-column board')
+  const merged = mergeSpatialPositions(saved, moved, 32)
+  assert.deepEqual(merged.positions['32'].a, rect(27, 0, 4, 4))
+  assert.equal(saved.positions['12'], undefined, 'a wide board does not materialize a legacy key')
+})
+
 test('breakpoints use independent saved rectangles and saving 6 never rewrites 12 or 2', () => {
   const saved = deepFreeze(layout({ positions: {
     12: { a: rect(8, 30), 'external:absent': rect(0, 70) },

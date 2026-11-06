@@ -5,6 +5,9 @@ export const MAX_CONFIG_BYTES = 8 * 1024
 export const MAX_WORKBENCH_BYTES = 256 * 1024
 
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value)
+/** Durable breakpoints span the whole fixed-stride canvas: 1..32 canonical integers.
+ * Columns below 12 are legacy but kept readable, never migrated or deleted. */
+export const validBreakpoint = value => typeof value === 'string' && /^(?:[1-9]|[12]\d|3[0-2])$/u.test(value)
 export const validInstanceId = value => typeof value === 'string' && value.length > 0 && value.length <= 120 && !/[\u0000-\u001f\u007f]/u.test(value)
 
 export function widgetStateError(message, code = 'bad-workbench') {
@@ -96,7 +99,9 @@ export function validateWorkbenchLayout(raw, normalizeLayout) {
   if (raw.positions !== undefined) {
     if (!record(raw.positions)) throw widgetStateError('invalid layout positions')
     for (const [columns, rows] of Object.entries(raw.positions)) {
-      if (!['12', '6', '2'].includes(columns) || !record(rows) || Object.keys(rows).length > 64) throw widgetStateError('invalid layout breakpoint')
+      // Canvas breakpoints are canonical integers 1..32, so legacy 2/6/12 data and
+      // every fixed-stride column count stay readable.
+      if (!validBreakpoint(columns) || !record(rows) || Object.keys(rows).length > 64) throw widgetStateError('invalid layout breakpoint')
       for (const [id, rect] of Object.entries(rows)) {
         if (!validInstanceId(id) || !record(rect) || Object.keys(rect).sort().join(',') !== 'h,w,x,y') throw widgetStateError('invalid layout rectangle')
         const { x, y, w, h } = rect

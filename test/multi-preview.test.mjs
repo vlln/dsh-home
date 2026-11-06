@@ -263,7 +263,8 @@ test('invalid candidate, columns, pointer, missing id or corrupt snapshot return
     rect(NaN, 0), rect(0.5, 0), rect(0, 0, 0), rect(0, 0, 4, 2), rect(0, 0, 4, 31)]) {
     assert.deepEqual(multiPreviewPlacement(snapshot, 'active', bad, 12), snapshot)
   }
-  for (const cols of [0, 13, 2.5, NaN, Infinity]) {
+  // 13 is a real fixed-stride canvas now; invalid means non-integer or out of range.
+  for (const cols of [0, 2.5, NaN, Infinity, 33, -1]) {
     assert.deepEqual(multiPreviewPlacement(snapshot, 'active', rect(0, 8), cols), snapshot)
   }
   for (const pointer of [null, { x: NaN, y: 1 }, { x: 1, y: Infinity }]) {

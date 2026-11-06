@@ -133,7 +133,8 @@ test('projection preserves legacy small width and deduplicates only matching res
     assert.deepEqual(presetGeometry(`${w}x9`, 6), { w: w <= 4 ? Math.min(w, 3) : Math.min(w, 6), h: 9 })
     assert.deepEqual(presetGeometry(shape, 2), { w: Math.min(w, 2), h: 9 })
   }
-  for (const cols of [0, 1, 3, 13, NaN]) assert.throws(() => presetGeometry('4x6', cols), /breakpoint/)
+  for (const cols of [0, 1, 3, 11, 33, NaN]) assert.throws(() => presetGeometry('4x6', cols), /breakpoint/)
+  for (const cols of [13, 16, 24, 32]) assert.deepEqual(presetGeometry({ w: 7, h: 9 }, cols), { w: 7, h: 9 }, 'canvas widths are identity')
   const sizing = normalizeWidgetSizing({ default: { w: 4, h: 6 }, supported: [{ w: 3, h: 6 }, { w: 4, h: 6 }, { w: 7, h: 9 }] })
   const options = projectedWidgetPresets(sizing, 6)
   assert.deepEqual(options.map(({ w, h }) => ({ w, h })), [{ w: 3, h: 6 }, { w: 6, h: 9 }])

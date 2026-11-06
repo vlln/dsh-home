@@ -31,8 +31,10 @@ try {
   await page.goto(url.href); await page.getByRole('button', { name: /^(Home|首页)$/ }).first().click(); await page.locator('.dsh-activity-cell[data-date]').first().waitFor()
   for (const width of [1600, 900, 540]) {
     await page.setViewportSize({ width, height: 1700 }); await page.locator('.dsh-home').evaluate(el => { el.scrollTop = 0 })
-    await page.waitForFunction(() => { const el = document.querySelector('.dsh-home'); const surface = document.querySelector('.dsh-spatial-container'); const w = surface?.clientWidth ?? 0; return el && el.scrollWidth <= el.clientWidth + 1 && surface?.dataset.cols === String(w >= 950 ? 12 : w >= 580 ? 6 : 2) })
+    await page.waitForFunction(() => { const surface = document.querySelector('.dsh-spatial-container'), grid = document.querySelector('.dsh-spatial-grid'); const cols = Number(surface?.dataset.cols ?? 0), board = surface?.clientWidth ?? 0; return cols >= 12 && cols <= 32 && Math.abs(board - (cols * 96 - 12)) < 2 && Math.abs((grid?.getBoundingClientRect().width ?? 0) - board) < 2 })
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    const pageOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)
+    assert.equal(pageOverflow, false, `document must not overflow horizontally at ${width}`)
     const cell = await page.locator('[data-widget-id="visual-activity"] .dsh-activity-cell[data-date]').first().boundingBox()
     assert(Math.abs(cell.width - cell.height) < .2, `square heatmap cells at ${width}: ${cell.width}x${cell.height}`)
     assert(cell.width >= 12 && cell.width <= 24)
@@ -81,25 +83,29 @@ try {
       }
     }
   }
-  // Wide windows must stop widening widgets: the content column is capped and centred,
-  // otherwise one layout has to fit both a 309px and a 736px four-column card.
+  // Wide windows must not widen widgets: the board is a fixed-pixel canvas that stays
+  // centred, so the same saved rectangle keeps exactly the same pixel size.
   await page.setViewportSize({ width: 2400, height: 1700 }); await page.locator('.dsh-home').evaluate(el => { el.scrollTop = 0 })
   await page.waitForFunction(() => (document.querySelector('.dsh-spatial-container')?.clientWidth ?? 0) > 0)
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
   const wide = await page.evaluate(() => {
     const home = document.querySelector('.dsh-home'), inner = document.querySelector('.dsh-home-inner'), surface = document.querySelector('.dsh-spatial-container')
     const box = inner.getBoundingClientRect(), pad = home.getBoundingClientRect()
-    // The cap is the user's saved preference, so read what is actually applied.
-    const applied = Number.parseFloat(getComputedStyle(home).getPropertyValue('--dsh-home-max-width'))
-    return { viewport: window.innerWidth, surface: surface.clientWidth, inner: box.width, applied, left: box.left - pad.left, right: pad.right - box.right }
+    const board = Number.parseFloat(getComputedStyle(home).getPropertyValue('--dsh-home-board-width'))
+    return { viewport: window.innerWidth, surface: surface.clientWidth, inner: box.width, board,
+      cols: Number(surface.dataset.cols), left: box.left - pad.left, right: pad.right - box.right,
+      documentOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 }
   })
-  assert(Number.isFinite(wide.applied) && wide.applied >= 960 && wide.applied <= 4096, `cap stays in range: ${JSON.stringify(wide)}`)
-  assert(wide.surface <= wide.applied + 1, `content column must never exceed its cap: ${JSON.stringify(wide)}`)
-  assert(Math.abs(wide.left - wide.right) <= 2, `capped column must be centred: ${JSON.stringify(wide)}`)
-  checks.push(`2400px: content column stops at its ${wide.applied}px cap and centres instead of stretching widgets`)
+  assert(Number.isFinite(wide.board) && wide.board >= 1140 && wide.board <= 3060, `board width stays in range: ${JSON.stringify(wide)}`)
+  assert.equal(wide.board, wide.cols * 96 - 12, `board width is exactly cols*96-12: ${JSON.stringify(wide)}`)
+  assert(Math.abs(wide.inner - wide.board) <= 1, `board element carries the exact width: ${JSON.stringify(wide)}`)
+  assert(Math.abs(wide.surface - wide.board) <= 1, `grid surface carries the exact width: ${JSON.stringify(wide)}`)
+  assert.equal(wide.documentOverflow, false, 'document must not overflow horizontally at 2400px')
+  if (wide.surface + 48 <= wide.viewport) assert(Math.abs(wide.left - wide.right) <= 2, `a fitting board must be centred: ${JSON.stringify(wide)}`)
+  checks.push(`2400px: fixed ${wide.board}px board (${wide.cols} columns) centres instead of stretching widgets`)
   await page.screenshot({ path: new URL('widgets-2400-light.png', out).pathname, fullPage: true, animations: 'disabled' })
   await page.setViewportSize({ width: 1600, height: 1700 }); await page.locator('.dsh-home').evaluate(el => { el.scrollTop = 0 })
-  await page.waitForFunction(() => { const surface = document.querySelector('.dsh-spatial-container'); const grid = document.querySelector('.dsh-spatial-grid'); return surface?.dataset.cols === '12' && Math.abs((grid?.getBoundingClientRect().width ?? 0) - (surface?.clientWidth ?? 0)) < 2 })
+  await page.waitForFunction(() => { const surface = document.querySelector('.dsh-spatial-container'); const grid = document.querySelector('.dsh-spatial-grid'); const cols = Number(surface?.dataset.cols ?? 0); return cols >= 12 && cols <= 32 && Math.abs((grid?.getBoundingClientRect().width ?? 0) - (surface?.clientWidth ?? 0)) < 2 })
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
   // DOM-only theme switch exercises real host dark aliases; it does not persist user settings.
   await page.evaluate(() => document.body.setAttribute('data-ds-dark-theme', ''))

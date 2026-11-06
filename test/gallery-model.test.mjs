@@ -36,21 +36,21 @@ test('registry accepts optional static preview without mounting it and rejects i
  const legacy={...d,typeId:'@test/pkg:no-preview'};delete legacy.Preview
  registry.register(legacy);assert.equal(registry.get(legacy.typeId).Preview,undefined)
 })
-test('gallery uses isolated real Content preview and the desktop column stops widening past its cap',()=>{
+test('gallery uses isolated real Content preview and the board is fixed-pixel and centred',()=>{
  const gallery=readFileSync(new URL('../src/client/widget-gallery.tsx',import.meta.url),'utf8')
  assert.ok(!gallery.includes('definition.Content'))
  assert.ok(!gallery.includes('defaultConfig('))
  assert.match(gallery,/<WidgetPreview definition=/)
  assert.ok(!gallery.includes('onAdd'))
- // 0.22.5 replaces the earlier "no fixed content cap" decision: widget width used to
- // scale with the window (a 4-column card spanned 309px..736px), so the content column
- // is now capped and centred while still following the window below the cap.
+ // The fixed-stride model replaces the "capped content column": the board is exactly
+ // cols*84 + (cols-1)*12 wide, centred when the window is wider, and scrolls
+ // horizontally (inside .dsh-home) when it is narrower. Widgets never stretch.
  const styles=readFileSync(new URL('../src/client/styles.ts',import.meta.url),'utf8')
- const cap=styles.match(/--dsh-home-max-width:\s*(\d+)px/)
- assert.ok(cap,'one explicit, documented cap')
- const value=Number(cap[1])
- assert.ok(value >= 1000 && value <= 1400, `cap stays in the usable range: ${value}`)
- assert.match(styles,/\.dsh-home-inner \{[^}]*max-width: var\(--dsh-home-max-width/)
+ const board=styles.match(/--dsh-home-board-width:\s*(\d+)px/)
+ assert.ok(board,'one explicit board width variable')
+ assert.equal(Number(board[1]), 1140,'default board is 12 columns')
+ assert.match(styles,/\.dsh-home-inner \{[^}]*width: var\(--dsh-home-board-width/)
  assert.match(styles,/\.dsh-home-inner \{[^}]*margin-inline: auto/)
- assert.ok(!styles.includes('max-width: none'))
+ assert.match(styles,/\.dsh-home \{[^}]*overflow-x: auto/)
+ assert.ok(!styles.includes('--dsh-home-max-width'),'the proportional cap is gone')
 })

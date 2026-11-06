@@ -8,6 +8,7 @@
  * @module @vlln/dsh-home/client/store
  */
 
+import { isGridColumns } from './canvas-width.ts'
 import { homeOrder } from './layout-model.ts'
 import type { WorkspaceSource } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { JsonValue, WidgetDefinition, WidgetInstance, RegisteredWidgetDefinition, WidgetPreset } from './widget-contract.ts'
@@ -338,7 +339,7 @@ export class HomeStore {
   /** Publish one accepted library drop and every displaced peer atomically; no first-fit intermediate. */
   dropInstance(definition: WidgetDefinition, id: string, accepted: SpatialItem[], cols: number): void {
     this.assertEditable()
-    if(![2,6,12].includes(cols))throw new Error('Invalid grid columns')
+    if(!isGridColumns(cols))throw new Error('Invalid grid columns')
     if(this.state.instances.length>=64||this.state.instances.some(item=>item.instanceId===id))throw new Error('Invalid new instance')
     const registry=new HomeWidgetRegistry()
     registry.register({ ...definition, defaults: definition.sizing ? undefined : definition.defaults },definition.typeId.startsWith('legacy:')?{internalLegacyTypeId:true}:undefined)
@@ -502,7 +503,7 @@ export class HomeStore {
   /** Explicit, no-reflow grid preset transaction. Failures have zero publication/write. */
   setWidgetPreset(id: string, definition: RegisteredWidgetDefinition, current: readonly SpatialItem[], cols: number, preset: WidgetPreset): boolean {
     this.assertEditable()
-    if (this.disposed || ![2, 6, 12].includes(cols)) throw new Error('Invalid preset request')
+    if (this.disposed || !isGridColumns(cols)) throw new Error('Invalid preset request')
     const instance = this.state.instances.find(item => item.instanceId === id)
     if (!instance || instance.typeId !== definition.typeId || this.state.layout.hidden.includes(id)) throw new Error('Unknown widget')
     if (!this.migrationRegistry || this.migrationRegistry.get(instance.typeId) !== definition) throw new Error('Widget provider changed')

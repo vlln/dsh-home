@@ -179,7 +179,7 @@ for (const [label, change] of malformed) {
   })
 }
 
-for (const cols of [0, 1, 3, 6.5, 13, NaN, Infinity]) {
+for (const cols of [0, 1, 3, 6.5, 11, 33, NaN, Infinity]) {
   test(`drop rejects malformed/unsupported breakpoint ${cols}`, async () => {
     await withStore({}, async (store, control) => {
       const before = store.getSnapshot()

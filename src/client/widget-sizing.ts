@@ -63,10 +63,14 @@ export function legacyWidgetSizing(defaults: Readonly<WidgetDefaults>): Readonly
   return normalizeWidgetSizing({ default: shape, supported: [shape] })
 }
 export function presetGeometry(preset: WidgetPreset, cols: number): GridShape {
-  if (![2, 6, 12].includes(cols)) throw new Error('Invalid grid breakpoint')
+  // Grid domain (kept local so this helper stays free of runtime imports): the
+  // fixed-stride canvas 12..32 plus the legacy 2/6 breakpoints.
+  if (!Number.isInteger(cols) || !(cols === 2 || cols === 6 || (cols >= 12 && cols <= 32))) throw new Error('Invalid grid breakpoint')
   const shape = shapeFor(preset)
-  // Preserve historical small cards (4 -> 3) while supporting arbitrary declared widths.
-  return { w: cols === 12 ? shape.w : cols === 6 ? shape.w <= 4 ? Math.min(shape.w, 3) : Math.min(shape.w, 6) : Math.min(shape.w, 2), h: shape.h }
+  // The fixed-stride canvas keeps every declared width: same shape, only clamped to
+  // the available columns. The old shrink rules survive for legacy 2/6.
+  if (cols >= 12) return { w: Math.min(shape.w, cols), h: shape.h }
+  return { w: cols === 6 ? shape.w <= 4 ? Math.min(shape.w, 3) : Math.min(shape.w, 6) : Math.min(shape.w, 2), h: shape.h }
 }
 /** Duplicate projected shapes are one option; prefer the default's declaration by w/h. */
 export function projectedWidgetPresets(sizing: Readonly<WidgetSizing> | WidgetSizingInput, cols: number): { preset: WidgetPreset; w: number; h: number }[] {

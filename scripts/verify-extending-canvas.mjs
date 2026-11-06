@@ -37,7 +37,9 @@ try {
   const edit = () => page.getByRole('button', { name: /^(Edit layout|编辑布局)$/ }).click()
   const done = async () => { await page.getByRole('button', { name: /^(Done|完成)$/ }).click(); await page.locator('.dsh-home[data-editing=false]').waitFor() }
   const widget = () => page.locator(`[data-widget-id="${id}"]`)
-  const geometry = async () => (await api('workbench.get')).layout.positions[12][id]
+  // Writes now land on the active fixed-stride breakpoint, not always "12".
+  const activeCols = async () => await page.locator('.dsh-spatial-container').getAttribute('data-cols')
+  const geometry = async () => (await api('workbench.get')).layout.positions[await activeCols()]?.[id]
   await page.goto(url.href); await home(); await edit()
   evidence.ancestors = await page.locator('.dsh-spatial-grid').evaluate(grid => {
     const result = []
@@ -72,15 +74,19 @@ try {
   // Pixel x must remain on the fixed footprint even when raw pointer leaves it.
   const sideGrip = await widget().locator('.dsh-tools .dsh-widget-grip').boundingBox(); assert(sideGrip)
   const sideStart = { x: sideGrip.x + sideGrip.width / 2, y: sideGrip.y + sideGrip.height / 2 }
+  const horizontalExtent = () => page.locator('.dsh-home').evaluate(home => home.scrollWidth)
+  const horizontalBefore = await horizontalExtent()
   await page.mouse.move(sideStart.x, sideStart.y); await page.mouse.down()
   for (const x of [5, 1435]) {
     await page.mouse.move(x, sideStart.y + 12, { steps: 12 })
     const bounds = await page.locator('.dsh-spatial-grid').boundingBox(), box = await widget().boundingBox()
-    assert(bounds && box && box.x >= bounds.x - 1 && box.x + box.width <= bounds.x + bounds.width + 1, 'Sideways pixel drag cannot escape or create horizontal canvas')
-    assert(await page.locator('.dsh-home').evaluate(home => home.scrollWidth <= home.clientWidth + 1))
+    assert(bounds && box && box.x >= bounds.x - 1 && box.x + box.width <= bounds.x + bounds.width + 1, 'Sideways pixel drag cannot escape the fixed board')
+    // The board is intentionally scrollable when it is wider than the window; a
+    // sideways widget drag must not change that scroll range at all.
+    assert.equal(await horizontalExtent(), horizontalBefore, 'Sideways pixel drag cannot create horizontal canvas')
   }
   await page.keyboard.press('Escape'); await page.mouse.up()
-  checks.push('left/right out-of-board pointer keeps live widget within fixed canvas width without horizontal scrolling')
+  checks.push('left/right out-of-board pointer keeps the live widget within the fixed board and never grows the scroll range')
   const target = await startDrag()
   const samples = await sampleDrag(target, 360)
   evidence.samples = samples
@@ -121,17 +127,28 @@ try {
   checks.push('Escape rolls back extension and positions, restores/clamps starting view, removes placeholder/runway, remains editable')
 
   await edit(); await startDrag()
+  const colsBefore = await page.locator('.dsh-spatial-container').getAttribute('data-cols')
   await page.setViewportSize({ width: 920, height: 900 })
-  // setViewportSize resolves before React re-renders. Release only once the grid has
-  // really switched breakpoint; otherwise this is an ordinary 12-column drop (which
-  // correctly commits) and the cancellation path under test is never exercised.
-  await page.waitForFunction(() => document.querySelector('.dsh-spatial-container')?.dataset.cols !== '12')
-  await page.mouse.up()
+  // A narrow window must not re-project the board: the column count stays fixed and
+  // the board scrolls horizontally instead. Cancel the in-flight drag first.
+  await page.waitForFunction(() => {
+    const home = document.querySelector('.dsh-home')
+    return home.scrollWidth > home.clientWidth + 1
+  })
+  assert.equal(await page.locator('.dsh-spatial-container').getAttribute('data-cols'), colsBefore, 'Window width never changes the canvas columns')
+  await page.keyboard.press('Escape'); await page.mouse.up()
   await page.waitForFunction(() => !document.body.classList.contains('dsh-home-dragging'))
+  assert.equal(await page.locator('.dsh-home[data-editing=true]').count(), 1)
   assert.equal(await page.getByRole('button', { name: /^(Done|完成)$/ }).isEnabled(), true)
   await done(); assert.deepEqual(await geometry(), initial)
-  assert(await page.locator('.dsh-home').evaluate(home => home.scrollWidth <= home.clientWidth + 1))
-  checks.push('breakpoint change cancels desktop transaction and clears release state without changing stored desktop geometry or horizontal overflow')
+  const narrow = await page.evaluate(() => {
+    const home = document.querySelector('.dsh-home')
+    return { boardScrolls: home.scrollWidth > home.clientWidth + 1,
+      documentOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 }
+  })
+  assert(narrow.boardScrolls, 'A board wider than the narrow window scrolls horizontally')
+  assert(!narrow.documentOverflow, 'The document itself never overflows horizontally')
+  checks.push('narrow window keeps the canvas columns, cancels the drag and leaves stored geometry unchanged; the board scrolls, the page does not')
   assert.deepEqual(errors, [])
 } catch (error) {
   errors.push(error.stack ?? String(error)); process.exitCode = 1

@@ -26,13 +26,27 @@ try {
  await page.getByRole('button',{name:/^(Edit layout|编辑布局)$/}).click()
  await page.screenshot({path:new URL('spatial-all-widgets.png',out).pathname,fullPage:true})
  await page.keyboard.press('Escape');await page.locator('.dsh-home[data-editing=false]').waitFor()
+ // A narrow window must keep the same widget pixel size and scroll the fixed board
+ // inside .dsh-home; the document itself must not gain horizontal overflow.
+ const sample=page.locator('[data-widget-id]').first()
+ const baselineWidth=(await sample.boundingBox()).width
  for(const width of [920,540]){
   await page.setViewportSize({width,height:1000})
   await page.locator('.dsh-spatial-container').evaluate(el=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))
-  const overflow=await page.locator('.dsh-home').evaluate(el=>el.scrollWidth>el.clientWidth+1)
-  assert(!overflow,'No horizontal overflow at '+width)
+  const state=await page.evaluate(()=>{
+   const home=document.querySelector('.dsh-home'), surface=document.querySelector('.dsh-spatial-container')
+   return { cols:Number(surface.dataset.cols), board:surface.clientWidth,
+    boardScrolls:home.scrollWidth>home.clientWidth+1,
+    documentOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+1 }
+  })
+  assert(state.boardScrolls,'Board scrolls horizontally when wider than the '+width+'px window')
+  assert(!state.documentOverflow,'Document must not overflow horizontally at '+width)
+  assert(state.cols>=12&&state.cols<=32,'Columns stay on the canvas grid at '+width+': '+state.cols)
+  assert(Math.abs(state.board-(state.cols*96-12))<=1,'Board width is exactly cols*96-12 at '+width)
+  const widgetWidth=(await sample.boundingBox()).width
+  assert(Math.abs(widgetWidth-baselineWidth)<1,'Widget pixel width must not change with the window: '+baselineWidth+' -> '+widgetWidth)
   await page.screenshot({path:new URL(`spatial-width-${width}.png`,out).pathname,fullPage:true})
  }
- console.log('PASS restored nine widgets and preserved legacy preferences; responsive 920/540 widths do not overflow')
- await writeFile(new URL('spatial-responsive-report.json',out),JSON.stringify({allWidgets:9,widths:[920,540],overflow:false},null,2))
+ console.log('PASS restored nine widgets; narrow windows keep fixed widget pixels and scroll the board without page overflow')
+ await writeFile(new URL('spatial-responsive-report.json',out),JSON.stringify({allWidgets:9,widths:[920,540],boardScrolls:true,documentOverflow:false,widgetWidthFixed:true},null,2))
 }finally{await browser.close()}

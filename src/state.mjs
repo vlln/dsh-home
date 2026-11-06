@@ -11,7 +11,7 @@
  */
 
 import { constants, copyFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { initialInstances, validateWorkbench, validateWorkbenchLayout, widgetStateError } from './widget-state.mjs'
+import { initialInstances, validBreakpoint, validateWorkbench, validateWorkbenchLayout, widgetStateError } from './widget-state.mjs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 
@@ -19,9 +19,9 @@ import path from 'node:path'
 export const STATE_VERSION = 3
 
 /** Bounds for the one user-chosen board width; must match client canvas-width.ts.
- * The practical maximum is derived from the window, so this is only a sanity ceiling. */
-export const CANVAS_MIN_WIDTH = 960
-export const CANVAS_MAX_WIDTH = 4096
+ * 12 columns (1140px) .. 32 columns (3060px); a hand-edited file is clamped here. */
+export const CANVAS_MIN_WIDTH = 1140
+export const CANVAS_MAX_WIDTH = 3060
 
 // Diagnostics are not document fields and cannot accidentally be persisted.
 const storageMetadata = new WeakMap()
@@ -204,9 +204,11 @@ export function normalizeLayout(raw) {
   if (typeof raw.instanceLayout === 'boolean') layout.instanceLayout = raw.instanceLayout
   if (raw.positions !== null && typeof raw.positions === 'object' && !Array.isArray(raw.positions)) {
     const positions = {}
-    for (const columns of [12, 6, 2]) {
-      const rows = raw.positions[String(columns)]
-      if (rows === null || typeof rows !== 'object' || Array.isArray(rows)) continue
+    // Fixed-stride canvases store one map per column count (12..32). Legacy 2/6/12
+    // keys stay valid and are preserved byte-for-byte in meaning, never migrated.
+    for (const [key, rows] of Object.entries(raw.positions)) {
+      if (!validBreakpoint(key) || rows === null || typeof rows !== 'object' || Array.isArray(rows)) continue
+      const columns = Number(key)
       const valid = {}
       for (const [id, rect] of Object.entries(rows).slice(0, MAX_ENTRIES)) {
         if (!isWidgetId(id) || rect === null || typeof rect !== 'object') continue
@@ -215,7 +217,7 @@ export function normalizeLayout(raw) {
           || w < 1 || w > columns || x + w > columns || h < 3 || h > 30) continue
         Object.defineProperty(valid, id, { value: { x, y, w, h }, enumerable: true, configurable: true, writable: true })
       }
-      positions[String(columns)] = valid
+      positions[key] = valid
     }
     layout.positions = positions
   }

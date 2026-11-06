@@ -124,6 +124,23 @@ test('single preset metadata never clamps saved narrow widths, nonpreset heights
   }
 })
 
+test('fixed-stride canvases keep declared widths instead of the legacy 6/2 shrink', () => {
+  const registry = new HomeWidgetRegistry()
+  const shape = { w: 7, h: 9 }
+  registry.register({ typeId: 'test/geometry:wide', apiVersion: 1, title: 'Wide', configVersion: 1,
+    Content: () => null, defaultConfig: () => ({}), validateConfig: () => true,
+    sizing: { default: shape, supported: [shape, { w: 12, h: 12 }] } })
+  const definition = registry.get('test/geometry:wide')
+  for (const cols of [12, 13, 16, 24, 32]) {
+    const [item] = buildSpatialLayout({ ...emptyLayout(), instanceLayout: true }, [meta(definition)], cols)
+    assert.equal(item.w, 7, `declared width is identity at ${cols} columns`)
+    assert.equal(item.h, 9)
+    // Resize bounds still come from the declared shapes (max 12), not the wide canvas.
+    assert.equal(item.maxW, 12)
+    assert.equal(canPlace([item], item.i, item, cols), true)
+  }
+})
+
 test('implicit keyboard movement uses viewport columns rather than the widget resize maximum', () => {
   const definition = registered({ size: 's', minWidth: 3, maxWidth: 4 })
   for (const cols of [12, 6]) {

@@ -22,13 +22,17 @@ export const STYLE_ID = 'dsh-home-styles'
 
 export const CSS = `
 .dsh-home {
-  --dsh-home-max-width: 1280px;
+  /* Fixed-pixel board width (cols*84 + (cols-1)*12); the handles rewrite it directly. */
+  --dsh-home-board-width: 1140px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   width: 100%;
   height: 100%;
   min-height: 0;
+  /* A board wider than the window scrolls here; the document itself never overflows.
+     A board that still fits is centred by the auto margins on .dsh-home-inner. */
+  overflow-x: auto;
   overflow-y: auto;
   background: var(--dsw-alias-bg-base);
   /* No padding here: the sticky header's containing block would start below it and
@@ -42,11 +46,9 @@ export const CSS = `
   scrollbar-color: var(--dsw-alias-scrollbar-thumb, var(--dsw-alias-border-l3)) transparent;
 }
 .dsh-home * { box-sizing: border-box; }
-/* A capped, centred content column. Widget width otherwise scales with the window
-   (a 4-column card spanned 309px..736px), so no single layout could fit every width.
-   Below the cap the canvas still follows the window; above it the extra space is
-   margin, so saved rectangles and breakpoints stay exactly as they are. */
-.dsh-home-inner { position: relative; width: 100%; max-width: var(--dsh-home-max-width, 1280px); margin-inline: auto; min-width: 0; flex: none; }
+/* A fixed-pixel board, centred when the window is wider. Widget width never depends
+   on this box: a wider board fits more columns, it does not stretch a card. */
+.dsh-home-inner { position: relative; width: var(--dsh-home-board-width, 1140px); max-width: none; margin-inline: auto; min-width: 0; flex: none; }
 
 .dsh-home-head {
   display: flex;
@@ -570,9 +572,9 @@ export const CSS = `
 .dsh-home-head { position: sticky; top: 0; z-index: 8; background: var(--dsw-alias-bg-base); padding: calc(var(--dsh-frame-top-clearance, 0px) + 20px) 0 12px; }
 /* Edit-only board width handles, mirroring the host Conversation tab: a 10px
    col-resize strip on each side of the centred column, with a 2px glow that follows
-   the captured pointer. They resize the whole column, never a widget, so they stay
-   outside the "no user resize" rule that governs cards. Both strips live in the
-   container gutter, inside the padding box, so they never extend the scroll range. */
+   the captured pointer. They resize the whole board, never a widget, so they stay
+   outside the "no user resize" rule that governs cards. When the board is wider than
+   the window the strips travel with it and the board scrolls horizontally. */
 .dsh-canvas-grip { position: absolute; top: 0; bottom: 0; z-index: 9; width: 10px; cursor: col-resize; touch-action: none; user-select: none; }
 .dsh-canvas-grip[data-side="left"] { right: 100%; }
 .dsh-canvas-grip[data-side="right"] { left: 100%; }

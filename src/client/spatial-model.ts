@@ -1,5 +1,6 @@
 /** Pure home geometry; normal edits never compact. No React or grid runtime dependency. */
 import type { GridRect, Layout, WidgetSize } from './api.ts'
+import { isGridColumns } from './canvas-width.ts'
 import { homeOrder, legacySpatialHeight } from './layout-model.ts'
 import type { WidgetSizing } from './widget-contract.ts'
 import { presetGeometry, projectedWidgetPresets, sameWidgetPreset } from './widget-sizing.ts'
@@ -35,8 +36,14 @@ export const SPATIAL_MAX_H = 30
 export const SPATIAL_MIN_H = 3
 
 function columns(cols: number): number {
-  // The public breakpoints are 12/6/2; keep defensive callers bounded as well.
-  return Number.isInteger(cols) && cols >= 1 && cols <= 12 ? cols : 12
+  // The canvas breakpoint is 12..32; legacy 6/2 data stays readable.
+  return isGridColumns(cols) ? cols : 12
+}
+
+/** Legacy width buckets are defined on 12 columns; wider canvases keep those widths,
+ * they do not make a saved `l` card span the whole new board. */
+function legacyBucket(cols: number): number {
+  return Math.min(columns(cols), 12)
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -63,19 +70,19 @@ function bounded(value: unknown, fallback: number, min: number, max: number): nu
     : fallback
 }
 
-/** Legacy width buckets: 12 -> 4/8/12, 6 -> 3/6/6, 2 -> 2/2/2. */
+/** Legacy width buckets: 12 (and any wider canvas) -> 4/8/12, 6 -> 3/6/6, 2 -> 2/2/2. */
 export function widthFromSize(size: WidgetSize, cols: number): number {
-  cols = columns(cols)
-  if (cols <= 2) return cols
-  if (cols <= 6) return size === 's' ? Math.min(3, cols) : cols
-  return size === 's' ? 4 : size === 'l' ? cols : Math.min(8, cols)
+  const bucket = legacyBucket(cols)
+  if (bucket <= 2) return bucket
+  if (bucket <= 6) return size === 's' ? Math.min(3, bucket) : bucket
+  return size === 's' ? 4 : size === 'l' ? bucket : Math.min(8, bucket)
 }
 
 /** Width-only compatibility bucket (6-column m/l and all 2-column sizes coincide). */
 export function sizeFromRect(rect: Pick<GridRect, 'w'>, cols: number): WidgetSize {
-  cols = columns(cols)
-  if (cols <= 2 || rect.w <= widthFromSize('s', cols)) return 's'
-  return rect.w <= widthFromSize('m', cols) ? 'm' : 'l'
+  const bucket = legacyBucket(cols)
+  if (bucket <= 2 || rect.w <= widthFromSize('s', bucket)) return 's'
+  return rect.w <= widthFromSize('m', bucket) ? 'm' : 'l'
 }
 
 export function defaultSpatialHeight(id: string): number {
@@ -129,7 +136,7 @@ export function findSpatialSpace(
 export function compactSpatialLayout<T extends SpatialItem>(geometry: T[], cols: number): T[]
 export function compactSpatialLayout<T extends SpatialItem>(geometry: readonly T[], cols: number): readonly T[]
 export function compactSpatialLayout<T extends SpatialItem>(geometry: readonly T[], cols: number): readonly T[] {
-  if (![2, 6, 12].includes(cols)) throw new Error('Invalid grid columns')
+  if (!isGridColumns(cols)) throw new Error('Invalid grid columns')
   if (!Array.isArray(geometry) || geometry.length > 64) throw new Error('Invalid compact layout')
   const ids = new Set<string>()
   for (const item of geometry) {
@@ -164,14 +171,43 @@ export function compactSpatialLayout<T extends SpatialItem>(geometry: readonly T
   return changed ? geometry.map(item => packed.get(item.i)!) : geometry
 }
 
+/** The canvas column count is a user preference, so the active key can change at any
+ * time. When that exact count has no saved rows yet, read the nearest stored
+ * breakpoint verbatim: largest key <= cols, else smallest key >= cols. Rectangles are
+ * never scaled or re-projected; one that no longer fits falls through to first-fit.
+ * The legacy 6/2 projections keep their independent first-fit behaviour. Writes always
+ * target String(cols) (see mergeSpatialPositions). */
+function savedBreakpointFor(layout: Layout, cols: number): Record<string, unknown> {
+  const positions = layout.positions
+  if (!record(positions)) return {}
+  // Legacy 6/2 projections stay independent first-fit surfaces; the nearest-key read
+  // belongs to the fixed-stride canvas (12..32), which the window can never change.
+  if (cols < 12) return record(positions[String(cols)]) ? positions[String(cols)]! : {}
+  const rowsAt = (key: string): Record<string, unknown> | null => {
+    const rows = positions[key]
+    return record(rows) && Object.keys(rows).length > 0 ? rows : null
+  }
+  const exact = rowsAt(String(cols))
+  if (exact !== null) return exact
+  const keys = Object.keys(positions)
+    .filter(key => /^(?:[1-9]|[12]\d|3[0-2])$/u.test(key) && rowsAt(key) !== null)
+    .map(Number)
+    .sort((a, b) => a - b)
+  const below = keys.filter(key => key < cols).at(-1)
+  const above = keys.find(key => key > cols)
+  const fallback = below ?? above
+  return fallback === undefined ? {} : rowsAt(String(fallback))!
+}
+
 /**
  * Project registered, visible cards in homeOrder order, without mutating layout.
  * All legal saved rectangles are reserved before missing/invalid cards are
  * first-fit placed, so migration cannot steal a later card's saved position.
  * For conflicting saved data, the earlier ordered card wins; only the loser is
  * relocated. Hidden/unregistered cards never collide and their data is untouched.
- * Each breakpoint is independent: missing breakpoint data uses legacy first-fit,
- * never a write or a compaction of another breakpoint. viewportCols distinguishes
+ * Each breakpoint is independent: when the active column count has no data, the
+ * nearest stored breakpoint is read verbatim; a missing one uses legacy first-fit.
+ * Neither path writes or compacts another breakpoint. viewportCols distinguishes
  * widget resize bounds from the actual viewport for implicit keyboard movement.
  */
 export function buildSpatialLayout(
@@ -185,8 +221,7 @@ export function buildSpatialLayout(
   const order = (layout.instanceLayout
     ? [...new Set([...layout.order, ...available])].filter(id => byId.has(id))
     : homeOrder(layout, available)).filter(id => !hidden.has(id))
-  const breakpoint = layout.positions?.[String(cols)]
-  const saved: Record<string, unknown> = record(breakpoint) ? breakpoint : {}
+  const saved = savedBreakpointFor(layout, cols)
   const occupied: SpatialItem[] = []
   const items = new Map<string, SpatialItem>()
   const itemFrom = (id: string, rect: GridRect): SpatialItem => {

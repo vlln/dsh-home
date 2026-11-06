@@ -30,6 +30,9 @@ for (const [size, widths] of [['s', [4, 3, 2]], ['m', [8, 6, 2]], ['l', [12, 6, 
       assert.equal(draft.maxH, 7)
       assert.deepEqual(snapshot, [peer], 'draft staging never moves existing cards')
     }
+    const wide = libraryItem(def, 'draft', 16, Object.freeze([]))
+    assert.equal(wide.w, widths[0], 'fixed-stride canvas keeps the declared width')
+    assert.equal(wide.h, 7)
   })
 }
 
@@ -92,7 +95,7 @@ test('draft creation rejects duplicate identities and unsupported breakpoints wi
   const def = definition({ size: 's', height: 4 })
   const peer = Object.freeze(item('existing'))
   assert.throws(() => libraryItem(def, 'existing', 12, [peer]), /identity/)
-  for (const cols of [0, 1, 3, 6.5, 13, NaN, Infinity]) {
+  for (const cols of [0, 1, 3, 6.5, 11, 33, NaN, Infinity]) {
     assert.throws(() => libraryItem(def, 'new', cols, [peer]), /columns/)
   }
   assert.deepEqual(peer, item('existing'))

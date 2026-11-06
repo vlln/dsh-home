@@ -21,7 +21,8 @@ test('all bounded integer shapes project without a host catalog, including legac
     assert.deepEqual(presetGeometry(`${w}x${h}`,cols),actual)
   }
   for(const shape of ['20x20','__proto__',null,{w:0,h:6},{w:13,h:6},{w:5,h:2},{w:5,h:31},{w:5.5,h:6},{w:5,h:NaN}])assert.throws(()=>presetGeometry(shape,12))
-  for(const cols of [1,4,8,13,NaN])assert.throws(()=>presetGeometry({w:5,h:7},cols))
+  for(const cols of [1,4,8,11,33,NaN])assert.throws(()=>presetGeometry({w:5,h:7},cols))
+  for(const cols of [12,13,16,24,32])assert.deepEqual(presetGeometry({w:5,h:7},cols),{w:5,h:7},'fixed-stride canvas keeps declared width')
 })
 test('registration owns a cloned deeply frozen set of at most sixteen exact shape combinations',()=>{
   const source=definition(),r=new HomeWidgetRegistry();r.register(source)

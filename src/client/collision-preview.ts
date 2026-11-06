@@ -2,6 +2,7 @@
 import type { GridRect } from './api.ts'
 import type { SpatialItem } from './spatial-model.ts'
 import { canPlace, SPATIAL_MAX_Y } from './spatial-model.ts'
+import { CANVAS_MAX_COLUMNS } from './canvas-width.ts'
 
 type Point = { x: number; y: number }
 export type DisplacementDirection = 'up' | 'down' | 'left' | 'right'
@@ -10,7 +11,8 @@ const RELEASE_DISTANCE = 0.62
 const EPSILON = 1e-9
 
 function validColumns(cols: number): boolean {
-  return Number.isInteger(cols) && cols >= 1 && cols <= 12
+  // Any real grid width, up to the widest fixed-stride canvas.
+  return Number.isInteger(cols) && cols >= 1 && cols <= CANVAS_MAX_COLUMNS
 }
 
 function overlaps(a: GridRect, b: GridRect): boolean {

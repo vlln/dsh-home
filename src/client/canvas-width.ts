@@ -1,24 +1,63 @@
-/** Canvas width is one user preference for the whole board, never a per-widget size. */
-export const CANVAS_DEFAULT_WIDTH = 1280
-/** Stay at or above the 12-column breakpoint (950px): dragging cannot reshuffle the layout. */
-export const CANVAS_MIN_WIDTH = 960
-/** Absolute ceiling for a stored value (also bounds hand-edited files). The practical
- * maximum is derived from the space available, which is what dragging should reach. */
-export const CANVAS_MAX_WIDTH = 4096
-/** Edge reserve, mirroring the host Conversation width controls: the content column
- * stops this far short of the available width so the handles keep a gutter and a
- * safe zone instead of sitting on the window edge. */
-export const CANVAS_EDGE_BUDGET = 176
+/** The canvas is a fixed-pixel grid: a widget's width comes from its column span,
+ * never from the window. A wider canvas fits more columns; it never stretches a
+ * card. The user's one width preference chooses the column count. */
+export const CANVAS_COLUMN_WIDTH = 84
+export const CANVAS_COLUMN_GAP = 12
+/** Origin-to-origin distance of adjacent columns. `(board + gap) / cols` is exactly this. */
+export const CANVAS_COLUMN_STRIDE = CANVAS_COLUMN_WIDTH + CANVAS_COLUMN_GAP
+/** 12 keeps every rectangle saved before the fixed-stride model valid (x + w <= 12). */
+export const CANVAS_MIN_COLUMNS = 12
+/** 32 columns fill an ultrawide window; the canvas never stretches a widget to do it. */
+export const CANVAS_MAX_COLUMNS = 32
 
-/** Widest board that fits the available space without eating the reserved edge. */
-export function canvasMaxFor(available: number): number {
-  if (!Number.isFinite(available) || available <= 0) return CANVAS_MAX_WIDTH
-  return Math.max(CANVAS_MIN_WIDTH, Math.min(CANVAS_MAX_WIDTH, Math.round(available - CANVAS_EDGE_BUDGET)))
+/** Default board: 12 columns, so an untouched workspace keeps using positions["12"]. */
+export const CANVAS_DEFAULT_COLUMNS = CANVAS_MIN_COLUMNS
+
+function boardWidth(columns: number): number {
+  return columns * CANVAS_COLUMN_WIDTH + (columns - 1) * CANVAS_COLUMN_GAP
 }
 
-export function clampCanvasWidth(value: unknown, max = CANVAS_MAX_WIDTH): number {
+/** `12 * 84 + 11 * 12 = 1140`. */
+export const CANVAS_MIN_WIDTH = boardWidth(CANVAS_MIN_COLUMNS)
+/** `32 * 84 + 31 * 12 = 3060`. */
+export const CANVAS_MAX_WIDTH = boardWidth(CANVAS_MAX_COLUMNS)
+export const CANVAS_DEFAULT_WIDTH = boardWidth(CANVAS_DEFAULT_COLUMNS)
+
+function clampColumns(value: number): number {
+  return Math.max(CANVAS_MIN_COLUMNS, Math.min(CANVAS_MAX_COLUMNS, Math.round(value)))
+}
+
+/** Runtime grid columns: the fixed-stride canvas 12..32 plus the legacy 2/6
+ * breakpoint data that must stay readable. Anything else is not a grid. */
+export function isGridColumns(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value)
+    && (value === 2 || value === 6 || (value >= CANVAS_MIN_COLUMNS && value <= CANVAS_MAX_COLUMNS))
+}
+
+/** `cols = clamp(floor((W + 12) / 96), 12, 32)`; the window is never an input. */
+export function columnsForWidth(width: number): number {
+  if (typeof width !== 'number' || !Number.isFinite(width)) return CANVAS_DEFAULT_COLUMNS
+  return clampColumns(Math.floor((width + CANVAS_COLUMN_GAP) / CANVAS_COLUMN_STRIDE))
+}
+
+/** Exact board pixel width for a column count: `cols*84 + (cols-1)*12`. */
+export function boardWidthForColumns(columns: number): number {
+  return boardWidth(clampColumns(columns))
+}
+
+/** Exact widget pixel width for a span: `w*84 + (w-1)*12`, constant for a given w. */
+export function widgetWidthForColumns(span: number): number {
+  return boardWidth(span)
+}
+
+/** Snap any width to the nearest (floor) whole column: `cols*96 - 12`. */
+export function snapCanvasWidth(width: number): number {
+  return boardWidthForColumns(columnsForWidth(width))
+}
+
+export function clampCanvasWidth(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return CANVAS_DEFAULT_WIDTH
-  return Math.round(Math.max(CANVAS_MIN_WIDTH, Math.min(max, value)))
+  return Math.round(Math.max(CANVAS_MIN_WIDTH, Math.min(CANVAS_MAX_WIDTH, value)))
 }
 
 /** A saved preference, or the default when the user never chose one. */
@@ -26,24 +65,21 @@ export function resolveCanvasWidth(saved: number | null | undefined): number {
   return saved === null || saved === undefined ? CANVAS_DEFAULT_WIDTH : clampCanvasWidth(saved)
 }
 
-/** The width actually applied: the preference, bounded by what still leaves an edge. */
-export function appliedCanvasWidth(saved: number | null | undefined, available: number): number {
-  return Math.min(resolveCanvasWidth(saved), canvasMaxFor(available))
-}
-
 /** Pixel width from a pointer delta along one edge, so dragging out always widens.
  * The column is centred, so one edge moving `dx` outward widens the box by `2·dx`
- * and the edge itself stays exactly under the pointer. */
-export function canvasWidthFromEdgeDrag(startWidth: number, startX: number, currentX: number, side: 'left' | 'right', max = CANVAS_MAX_WIDTH): number {
+ * and the edge itself stays exactly under the pointer. The result is raw: the
+ * gesture previews continuously and only the commit snaps to a whole column. */
+export function canvasWidthFromEdgeDrag(startWidth: number, startX: number, currentX: number, side: 'left' | 'right'): number {
   const outward = side === 'right' ? currentX - startX : startX - currentX
-  return clampCanvasWidth(startWidth + outward * 2, max)
+  return clampCanvasWidth(startWidth + outward * 2)
 }
 
-/** Keyboard equivalent of the same edit, in pixels. Home and End reach the bounds. */
-export function canvasWidthFromKey(width: number, key: string, step = 40, max = CANVAS_MAX_WIDTH): number {
-  if (key === 'ArrowLeft') return clampCanvasWidth(width - step, max)
-  if (key === 'ArrowRight') return clampCanvasWidth(width + step, max)
+/** Keyboard equivalent: one whole column per press. Home and End reach the bounds. */
+export function canvasWidthFromKey(width: number, key: string): number {
+  const columns = columnsForWidth(width)
+  if (key === 'ArrowLeft') return boardWidthForColumns(columns - 1)
+  if (key === 'ArrowRight') return boardWidthForColumns(columns + 1)
   if (key === 'Home') return CANVAS_MIN_WIDTH
-  if (key === 'End') return max
+  if (key === 'End') return CANVAS_MAX_WIDTH
   return width
 }
