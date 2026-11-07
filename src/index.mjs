@@ -458,6 +458,24 @@ export function apply(ctx) {
   })
 }
 
+/**
+ * 把平台返回的余额体解析成浏览器要的四个数。
+ * @param body `/user/balance` 的 JSON
+ * @returns 可用时带 total/currency，不可用时带 reason
+ */
+export function parseBalance(body) {
+  const info = Array.isArray(body?.balance_infos) ? body.balance_infos[0] : undefined
+  const total = Number(info?.total_balance)
+  if (!Number.isFinite(total)) return { available: false, reason: 'bad-response' }
+  return {
+    available: true,
+    currency: typeof info.currency === 'string' ? info.currency : 'CNY',
+    total,
+    granted: Number.isFinite(Number(info.granted_balance)) ? Number(info.granted_balance) : null,
+    toppedUp: Number.isFinite(Number(info.topped_up_balance)) ? Number(info.topped_up_balance) : null,
+  }
+}
+
 /** 余额路由（`/api` 围栏后）。 */
 export const BALANCE_PATH = '/api/dsh-home/balance'
 
@@ -487,17 +505,7 @@ async function readBalance(ctx) {
       signal: AbortSignal.timeout(10_000),
     })
     if (!response.ok) return finish({ available: false, reason: `http-${response.status}` })
-    const body = await response.json()
-    const info = Array.isArray(body?.balance_infos) ? body.balance_infos[0] : undefined
-    const total = Number(info?.total_balance)
-    if (!Number.isFinite(total)) return finish({ available: false, reason: 'bad-response' })
-    return finish({
-      available: true,
-      currency: typeof info.currency === 'string' ? info.currency : 'CNY',
-      total,
-      granted: Number.isFinite(Number(info.granted_balance)) ? Number(info.granted_balance) : null,
-      toppedUp: Number.isFinite(Number(info.topped_up_balance)) ? Number(info.topped_up_balance) : null,
-    })
+    return finish(parseBalance(await response.json()))
   } catch (error) {
     return finish({ available: false, reason: error?.name === 'TimeoutError' ? 'timeout' : 'unreachable' })
   }
