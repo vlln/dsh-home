@@ -50,6 +50,13 @@
 - 计时数据另存 `focus.json`，只记 `startedAt + accumulatedMs`，剩多久由前端按墙钟算；番茄钟按「一轮一个阶段」结算，关页面到点只结算一轮并停在下一阶段起点，不追补。倒计时按「目标日 0 点」结束，不足一天时显示时分。
 - 所有计划/计时组件在 `preview` 分支只读合成数据，不发请求、不订阅、不起计时（`scripts/verify-planner.mjs` 用请求计数断言）。
 
+## Token 与余额（0.34.0 / 0.36.0 起）
+
+- 账本在折叠事件时按天累计 token：`assistant/message` 的 `data.usage`，重试走 `assistant/attempt` 流里最后一个 usage chunk（与宿主 `token-meter` 的 `usageOf` 同口径）；同一 turn/step 的新样本替换旧样本，`llm/retry-started` 撤销上一份，避免重复计数。`FOLD_VERSION` 也随之升到 4，旧账本自动整份重折。
+- 速率 = 当日输出 token ÷ 当日运行时长；没有运行时长时显示 `—`，不拿别的数凑。
+- 余额走宿主 `/api/dsh-home/balance`：key 只在宿主侧解析（`settings.describe()` 里声明的 `apiKeyEnv` 引用 → `credentials.resolve`，兜底环境变量），`fetch` 平台接口，浏览器只拿数字；失败回原因，不缓存旧值。
+- 本地图片走宿主 `/api/dsh-home/image`：只读、扩展名白名单、20 MB 上限，整条路由在 owner 围栏之后。
+
 ## 显式整理与组件自有编辑
 
 - `compactSpatialLayout` 仅由编辑模式「整理布局」调用。视觉顺序优先、逐卡 row-major first-fit，保留尺寸和元数据；已局部紧密的结果 no-op，普通拖动仍不压实。形状受限残洞可能保留，不承诺全局最优 / 无缝铺满。

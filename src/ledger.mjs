@@ -21,7 +21,7 @@ export const IDLE_GAP_MS = 5 * 60_000
  * 账本里每个会话记着它被折时的版本，版本不一致就重折——否则修了口径之后，
  * revision 没变的旧聚合会永远留着错数。
  */
-export const FOLD_VERSION = 3
+export const FOLD_VERSION = 4
 
 /** 「回到现场」显示的原文截断长度。 */
 const SNIPPET_LENGTH = 160
@@ -50,8 +50,70 @@ export function shiftDayKey(time, deltaDays) {
   return dayKey(d.getTime())
 }
 
+/** 一天里的 token 桶（与宿主的 `tokenUsage` 投影同一套字段）。 */
+export function emptyTokens() {
+  return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+}
+
 function emptyDay() {
-  return { activeMs: 0, runMs: 0, turns: 0 }
+  return { activeMs: 0, runMs: 0, turns: 0, tokens: emptyTokens() }
+}
+
+/** provider 上报的桶值：只接受有限非负数，其余按 0（旧日志或缺字段）。 */
+function tokenCount(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : 0
+}
+
+/** 一次 settlement 的用量，字段与宿主 `TokenUsage` 对齐。 */
+export function tokensFromUsage(usage) {
+  return {
+    input: tokenCount(usage?.inputTokens),
+    output: tokenCount(usage?.outputTokens),
+    cacheRead: tokenCount(usage?.cacheReadTokens),
+    cacheWrite: tokenCount(usage?.cacheWriteTokens),
+  }
+}
+
+function sameTokens(left, right) {
+  return left.input === right.input && left.output === right.output
+    && left.cacheRead === right.cacheRead && left.cacheWrite === right.cacheWrite
+}
+
+function addTokens(days, key, tokens) {
+  const day = days[key] ?? (days[key] = emptyDay())
+  day.tokens.input += tokens.input
+  day.tokens.output += tokens.output
+  day.tokens.cacheRead += tokens.cacheRead
+  day.tokens.cacheWrite += tokens.cacheWrite
+}
+
+function subtractTokens(days, key, tokens) {
+  const day = days[key]
+  if (day === undefined) return
+  day.tokens.input -= tokens.input
+  day.tokens.output -= tokens.output
+  day.tokens.cacheRead -= tokens.cacheRead
+  day.tokens.cacheWrite -= tokens.cacheWrite
+}
+
+/**
+ * 一次 Assistant settlement 上报的用量，规则与宿主 token-meter 的 `usageOf` 一致：
+ * `assistant/message` 看 `data.usage`；`assistant/attempt` 看流里最后一个 usage chunk。
+ * @param event 一条逻辑事件
+ * @returns usage 对象或 undefined
+ */
+export function usageOf(event) {
+  if (event?.type !== 'assistant/message' && event?.type !== 'assistant/attempt') return undefined
+  if (event.type === 'assistant/message' && event.data?.usage !== undefined) return event.data.usage
+  if (event.type === 'assistant/attempt' || event.type === 'assistant/message') {
+    const stream = event.data?.stream
+    if (!Array.isArray(stream)) return undefined
+    for (let index = stream.length - 1; index >= 0; index -= 1) {
+      const record = stream[index]
+      if (record?.type === 'chunk' && record.chunk?.type === 'usage') return record.chunk.usage
+    }
+  }
+  return undefined
 }
 
 /**
@@ -96,6 +158,8 @@ export function foldSession(header, events, now = Date.now()) {
   let runMs = 0
   let activeMs = 0
   let orphanStep = 0
+  /** 最近一次计入的用量；同一个 turn/step 的新样本替换旧样本（与宿主投影同口径）。 */
+  let lastSample = null
 
   for (const event of events) {
     const time = typeof event?.time === 'number' ? event.time : undefined
@@ -116,6 +180,29 @@ export function foldSession(header, events, now = Date.now()) {
           .replace(/\s+/g, ' ')
           .trim()
         if (text !== '') lastUserText = text.length > SNIPPET_LENGTH ? `${text.slice(0, SNIPPET_LENGTH)}…` : text
+      }
+    }
+    // 重试会让同一 turn/step 重新上报：先撤销上一次的样本，避免重复计数。
+    if (event.type === 'llm/retry-started' && lastSample !== null
+      && lastSample.turn === event.data?.turn && lastSample.step === event.data?.step) {
+      subtractTokens(days, lastSample.key, lastSample.tokens)
+      lastSample = null
+    }
+    const sample = usageOf(event)
+    if (sample !== undefined) {
+      const key = dayKey(time)
+      const turn = event.data?.turn
+      const step = event.data?.step
+      const tokens = tokensFromUsage(sample)
+      if (lastSample !== null && lastSample.turn === turn && lastSample.step === step) {
+        if (!sameTokens(lastSample.tokens, tokens)) {
+          subtractTokens(days, lastSample.key, lastSample.tokens)
+          addTokens(days, key, tokens)
+          lastSample = { turn, step, key, tokens }
+        }
+      } else {
+        addTokens(days, key, tokens)
+        lastSample = { turn, step, key, tokens }
       }
     }
     if (event.type === 'turn/start') {
@@ -185,16 +272,22 @@ function dayTotals(sessions, key) {
   let runMs = 0
   let turns = 0
   let count = 0
+  const total = emptyTokens()
   for (const session of sessions) {
     const day = session.days?.[key]
     if (day === undefined) continue
     activeMs += day.activeMs
     runMs += day.runMs
     turns += day.turns
+    const tokens = day.tokens ?? emptyTokens()
+    total.input += tokens.input
+    total.output += tokens.output
+    total.cacheRead += tokens.cacheRead
+    total.cacheWrite += tokens.cacheWrite
     // 「这一天开过工」= 有活动时长或有轮次；两者都为 0 的空壳事件不算。
     if (day.activeMs > 0 || day.turns > 0) count += 1
   }
-  return { key, activeMs, runMs, turns, sessions: count }
+  return { key, activeMs, runMs, turns, sessions: count, tokens: total }
 }
 
 /**
@@ -217,7 +310,13 @@ export function buildSnapshot(state, { now = Date.now(), dayCount = 14, recentLi
     runMs: total.runMs + day.runMs,
     turns: total.turns + day.turns,
     sessions: total.sessions + day.sessions,
-  }), { activeMs: 0, runMs: 0, turns: 0, sessions: 0 })
+    tokens: {
+      input: total.tokens.input + day.tokens.input,
+      output: total.tokens.output + day.tokens.output,
+      cacheRead: total.tokens.cacheRead + day.tokens.cacheRead,
+      cacheWrite: total.tokens.cacheWrite + day.tokens.cacheWrite,
+    },
+  }), { activeMs: 0, runMs: 0, turns: 0, sessions: 0, tokens: emptyTokens() })
 
   const recent = sessions.slice(0, recentLimit).map((session) => ({
     id: session.id,

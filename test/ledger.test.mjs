@@ -107,3 +107,68 @@ test('空会话不会在快照里造出假数据', () => {
   assert.equal(snapshot.sessions.length, 0)
   assert.equal(snapshot.sessionCount, 0)
 })
+
+test('provider usage lands in the day bucket', () => {
+  const session = foldSession(header(), [
+    event(at(10, 0), 'turn/start', { turn: 1 }),
+    event(at(10, 1), 'step/start', { turn: 1, step: 1 }),
+    event(at(10, 2), 'assistant/message', { turn: 1, step: 1, usage: {
+      inputTokens: 1200, outputTokens: 300, cacheReadTokens: 5000, cacheWriteTokens: 40,
+    } }),
+    event(at(10, 3), 'step/end', { turn: 1, step: 1 }),
+  ], NOW)
+  assert.deepEqual(session.days[dayKey(at(10, 2))].tokens, { input: 1200, output: 300, cacheRead: 5000, cacheWrite: 40 })
+})
+
+test('a replaced sample is not counted twice, and a retry adds its replacement', () => {
+  const time = at(10, 2)
+  const session = foldSession(header(), [
+    event(at(10, 0), 'turn/start', { turn: 1 }),
+    event(at(10, 1), 'step/start', { turn: 1, step: 1 }),
+    event(time, 'assistant/message', { turn: 1, step: 1, usage: { inputTokens: 100, outputTokens: 10 } }),
+    event(time + 100, 'assistant/message', { turn: 1, step: 1, usage: { inputTokens: 150, outputTokens: 20 } }),
+  ], NOW)
+  const tokens = session.days[dayKey(time)].tokens
+  assert.deepEqual(tokens, { input: 150, output: 20, cacheRead: 0, cacheWrite: 0 }, 'the later sample replaced the earlier one')
+
+  const retried = foldSession(header(), [
+    event(at(10, 0), 'turn/start', { turn: 1 }),
+    event(at(10, 1), 'step/start', { turn: 1, step: 1 }),
+    event(time, 'assistant/message', { turn: 1, step: 1, usage: { inputTokens: 100, outputTokens: 10 } }),
+    event(time + 50, 'llm/retry-started', { turn: 1, step: 1 }),
+    event(time + 200, 'assistant/attempt', { turn: 1, step: 1, stream: [
+      { type: 'chunk', chunk: { type: 'usage', usage: { inputTokens: 70, outputTokens: 7 } } },
+      { type: 'chunk', chunk: { type: 'usage', usage: { inputTokens: 80, outputTokens: 8, cacheReadTokens: 30 } } },
+    ] }),
+  ], NOW)
+  assert.deepEqual(retried.days[dayKey(time)].tokens, { input: 80, output: 8, cacheRead: 30, cacheWrite: 0 }, 'the retried attempt counts on its own')
+})
+
+test('missing or hostile usage never poisons the bucket', () => {
+  const time = at(10, 2)
+  const session = foldSession(header(), [
+    event(at(10, 0), 'turn/start', { turn: 1 }),
+    event(time, 'assistant/message', { turn: 1, step: 1, usage: { inputTokens: Number.NaN, outputTokens: -5, cacheReadTokens: '900' } }),
+    event(time + 10, 'assistant/message', { turn: 1, step: 2 }),
+  ], NOW)
+  assert.deepEqual(session.days[dayKey(time)].tokens, { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 })
+})
+
+test('the snapshot sums tokens for today and the week', () => {
+  const sessions = {
+    a: foldSession(header({ id: 'a' }), [
+      event(at(10, 0), 'turn/start', { turn: 1 }),
+      event(at(10, 1), 'assistant/message', { turn: 1, step: 1, usage: { inputTokens: 10, outputTokens: 2 } }),
+    ], NOW),
+    b: foldSession(header({ id: 'b' }), [
+      event(at(11, 0), 'turn/start', { turn: 1 }),
+      event(at(11, 1), 'assistant/message', { turn: 1, step: 1, usage: { inputTokens: 5, outputTokens: 1, cacheReadTokens: 100 } }),
+    ], NOW),
+  }
+  const snapshot = buildSnapshot({ sessions, scannedAt: NOW }, { now: NOW })
+  assert.equal(snapshot.today.tokens.input, 15)
+  assert.equal(snapshot.today.tokens.output, 3)
+  assert.equal(snapshot.today.tokens.cacheRead, 100)
+  assert.equal(snapshot.week.tokens.input, 15)
+  assert.equal(snapshot.days[snapshot.days.length - 1].tokens.input, 15)
+})

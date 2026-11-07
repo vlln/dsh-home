@@ -223,7 +223,7 @@ export function apply(ctx: Context): void {
   store.reconcileDefinitions(registry)
   function Page(pageProps: Parameters<typeof HomePage>[0] & { renderSlot: LegacyRenderer }) {
     return <LegacyRenderContext.Provider value={pageProps.renderSlot}>
-      <BuiltinProvider store={store} t={pageProps.t} actions={actions} useSessionStatus={pageProps.useSessionStatus}>
+      <BuiltinProvider store={store} t={pageProps.t} actions={actions} useSessionStatus={pageProps.useSessionStatus} language={pageProps.locale()}>
         <HomePage {...pageProps} />
       </BuiltinProvider>
     </LegacyRenderContext.Provider>

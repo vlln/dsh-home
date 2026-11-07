@@ -19,6 +19,9 @@
  * @module @vlln/dsh-home
  */
 
+import { readFile, stat } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import path from 'node:path'
 import { isSameOrigin } from './trust.mjs'
 import { buildActivity, validateActivityQuery } from './activity.mjs'
 import { applyFocusOp, emptyFocus } from './focus.mjs'
@@ -435,7 +438,131 @@ export function apply(ctx) {
         return Response.json(reply.payload, { status: reply.status, headers: { 'cache-control': 'no-store' } })
       },
     }), 'dsh-home: connection api route')
+
+    // 余额：key 留在宿主，浏览器只拿数字。
+    scoped.effect(() => register.call(connection.fetch, {
+      path: BALANCE_PATH,
+      methods: ['POST'],
+      requestBody: 'buffered',
+      fetch: async () => Response.json(await readBalance(scoped), { headers: { 'cache-control': 'no-store' } }),
+    }), 'dsh-home: connection balance route')
+
+    // 本地图片：`<img>` 只能读同源 URL，所以由宿主把这个路径读成响应体。
+    // 只读、只认图片扩展名、限 20 MB，且整条路由在 owner 围栏之后。
+    scoped.effect(() => register.call(connection.fetch, {
+      path: IMAGE_PATH,
+      methods: ['GET'],
+      requestBody: 'buffered',
+      fetch: async request => serveImage(request),
+    }), 'dsh-home: connection image route')
   })
+}
+
+/** 余额路由（`/api` 围栏后）。 */
+export const BALANCE_PATH = '/api/dsh-home/balance'
+
+/** 余额缓存：平台接口不该每次渲染都打一次。 */
+const BALANCE_TTL_MS = 5 * 60_000
+let balanceCache = null
+
+/**
+ * 读一次 DeepSeek 平台余额。
+ *
+ * key 只在宿主侧解析（设置里的 `apiKeyEnv` 引用 → credentials 服务），
+ * 解析不到或平台不可达时回一个「不可用」的原因，浏览器不会看到 key。
+ * @param ctx 插件上下文
+ * @returns `{ available, currency, total, granted, toppedUp }` 或 `{ available: false, reason }`
+ */
+async function readBalance(ctx) {
+  if (balanceCache !== null && Date.now() - balanceCache.at < BALANCE_TTL_MS) return balanceCache.value
+  const finish = value => {
+    balanceCache = { at: Date.now(), value }
+    return value
+  }
+  try {
+    const key = await resolvePlatformKey(ctx)
+    if (key === null) return finish({ available: false, reason: 'not-configured' })
+    const response = await fetch('https://api.deepseek.com/user/balance', {
+      headers: { authorization: `Bearer ${key}`, accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!response.ok) return finish({ available: false, reason: `http-${response.status}` })
+    const body = await response.json()
+    const info = Array.isArray(body?.balance_infos) ? body.balance_infos[0] : undefined
+    const total = Number(info?.total_balance)
+    if (!Number.isFinite(total)) return finish({ available: false, reason: 'bad-response' })
+    return finish({
+      available: true,
+      currency: typeof info.currency === 'string' ? info.currency : 'CNY',
+      total,
+      granted: Number.isFinite(Number(info.granted_balance)) ? Number(info.granted_balance) : null,
+      toppedUp: Number.isFinite(Number(info.topped_up_balance)) ? Number(info.topped_up_balance) : null,
+    })
+  } catch (error) {
+    return finish({ available: false, reason: error?.name === 'TimeoutError' ? 'timeout' : 'unreachable' })
+  }
+}
+
+/**
+ * 解析 DeepSeek 平台的 API key：先找设置里声明的 `apiKeyEnv` 引用，再退到环境变量。
+ * @param ctx 插件上下文
+ * @returns key 或 null
+ */
+async function resolvePlatformKey(ctx) {
+  try {
+    const settings = ctx.get('settings')
+    const credentials = ctx.get('credentials')
+    const rows = typeof settings?.describe === 'function' ? settings.describe() : []
+    for (const row of Array.isArray(rows) ? rows : []) {
+      const ref = row?.apiKeyEnv
+      if (typeof ref !== 'string' || ref === '') continue
+      if (typeof credentials?.resolve !== 'function') continue
+      const resolved = await credentials.resolve(ref)
+      if (typeof resolved?.value === 'string' && resolved.value !== '') return resolved.value
+    }
+  } catch {
+    // 设置或凭据服务不可用：走环境变量兜底。
+  }
+  const fromEnv = process.env.DEEPSEEK_API_KEY
+  return typeof fromEnv === 'string' && fromEnv !== '' ? fromEnv : null
+}
+
+/** 本地图片路由（`/api` 围栏后）。 */
+export const IMAGE_PATH = '/api/dsh-home/image'
+
+/** 允许的图片扩展名与返回类型。 */
+const IMAGE_TYPES = new Map([
+  ['.png', 'image/png'], ['.jpg', 'image/jpeg'], ['.jpeg', 'image/jpeg'], ['.webp', 'image/webp'],
+  ['.gif', 'image/gif'], ['.avif', 'image/avif'],
+])
+
+/** 单张本地图片的上限。 */
+const IMAGE_LIMIT = 20 * 1024 * 1024
+
+/**
+ * 把 `path` 查询参数读成图片响应。
+ * @param request Fetch 请求
+ * @returns 图片字节，或一个说明原因的空响应
+ */
+async function serveImage(request) {
+  const raw = new URL(request.url).searchParams.get('path')
+  if (raw === null || raw.trim() === '' || raw.length > 4096) return new Response('bad path', { status: 400 })
+  const expanded = raw.startsWith('~/') ? path.join(homedir(), raw.slice(2)) : raw
+  if (!path.isAbsolute(expanded)) return new Response('path must be absolute', { status: 400 })
+  const type = IMAGE_TYPES.get(path.extname(expanded).toLowerCase())
+  if (type === undefined) return new Response('unsupported image type', { status: 415 })
+  try {
+    const info = await stat(expanded)
+    if (!info.isFile()) return new Response('not a file', { status: 404 })
+    if (info.size > IMAGE_LIMIT) return new Response('image too large', { status: 413 })
+    const bytes = await readFile(expanded)
+    return new Response(bytes, {
+      status: 200,
+      headers: { 'content-type': type, 'cache-control': 'private, max-age=60', 'x-content-type-options': 'nosniff' },
+    })
+  } catch {
+    return new Response('not found', { status: 404 })
+  }
 }
 
 /** `/api` 围栏后的新入口。 */

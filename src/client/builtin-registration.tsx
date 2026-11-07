@@ -13,6 +13,10 @@ import { registerHabitWidget } from './habit-widget.tsx'
 import { registerTimerWidget } from './timer-widget.tsx'
 import { registerPomodoroWidget } from './pomodoro-widget.tsx'
 import { registerCountdownWidget } from './countdown-widget.tsx'
+import { registerUsageWidget } from './usage-widget.tsx'
+import { registerQuoteWidget } from './quote-widget.tsx'
+import { registerPictureWidget } from './picture-widget.tsx'
+import { registerBalanceWidget } from './balance-widget.tsx'
 import { FocusQueue, FocusResume, type SessionStatusMap } from './focus.tsx'
 import type { HomeState, HomeStore } from './store.ts'
 import { emptyLayout, emptyPrefs } from './api.ts'
@@ -23,15 +27,18 @@ import type { HomeWidgetRegistry } from './widget-registry.ts'
 
 const Runtime = createContext<{
   store: Pick<HomeStore, 'getSnapshot' | 'subscribe' | 'dismiss'>; t: Translate; actions: WidgetActions; statuses: SessionStatusMap; statusSource: 'runtime' | 'none'
+  /** 当前界面语言（`zh-CN` / `en`…），供按语言取内置文本的组件使用。 */
+  language: string
 } | null>(null)
 const EMPTY: SessionStatusMap = new Map()
-export function BuiltinProvider({ store, t, actions, useSessionStatus, children }: {
+export function BuiltinProvider({ store, t, actions, useSessionStatus, language = 'en', children }: {
   store: HomeStore; t: Translate; actions: WidgetActions; children: ReactNode
   useSessionStatus?: (selector: (snapshot: SessionStatusMap) => unknown) => unknown
+  language?: string
 }) {
   const readStatus = useSessionStatus ?? ((selector: (snapshot: SessionStatusMap) => unknown) => selector(EMPTY))
   const statuses = readStatus(snapshot => snapshot) as SessionStatusMap
-  return <Runtime.Provider value={{ store, t, actions, statuses, statusSource: useSessionStatus ? 'runtime' : 'none' }}>{children}</Runtime.Provider>
+  return <Runtime.Provider value={{ store, t, actions, statuses, statusSource: useSessionStatus ? 'runtime' : 'none', language }}>{children}</Runtime.Provider>
 }
 const PREVIEW_NOW = Date.UTC(2026, 9, 20, 10, 24)
 const inert = () => {}
@@ -90,7 +97,7 @@ export function BuiltinPreviewProvider({ t, data, children }: { t: Translate; da
       }
     }
     return { store: { getSnapshot: () => state, subscribe: () => inert, dismiss: inert }, t,
-      actions: PREVIEW_ACTIONS, statuses, statusSource: hasLedger ? 'runtime' as const : 'none' as const }
+      actions: PREVIEW_ACTIONS, statuses, statusSource: hasLedger ? 'runtime' as const : 'none' as const, language: 'en' }
   }, [t, data])
   return <Runtime.Provider value={runtime}>{children}</Runtime.Provider>
 }
@@ -149,6 +156,6 @@ export function registerBuiltins(registry: HomeWidgetRegistry, t: Translate): ()
     source: '@vlln/dsh-home', preview: { data: builtinPreviewData(t) }, sizing: BUILTIN_SIZING[widget.id], configVersion: 1,
     defaultConfig: () => ({}), validateConfig: () => true, Content: widget.Content,
   }))
-  disposers.push(registerActivityWidget(registry, t), registerActiveWidget(registry, t), registerPersonalWidgets(registry, t), registerQuickWidget(registry, t), registerTodoWidget(registry, t), registerPlanWidget(registry, t), registerCalendarWidget(registry, t), registerHabitWidget(registry, t), registerTimerWidget(registry, t), registerPomodoroWidget(registry, t), registerCountdownWidget(registry, t))
+  disposers.push(registerActivityWidget(registry, t), registerActiveWidget(registry, t), registerPersonalWidgets(registry, t), registerQuickWidget(registry, t), registerTodoWidget(registry, t), registerPlanWidget(registry, t), registerCalendarWidget(registry, t), registerHabitWidget(registry, t), registerTimerWidget(registry, t), registerPomodoroWidget(registry, t), registerCountdownWidget(registry, t), registerUsageWidget(registry, t), registerQuoteWidget(registry, t), registerPictureWidget(registry, t), registerBalanceWidget(registry, t))
   return () => { for (const off of disposers.reverse()) off() }
 }

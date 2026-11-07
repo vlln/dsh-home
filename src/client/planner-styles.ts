@@ -128,4 +128,41 @@ export const plannerStyles = `
 .dsh-countdown-row .dsh-item-field:first-child { flex:1 1 auto; }
 .dsh-countdown-row .dsh-item-field:nth-child(2) { flex:0 0 130px; }
 
+
+.dsh-usage { display:flex; flex-direction:column; gap:6px; height:100%; min-height:0; overflow:hidden; }
+.dsh-usage-hero { display:flex; align-items:baseline; gap:8px; }
+.dsh-usage-total { color:var(--dsw-alias-label-primary); font-size:30px; font-weight:600; line-height:1.1; font-variant-numeric:tabular-nums; }
+.dsh-usage-unit { color:var(--dsw-alias-label-tertiary); font-size:11px; white-space:nowrap; }
+.dsh-usage-detail { display:flex; flex-wrap:wrap; gap:4px 12px; color:var(--dsw-alias-label-tertiary); font-size:11px; font-variant-numeric:tabular-nums; }
+.dsh-usage-detail b { color:var(--dsw-alias-label-secondary); font-weight:600; }
+.dsh-usage-bars { display:flex; align-items:flex-end; gap:3px; flex:none; height:40px; }
+.dsh-usage-col { flex:1 1 0; display:flex; align-items:flex-end; justify-content:center; height:100%; min-width:0; }
+.dsh-usage-bar { width:100%; max-width:26px; min-height:1px; border-radius:2px 2px 0 0; background:var(--dsw-alias-state-business-primary); opacity:.55; }
+.dsh-usage-col:last-child .dsh-usage-bar { opacity:1; }
+.dsh-usage-foot { display:flex; align-items:baseline; justify-content:space-between; gap:8px; color:var(--dsw-alias-label-tertiary); font-size:11px; }
+.dsh-usage-foot b { color:var(--dsw-alias-label-secondary); font-weight:600; font-variant-numeric:tabular-nums; }
+.dsh-usage[data-compact="true"] .dsh-usage-total { font-size:24px; }
+
+
+.dsh-picture-wrap, .dsh-quote-wrap { display:flex; flex-direction:column; height:100%; min-height:0; gap:4px; }
+.dsh-picture { position:relative; flex:1 1 auto; min-height:0; margin:0; border-radius:var(--dsw-radius-md); overflow:hidden; background:var(--dsw-alias-bg-layer-2); }
+.dsh-picture img { width:100%; height:100%; display:block; }
+.dsh-picture-caption { position:absolute; inset-inline:0; bottom:0; padding:14px 8px 6px; color:#fff; font-size:11px; line-height:16px; background:linear-gradient(transparent, rgba(0,0,0,.55)); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dsh-picture-empty { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border:.5px dashed var(--dsw-alias-border-l2); border-radius:var(--dsw-radius-md); color:var(--dsw-alias-label-tertiary); font-size:11px; text-align:center; padding:8px; }
+.dsh-picture-empty-glyph { color:var(--dsw-alias-label-quaternary); font-size:22px; line-height:1; }
+.dsh-picture-path { max-width:100%; color:var(--dsw-alias-label-quaternary); font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:start; }
+.dsh-quote { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:6px; justify-content:center; padding:2px 4px; }
+.dsh-quote-mark { color:var(--dsw-alias-state-warn-primary); font-size:34px; line-height:.8; font-weight:600; }
+.dsh-quote-text { margin:0; color:var(--dsw-alias-label-primary); font-size:13px; line-height:1.55; overflow:auto; scrollbar-width:thin; }
+.dsh-quote-hint { color:var(--dsw-alias-label-quaternary); font-size:10px; }
+.dsh-item-field select { width:100%; padding:3px 6px; border:.5px solid var(--dsw-alias-border-l2); border-radius:var(--dsw-radius-sm); background:var(--dsw-alias-bg-layer-1); color:var(--dsw-alias-label-primary); font-size:12px; line-height:18px; }
+
+
+.dsh-balance { display:flex; flex-direction:column; gap:2px; height:100%; min-height:0; }
+.dsh-balance-label { color:var(--dsw-alias-label-secondary); font-size:11px; line-height:16px; }
+.dsh-balance-amount { color:var(--dsw-alias-label-primary); font-size:30px; font-weight:600; line-height:1.1; font-variant-numeric:tabular-nums; }
+.dsh-balance-reason { color:var(--dsw-alias-label-tertiary); font-size:12px; line-height:18px; }
+.dsh-balance-detail { display:flex; gap:10px; color:var(--dsw-alias-label-tertiary); font-size:10px; font-variant-numeric:tabular-nums; }
+.dsh-balance .dsh-timer-button { margin-top:auto; align-self:flex-start; }
+
 `

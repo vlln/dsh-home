@@ -23,11 +23,12 @@ export function activePreviewData(): JsonValue {
   const days: DayBucket[] = Array.from({ length: 14 }, (_, index) => {
     const date = new Date(Date.UTC(2026, 9, 6 + index))
     const activeMs = [42, 0, 96, 61, 130, 0, 18, 74, 155, 88, 0, 210, 133, 64][index]! * 60_000
-    return { key: date.toISOString().slice(0, 10), activeMs, runMs: Math.round(activeMs * 0.4), turns: Math.round(activeMs / 9e5), sessions: activeMs > 0 ? 1 : 0 }
+    const tokens = { input: Math.round(activeMs / 900), output: Math.round(activeMs / 3_600), cacheRead: Math.round(activeMs / 260), cacheWrite: 0 }
+    return { key: date.toISOString().slice(0, 10), activeMs, runMs: Math.round(activeMs * 0.4), turns: Math.round(activeMs / 9e5), sessions: activeMs > 0 ? 1 : 0, tokens }
   })
   const sample: Pick<LedgerSnapshot, 'days' | 'today' | 'sessions'> = {
     days,
-    today: { activeMs: days[13]!.activeMs, runMs: days[13]!.runMs, turns: days[13]!.turns, sessions: 1 },
+    today: { activeMs: days[13]!.activeMs, runMs: days[13]!.runMs, turns: days[13]!.turns, sessions: 1, tokens: days[13]!.tokens },
     sessions: [],
   }
   return sample as unknown as JsonValue

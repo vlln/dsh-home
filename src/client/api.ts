@@ -13,6 +13,9 @@ export const API_PATH = '/plugins/dsh-home/api'
 /** 新入口：官方 `connection` 的 `/api` 围栏（只认 owner 对端）。 */
 export const CONNECTION_PATH = '/api/dsh-home/rpc'
 
+/** 余额路由（与 `src/index.mjs` 的 `BALANCE_PATH` 同源）。 */
+export const BALANCE_PATH = '/api/dsh-home/balance'
+
 /** 当前入口；第一次 404/405 之后记住降级结果，不再重试。 */
 let preferredPath: string = CONNECTION_PATH
 
@@ -52,6 +55,9 @@ export function saveWorkbench(layout: Layout, instances: import('./widget-contra
   return post<WorkbenchDocument>('workbench.set', { layout, instances })
 }
 
+/** 一天的 token 桶（provider 上报；宿主侧按天折叠）。 */
+export interface TokenBuckets { input: number; output: number; cacheRead: number; cacheWrite: number }
+
 /** 一天的天桶（宿主本机时区）。 */
 export interface DayBucket {
   key: string
@@ -59,6 +65,7 @@ export interface DayBucket {
   runMs: number
   turns: number
   sessions: number
+  tokens: TokenBuckets
 }
 
 /** 账本里的单会话摘要。 */
@@ -90,7 +97,7 @@ export interface LedgerSnapshot {
   sessionCount: number
   days: DayBucket[]
   today: Omit<DayBucket, 'key'>
-  week: { activeMs: number; runMs: number; turns: number; sessions: number }
+  week: { activeMs: number; runMs: number; turns: number; sessions: number; tokens: TokenBuckets }
   sessions: LedgerSession[]
 }
 
