@@ -37,7 +37,7 @@ test('builtins choose editors themselves and retain forms without shell registra
     assert.doesNotMatch(text, /<WidgetConfigEditor|dsh-widget-config-modal/)
   }
   assert.match(await source('personal-widgets.tsx'), /dsh-clock-zone/)
-  assert.match(await source('timer-widget.tsx'), /dsh-timer-wheel/)
+  assert.match(await source('timer-widget.tsx'), /dsh-timer-dial/)
   const helper = await source('widget-settings.tsx')
   assert.match(helper, /widgetProps\.editing \|\| widgetProps\.preview/)
   assert.match(helper, /await widgetProps\.saveConfig!\(next\)/)

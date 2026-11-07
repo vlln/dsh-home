@@ -1,10 +1,12 @@
 /**
- * 计时器：一个可命名的正计时，可另设目标时长。
+ * 计时器：一个倒计时圆盘。
  *
- * 时间与目标时长存在宿主的 `focus.json`（按实例分槽），刷新、关页面、重启宿主都接着走；
- * 名称属于该实例的配置。卡片内没有设置弹窗：名字点一下就地改，目标时长用右侧滚轮拖。
- * 目标时长存在 focus 槽而不是配置里，因为配置一改整张卡会重挂（边界键含配置），
- * 拖动滚轮时那样会打断手势。
+ * 圆盘就是设置器：没启动时拖动圆环设定剩余时间（1–60 分钟），中间显示倒计时数字；
+ * 启动后圆环按剩余比例收缩，下方只剩 Pause / Reset 两个选择，暂停后是 Resume / Reset。
+ *
+ * 时间状态存在宿主的 `focus.json`（按实例分槽：startedAt + accumulatedMs + targetMs），
+ * 刷新、关页面、重启宿主都接着走。拖圆盘时只改本地预览，松手才写一次 `timer.target`，
+ * 否则拖动会变成一串 RPC。
  *
  * @module @vlln/dsh-home/client/timer-widget
  */
@@ -13,139 +15,158 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { useHomeData, useNow } from './home-data.ts'
 import { formatClock, timerElapsed } from './focus-model.ts'
-import { formatDuration, type Translate } from './format.ts'
+import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
 import type { FocusTimer } from './api.ts'
 
-export type TimerConfig = { label: string }
+/** 新计时器的默认时长；圆盘可以随时改。 */
+const DEFAULT_TARGET_MS = 5 * 60_000
+/** 一圈最多 60 分钟：1 分钟 = 6°。 */
+export const MAX_TARGET_MINUTES = 60
 
-const MAX_LABEL = 80
-/** 滚轮的档位（分钟）；0 表示不限。 */
-const TARGET_STEPS = [0, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120] as const
-const MAX_TARGET_MS = 12 * 3600_000
+export type TimerConfig = Record<string, never>
 
-function defaultTimerConfig(): TimerConfig {
-  return { label: '' }
+function defaultTimerConfig(): TimerConfig { return {} }
+
+/** v1 的 `label` 不再是这张卡的内容（圆盘中间只有数字），迁移时直接丢弃。 */
+function migrateTimerConfig(): TimerConfig {
+  // v2 has no fields at all; any stored label from v1 is dropped.
+  return {}
 }
 
 function validateTimerConfig(value: unknown): value is TimerConfig {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
-  const config = value as Record<string, unknown>
-  return Object.keys(config).every(key => key === 'label') && typeof config.label === 'string' && config.label.length <= MAX_LABEL
+  return value !== null && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0
 }
 
-const PREVIEW_SLOT: FocusTimer = { label: '写文档', startedAt: null, accumulatedMs: 754_000, running: false, targetMs: 25 * 60_000 }
+const PREVIEW: FocusTimer = { label: '', startedAt: null, accumulatedMs: 12 * 60_000 + 26_000, running: false, targetMs: 25 * 60_000 }
 
-/** 离当前值最近的档位；手改过的值也能落回一个可拖的档。 */
-function nearestStep(minutes: number): number {
-  let best = 0
-  for (let index = 1; index < TARGET_STEPS.length; index += 1) {
-    if (Math.abs(TARGET_STEPS[index]! - minutes) < Math.abs(TARGET_STEPS[best]! - minutes)) best = index
-  }
-  return best
+/** 把指针角度换算成分钟：正上方 = 60，顺时针一圈 = 1…60。 */
+export function minutesFromAngle(dx: number, dy: number): number {
+  const angle = Math.atan2(dx, -dy)
+  const normalized = angle < 0 ? angle + Math.PI * 2 : angle
+  return Math.min(MAX_TARGET_MINUTES, Math.max(1, Math.round((normalized / (Math.PI * 2)) * MAX_TARGET_MINUTES)))
 }
 
-function TimerWheel({ targetMs, disabled, t, onChange }: {
-  targetMs: number; disabled: boolean; t: Translate; onChange: (ms: number) => void
+function TimerDial({ targetMs, fraction, displayMs, reached, editable, t, onPreview, onCommit }: {
+  targetMs: number
+  /** 圆环画多少：设置时是目标占一圈的比例，倒计时时是剩余占目标的比例。 */
+  fraction: number
+  displayMs: number
+  reached: boolean
+  /** 只有「没启动」时才可拖动设时间。 */
+  editable: boolean
+  t: Translate
+  onPreview: (ms: number) => void
+  onCommit: (ms: number) => void
 }): ReactNode {
-  const latest = useRef(targetMs)
-  latest.current = targetMs
-  const index = nearestStep(targetMs / 60_000)
-  const label = (minutes: number | undefined): string => minutes === undefined
-    ? '' : minutes === 0 ? t('timer.noTarget') : t('timer.minutes', { n: minutes })
-  const step = (direction: number): void => {
-    const next = TARGET_STEPS[Math.max(0, Math.min(TARGET_STEPS.length - 1, nearestStep(latest.current / 60_000) + direction))]!
-    if (next * 60_000 === latest.current) return
-    latest.current = next * 60_000
-    onChange(next * 60_000)
+  const minutes = Math.round(targetMs / 60_000)
+  const latest = useRef(minutes)
+  latest.current = minutes
+  const arc = Math.min(1, Math.max(0, fraction))
+  const angle = arc * Math.PI * 2 - Math.PI / 2
+  const handleX = 50 + 44 * Math.cos(angle)
+  const handleY = 50 + 44 * Math.sin(angle)
+  const nudge = (delta: number): void => {
+    const next = Math.min(MAX_TARGET_MINUTES, Math.max(1, latest.current + delta))
+    if (next === latest.current) return
+    latest.current = next
+    onPreview(next * 60_000)
+    onCommit(next * 60_000)
   }
   const drag = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    if (disabled || event.button !== 0) return
+    if (!editable || event.button !== 0) return
     event.preventDefault()
+    const node = event.currentTarget
+    const startX = event.clientX
     const startY = event.clientY
-    let applied = 0
+    let started = false
+    let value = latest.current * 60_000
+    const apply = (next: PointerEvent): void => {
+      const rect = node.getBoundingClientRect()
+      const minutesAt = minutesFromAngle(next.clientX - (rect.left + rect.width / 2), next.clientY - (rect.top + rect.height / 2))
+      value = minutesAt * 60_000
+      latest.current = minutesAt
+      onPreview(value)
+    }
     const move = (next: PointerEvent): void => {
-      const steps = Math.trunc((startY - next.clientY) / 18)
-      while (applied < steps) { applied += 1; step(1) }
-      while (applied > steps) { applied -= 1; step(-1) }
+      if (!started) {
+        // A plain click on the card must not silently change the duration.
+        if (Math.hypot(next.clientX - startX, next.clientY - startY) < 4) return
+        started = true
+      }
+      apply(next)
     }
     const finish = (): void => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', finish)
       window.removeEventListener('pointercancel', finish)
+      if (started) onCommit(value)
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', finish)
     window.addEventListener('pointercancel', finish)
   }
-  return <div className="dsh-timer-wheel" role="spinbutton" tabIndex={disabled ? -1 : 0}
-    data-disabled={disabled ? 'true' : undefined}
-    aria-label={t('timer.target')} aria-valuemin={0} aria-valuemax={MAX_TARGET_MS / 60_000}
-    aria-valuenow={Math.round(targetMs / 60_000)} aria-valuetext={label(Math.round(targetMs / 60_000))}
-    title={t('timer.targetHint')} onPointerDown={drag}
+  return <div className="dsh-timer-dial" role="slider" tabIndex={editable ? 0 : -1}
+    aria-label={t('timer.dial')} aria-valuemin={1} aria-valuemax={MAX_TARGET_MINUTES} aria-valuenow={minutes}
+    aria-valuetext={t('timer.minutes', { n: minutes })} aria-disabled={editable ? undefined : true}
+    data-draggable={editable ? 'true' : undefined} onPointerDown={drag}
     onKeyDown={event => {
-      if (disabled) return
-      if (event.key === 'ArrowUp' || event.key === 'ArrowRight') { event.preventDefault(); step(1) }
-      else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') { event.preventDefault(); step(-1) }
-      else if (event.key === 'Home') { event.preventDefault(); onChange(0) }
-      else if (event.key === 'End') { event.preventDefault(); onChange(TARGET_STEPS[TARGET_STEPS.length - 1]! * 60_000) }
+      if (!editable) return
+      if (event.key === 'ArrowUp' || event.key === 'ArrowRight') { event.preventDefault(); nudge(1) }
+      else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') { event.preventDefault(); nudge(-1) }
+      else if (event.key === 'PageUp') { event.preventDefault(); nudge(5) }
+      else if (event.key === 'PageDown') { event.preventDefault(); nudge(-5) }
+      else if (event.key === 'Home') { event.preventDefault(); onPreview(60_000); onCommit(60_000) }
+      else if (event.key === 'End') { event.preventDefault(); onPreview(MAX_TARGET_MINUTES * 60_000); onCommit(MAX_TARGET_MINUTES * 60_000) }
     }}>
-    <span className="dsh-wheel-row" data-side="-1">{label(TARGET_STEPS[index - 1])}</span>
-    <span className="dsh-wheel-row" data-current="true">{label(TARGET_STEPS[index])}</span>
-    <span className="dsh-wheel-row" data-side="1">{label(TARGET_STEPS[index + 1])}</span>
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <circle className="dsh-dial-track" cx="50" cy="50" r="44" />
+      <circle className="dsh-dial-arc" cx="50" cy="50" r="44" pathLength="1" transform="rotate(-90 50 50)"
+        strokeDasharray={`${Math.max(0.0001, arc)} ${1 - Math.max(0.0001, arc)}`} />
+      {arc > 0.001 && <circle className="dsh-dial-handle" cx={handleX} cy={handleY} r="3.4" />}
+    </svg>
+    <span className="dsh-timer-face">
+      <span className="dsh-dial-value">{formatClock(displayMs)}</span>
+      {reached && <span className="dsh-dial-note">{t('timer.reached')}</span>}
+    </span>
   </div>
 }
 
-function TimerBody({ slot, label, t, readOnly, renaming, draftName, onDraftName, onRenameStart, onRenameEnd, onCancelRename,
-  onStart, onPause, onReset, onTarget }: {
-  slot: FocusTimer
-  label: string
-  t: Translate
+function TimerBody({ elapsed, targetMs, running, readOnly, t, onPreview, onCommit, onStart, onPause, onReset, onRestart }: {
+  elapsed: number
+  targetMs: number
+  running: boolean
   readOnly: boolean
-  renaming: boolean
-  draftName: string
-  onDraftName: (value: string) => void
-  onRenameStart: () => void
-  onRenameEnd: () => void
-  onCancelRename: () => void
+  t: Translate
+  onPreview: (ms: number) => void
+  onCommit: (ms: number) => void
   onStart: () => void
   onPause: () => void
   onReset: () => void
-  onTarget: (ms: number) => void
+  onRestart: () => void
 }): ReactNode {
-  const now = useNow(1000, slot.running && !readOnly)
-  const elapsed = timerElapsed(slot, now)
-  const targetMs = slot.targetMs ?? 0
-  const remaining = targetMs > 0 ? Math.max(0, targetMs - elapsed) : 0
-  const reached = targetMs > 0 && elapsed >= targetMs
-  const display = targetMs > 0 ? remaining : elapsed
-  return <div className="dsh-timer" data-reached={reached ? 'true' : 'false'} data-target={targetMs > 0 ? 'true' : 'false'}>
-    <div className="dsh-timer-main">
-      {renaming
-        ? <input className="dsh-timer-name-input" autoFocus value={draftName} maxLength={MAX_LABEL}
-          aria-label={t('timer.name')} placeholder={t('timer.namePlaceholder')}
-          onChange={event => { onDraftName(event.target.value) }}
-          onBlur={onRenameEnd}
-          onKeyDown={event => {
-            if (event.key === 'Enter') { event.preventDefault(); onRenameEnd() }
-            else if (event.key === 'Escape') { event.preventDefault(); onCancelRename() }
-          }} />
-        : <button type="button" className="dsh-timer-name" disabled={readOnly} title={readOnly ? undefined : t('timer.rename')}
-          onClick={onRenameStart}>{label.trim() === '' ? t('timer.unnamed') : label}</button>}
-      <span className="dsh-timer-clock" data-running={slot.running ? 'true' : 'false'}
-        aria-label={formatDuration(display, t)}>{formatClock(display)}</span>
-      <div className="dsh-timer-actions">
-        <button type="button" className="dsh-timer-button dsh-timer-primary" disabled={readOnly}
-          onClick={slot.running ? onPause : onStart}>
-          {slot.running ? t('timer.pause') : elapsed > 0 ? t('timer.resume') : t('timer.start')}
-        </button>
-        <button type="button" className="dsh-timer-button" disabled={readOnly || (!slot.running && elapsed === 0)}
-          onClick={onReset}>{t('timer.reset')}</button>
-        {reached && <span className="dsh-timer-reached" role="status">{t('timer.reached')}</span>}
-      </div>
+  const target = Math.max(60_000, targetMs)
+  const remaining = Math.max(0, target - elapsed)
+  const reached = elapsed >= target
+  const idle = !running && elapsed === 0
+  const display = idle ? target : remaining
+  const fraction = idle ? target / (MAX_TARGET_MINUTES * 60_000) : remaining / target
+  const primary = reached ? t('timer.restart') : idle ? t('timer.start') : running ? t('timer.pause') : t('timer.resume')
+  return <div className="dsh-timer" data-running={running ? 'true' : 'false'} data-reached={reached ? 'true' : 'false'}
+    data-idle={idle ? 'true' : 'false'}>
+    <TimerDial targetMs={target} fraction={fraction} displayMs={display} reached={reached}
+      editable={!readOnly && idle} t={t} onPreview={onPreview} onCommit={onCommit} />
+    <div className="dsh-timer-actions">
+      {/* Idle: one button. Started: two choices. Reached: start over or clear. */}
+      {idle
+        ? <button type="button" className="dsh-timer-button dsh-timer-primary" disabled={readOnly} onClick={onStart}>{t('timer.start')}</button>
+        : <>
+          <button type="button" className="dsh-timer-button dsh-timer-primary" disabled={readOnly}
+            onClick={reached ? onRestart : running ? onPause : onStart}>{primary}</button>
+          <button type="button" className="dsh-timer-button" disabled={readOnly} onClick={onReset}>{t('timer.reset')}</button>
+        </>}
     </div>
-    <TimerWheel targetMs={targetMs} disabled={readOnly} t={t} onChange={onTarget} />
   </div>
 }
 
@@ -154,57 +175,57 @@ function ConnectedTimer(props: WidgetContentProps<TimerConfig>): ReactNode {
   const data = useHomeData()
   const instanceId = props.instance.instanceId
   const slot = data.focus?.timers[instanceId]
-  const [targetMs, setTargetMs] = useState<number>(slot?.targetMs ?? 0)
+  const [targetMs, setTargetMs] = useState<number>(slot?.targetMs || DEFAULT_TARGET_MS)
   const synced = useRef(false)
-  const writes = useRef<Promise<unknown>>(Promise.resolve())
-  const [renaming, setRenaming] = useState(false)
-  const [draftName, setDraftName] = useState(props.config.label)
   // Self-healing read: the page loads shared data on mount, but this card must not stay
   // blank if it mounts before (or without) that effect, or after a failed read.
   useEffect(() => {
     if (data.focus === null && !data.focusLoading && data.focusError === null) void data.store.refreshFocus()
   }, [data.focus, data.focusLoading, data.focusError, data.store])
-  // Take the stored target once, when the document first arrives. Later echoes of our own
-  // writes must not fight the wheel; a page reload remounts and re-syncs.
+  // Take the stored duration once, when the document first arrives. A later echo of our own
+  // write must not fight the dial; a page reload remounts and re-syncs.
   useEffect(() => {
     if (synced.current || slot === undefined) return
     synced.current = true
-    setTargetMs(slot.targetMs ?? 0)
+    setTargetMs(slot.targetMs > 0 ? slot.targetMs : DEFAULT_TARGET_MS)
   }, [slot])
-  useEffect(() => { if (!renaming) setDraftName(props.config.label) }, [props.config.label, renaming])
-  const saveConfig = props.saveConfig
-  const commitName = (): void => {
-    setRenaming(false)
-    if (saveConfig === undefined || draftName === props.config.label) return
-    void saveConfig({ label: draftName.slice(0, MAX_LABEL) }).catch(() => {})
-  }
-  const setTarget = (ms: number): void => {
-    setTargetMs(ms)
-    // Serialize writes: a fast drag fires several steps, and each op sets an absolute value.
-    writes.current = writes.current
-      .then(() => data.store.mutateFocus({ op: 'timer.target', instanceId, targetMs: ms }))
-      .catch(() => {})
-  }
+  const running = slot?.running === true
+  const now = useNow(1000, running)
+  const elapsed = slot === undefined ? 0 : timerElapsed(slot, now)
+  // A countdown stops itself at zero, even if the page was closed at the boundary.
+  useEffect(() => {
+    if (data.focus === null || slot === undefined || !slot.running) return
+    if (slot.targetMs > 0 && timerElapsed(slot, Date.now()) >= slot.targetMs) {
+      void data.store.mutateFocus({ op: 'timer.pause', instanceId }).catch(() => {})
+    }
+  }, [data.focus, slot, instanceId, elapsed])
   if (data.focusError !== null) {
     return <div className="dsh-planner-fallback" role="status">
       <p>{t('planner.unavailable')}</p>
       <button type="button" className="dsh-planner-retry" onClick={() => void data.store.refreshFocus()}>{t('planner.retry')}</button>
     </div>
   }
-  // The face is never blocked on the document: a card that says "reading…" forever is worse
-  // than one that starts at 00:00 and enables its buttons once the timer is known.
   const ready = data.focus !== null
   const readOnly = props.editing || !ready || !data.focusStorage.writable
-  const value = slot ?? { label: '', startedAt: null, accumulatedMs: 0, running: false, targetMs: 0 }
+  const persistTarget = (ms: number): void => { void data.store.mutateFocus({ op: 'timer.target', instanceId, targetMs: ms }).catch(() => {}) }
+  // A fresh timer starts at five minutes rather than 00:00: Start must mean something.
+  useEffect(() => {
+    if (!ready || readOnly) return
+    if ((slot?.targetMs ?? 0) > 0 || slot?.running === true || (slot?.accumulatedMs ?? 0) > 0) return
+    persistTarget(DEFAULT_TARGET_MS)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, readOnly, slot?.targetMs, slot?.running, slot?.accumulatedMs])
   return <div className="dsh-timer-wrap" aria-busy={ready ? undefined : 'true'}>
-    <TimerBody slot={value} label={props.config.label} t={t} readOnly={readOnly}
-      renaming={renaming} draftName={draftName} onDraftName={setDraftName}
-      onRenameStart={() => { if (!readOnly) { setDraftName(props.config.label); setRenaming(true) } }}
-      onRenameEnd={commitName} onCancelRename={() => { setDraftName(props.config.label); setRenaming(false) }}
+    <TimerBody elapsed={elapsed} targetMs={targetMs} running={running} readOnly={readOnly} t={t}
+      onPreview={setTargetMs} onCommit={persistTarget}
       onStart={() => { void data.store.mutateFocus({ op: 'timer.start', instanceId }).catch(() => {}) }}
       onPause={() => { void data.store.mutateFocus({ op: 'timer.pause', instanceId }).catch(() => {}) }}
       onReset={() => { void data.store.mutateFocus({ op: 'timer.reset', instanceId }).catch(() => {}) }}
-      onTarget={setTarget} />
+      onRestart={() => {
+        void data.store.mutateFocus({ op: 'timer.reset', instanceId })
+          .then(() => data.store.mutateFocus({ op: 'timer.start', instanceId }))
+          .catch(() => {})
+      }} />
     {!ready && !data.focusLoading && <button type="button" className="dsh-planner-retry"
       onClick={() => void data.store.refreshFocus()}>{t('planner.retry')}</button>}
   </div>
@@ -214,9 +235,9 @@ export function TimerContent(props: WidgetContentProps<TimerConfig>): ReactNode 
   const { t } = useBuiltin()
   const preview = props.preview
   if (preview !== undefined) {
-    return <TimerBody slot={PREVIEW_SLOT} label={props.config.label} t={t} readOnly
-      renaming={false} draftName="" onDraftName={() => {}} onRenameStart={() => {}} onRenameEnd={() => {}}
-      onCancelRename={() => {}} onStart={() => {}} onPause={() => {}} onReset={() => {}} onTarget={() => {}} />
+    const elapsed = timerElapsed(PREVIEW, Date.now())
+    return <TimerBody elapsed={elapsed} targetMs={PREVIEW.targetMs} running={false} readOnly t={t}
+      onPreview={() => {}} onCommit={() => {}} onStart={() => {}} onPause={() => {}} onReset={() => {}} onRestart={() => {}} />
   }
   return <ConnectedTimer {...props} />
 }
@@ -225,9 +246,10 @@ export function registerTimerWidget(registry: HomeWidgetRegistry, t: Translate):
   return registry.register<TimerConfig>({
     typeId: '@vlln/dsh-home:timer', apiVersion: 1,
     title: () => t('widget.timer.title'), description: () => t('gallery.description.timer'), source: '@vlln/dsh-home',
-    preview: { config: () => ({ label: t('timer.previewLabel') }) },
+    preview: { config: () => ({}) },
     sizing: { default: { w: 4, h: 4 }, supported: [{ w: 4, h: 4 }, { w: 4, h: 6 }] },
-    configVersion: 1, defaultConfig: defaultTimerConfig, validateConfig: (config): config is TimerConfig => validateTimerConfig(config),
+    configVersion: 2, defaultConfig: defaultTimerConfig, validateConfig: (config): config is TimerConfig => validateTimerConfig(config),
+    migrateConfig: migrateTimerConfig,
     Content: TimerContent,
   })
 }

@@ -21,7 +21,7 @@ const specs = [
   ['quick', { links: [{ kind: 'url', label: 'Design references', target: 'https://www.boardui.com/zh-hans' }, { kind: 'session', label: 'Review changes', target: 'sample-1' }] }, 0, 12, 4, 5],
   ['running', {}, 4, 12, 4, 6], ['areas', {}, 8, 12, 4, 5],
   ['todo', {}, 0, 17, 4, 8], ['plan', {}, 4, 17, 4, 8], ['calendar', {}, 8, 17, 4, 8],
-  ['habit', {}, 0, 25, 4, 6], ['timer', { label: 'Writing' }, 4, 25, 4, 4], ['active', { range: '7d' }, 8, 25, 4, 6],
+  ['habit', {}, 0, 25, 4, 6], ['timer', {}, 4, 25, 4, 4], ['active', { range: '7d' }, 8, 25, 4, 6],
 ]
 try {
   await context.request.get(url.href); backup = await api('workbench.get'); prefs = await api('prefs.get'); await writeFile(new URL('backup.json', out), JSON.stringify({ backup, prefs }, null, 2))
@@ -29,7 +29,7 @@ try {
   // default 12 columns instead of inheriting the width the station was last left at.
   await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
   const instances = specs.map(([name, config]) => ({ instanceId: `visual-${name}`, typeId: `@vlln/dsh-home:${name}`,
-    configVersion: name === 'quick' ? 2 : name === 'notes' || name === 'active' ? 2 : name === 'clock' ? 3 : 1, config }))
+    configVersion: name === 'quick' ? 2 : name === 'notes' || name === 'active' ? 2 : name === 'clock' ? 3 : name === 'timer' ? 2 : 1, config }))
   const positions = Object.fromEntries(specs.map(([name, , x, y, w, h]) => [`visual-${name}`, { x, y, w, h }]))
   await api('workbench.set', { instances: [...backup.instances, ...instances], layout: { ...backup.layout, instanceLayout: true, order: [...backup.layout.order, ...instances.map(i => i.instanceId)], hidden: backup.instances.map(i => i.instanceId), positions: { ...backup.layout.positions, 12: { ...backup.layout.positions?.[12], ...positions } } } })
   page = await context.newPage(); page.on('pageerror', error => errors.push(error.message))

@@ -131,24 +131,22 @@ export const plannerStyles = `
 
 /* ---------- 计时器 ---------- */
 .dsh-timer-wrap, .dsh-countdown-wrap, .dsh-picture-wrap, .dsh-quote-wrap { display:flex; flex-direction:column; height:100%; min-height:0; gap:6px; }
-.dsh-timer { flex:1 1 auto; display:grid; grid-template-columns:minmax(0,1fr) 92px; align-items:center; gap:10px; height:100%; min-height:0; }
-.dsh-timer-main { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:6px; min-width:0; }
-.dsh-timer-name { max-width:100%; padding:0; border:0; background:transparent; color:var(--dsw-alias-label-tertiary); font:inherit; font-size:11px; line-height:16px; cursor:text; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
-.dsh-timer-name:hover:not(:disabled) { color:var(--dsw-alias-label-secondary); text-decoration:underline dotted; text-underline-offset:2px; }
-.dsh-timer-name:disabled { cursor:default; }
-.dsh-timer-name-input { box-sizing:border-box; width:100%; max-width:100%; padding:0 0 1px; border:0; border-bottom:1px solid var(--dsw-alias-state-business-primary); background:transparent; color:var(--dsw-alias-label-primary); font:inherit; font-size:11px; line-height:16px; outline:none; }
-.dsh-timer-clock { color:var(--dsw-alias-label-primary); font-size:clamp(28px,15cqi,40px); font-weight:700; line-height:1.05; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
-.dsh-timer-clock[data-running="true"] { color:var(--dsw-alias-state-business-primary); }
-.dsh-timer-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-.dsh-timer-reached { padding:0 8px; border-radius:999px; background:var(--dsh-pill-amber); color:var(--dsw-alias-label-primary-foreground); font-size:10px; line-height:18px; font-weight:600; }
-/* 目标时长滚轮：拖、滚轮键或方向键；0 显示「不限」。 */
-.dsh-timer-wheel { align-self:stretch; display:flex; flex-direction:column; justify-content:center; height:66px; min-width:0; margin-block:auto; padding:0 2px; border-radius:var(--dsw-radius-md); background:var(--dsw-alias-interactive-bg-hover); cursor:ns-resize; touch-action:none; user-select:none; }
-.dsh-timer-wheel:hover:not([data-disabled="true"]) { background:var(--dsw-alias-interactive-bg-active); }
-.dsh-timer-wheel:focus-visible { outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)); outline-offset:2px; }
-.dsh-timer-wheel[data-disabled="true"] { opacity:.55; cursor:default; }
-.dsh-wheel-row { height:22px; line-height:22px; text-align:center; font-size:10px; color:var(--dsw-alias-label-caption); opacity:.6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.dsh-wheel-row[data-current="true"] { font-size:13px; font-weight:600; color:var(--dsw-alias-label-primary); opacity:1; font-variant-numeric:tabular-nums; }
-@container widget (max-width:300px) { .dsh-timer { grid-template-columns:minmax(0,1fr) 78px; } }
+.dsh-timer { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; height:100%; min-height:0; }
+/* 圆盘就是设置器：拖动圆环设定时长，中间是倒计时数字。 */
+.dsh-timer-dial { position:relative; flex:none; height:min(120px, calc(100% - 40px)); aspect-ratio:1; max-width:100%; border-radius:50%; touch-action:none; user-select:none; }
+.dsh-timer-dial[data-draggable="true"] { cursor:grab; }
+.dsh-timer-dial[data-draggable="true"]:active { cursor:grabbing; }
+.dsh-timer-dial:focus-visible { outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)); outline-offset:3px; }
+.dsh-timer-dial svg { display:block; width:100%; height:100%; overflow:visible; }
+.dsh-dial-track { fill:none; stroke:var(--dsw-alias-bg-skeleton); stroke-width:7; }
+.dsh-dial-arc { fill:none; stroke:var(--dsw-alias-state-business-primary); stroke-width:7; stroke-linecap:round; transition:stroke-dasharray 220ms linear; }
+.dsh-timer[data-reached="true"] .dsh-dial-arc { stroke:var(--dsh-pill-amber); }
+.dsh-dial-handle { fill:var(--dsw-alias-label-primary-foreground); stroke:var(--dsw-alias-state-business-primary); stroke-width:2.4; }
+.dsh-timer[data-reached="true"] .dsh-dial-handle { stroke:var(--dsh-pill-amber); }
+.dsh-timer-face { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; pointer-events:none; }
+.dsh-dial-value { color:var(--dsw-alias-label-primary); font-family:var(--dsw-font-family); font-size:22px; font-weight:650; line-height:1.1; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+.dsh-dial-note { color:var(--dsh-pill-amber); font-size:10px; line-height:12px; font-weight:600; }
+.dsh-timer-actions { display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; flex:none; }
 .dsh-timer-button { padding:4px 12px; border:0; border-radius:999px; background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-secondary); font-size:11px; line-height:18px; font-weight:600; cursor:pointer; }
 .dsh-timer-button:hover:not(:disabled) { background:var(--dsw-alias-interactive-bg-active); color:var(--dsw-alias-label-primary); }
 .dsh-timer-button:disabled { opacity:.45; cursor:default; }

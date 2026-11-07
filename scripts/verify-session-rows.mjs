@@ -26,7 +26,7 @@ const seeded = [
   { instanceId: 'status-demo', typeId: '@vlln/dsh-home:running', configVersion: 1, config: {}, rect: { x: 8, y: 0, w: 4, h: 6 } },
   { instanceId: 'areas-demo', typeId: '@vlln/dsh-home:areas', configVersion: 1, config: {}, rect: { x: 0, y: 4, w: 4, h: 4 } },
   { instanceId: 'notes-demo', typeId: '@vlln/dsh-home:notes', configVersion: 2, config: { text: '验证便笺\n\n第一行是标题，下面写正文。' }, rect: { x: 4, y: 4, w: 4, h: 6 } },
-  { instanceId: 'timer-demo', typeId: '@vlln/dsh-home:timer', configVersion: 1, config: { label: '写文档' }, rect: { x: 8, y: 6, w: 4, h: 4 } },
+  { instanceId: 'timer-demo', typeId: '@vlln/dsh-home:timer', configVersion: 2, config: {}, rect: { x: 8, y: 6, w: 4, h: 4 } },
 ]
 const ids = seeded.map(item => item.instanceId)
 // A synthetic ledger keeps the chart, the areas list and the tooltip deterministic: the
@@ -214,9 +214,10 @@ try {
   checks.push('便笺：原地编辑、无对话框、首行加粗、失焦即保存')
 
   // 7. Timer never sits on a loading line.
-  await timer().locator('.dsh-timer-clock').waitFor()
-  assert.doesNotMatch(await timer().innerText(), /(Reading|正在读取|Loading)/u, 'the timer shows a clock, not a loading line')
-  assert.match(await timer().locator('.dsh-timer-clock').innerText(), /^00:0\d$/u, 'the face starts at zero')
+  await timer().locator('.dsh-timer-dial').waitFor()
+  assert.doesNotMatch(await timer().innerText(), /(Reading|正在读取|Loading)/u, 'the timer shows a dial, not a loading line')
+  await page.waitForFunction(() => document.querySelector('[data-widget-id="timer-demo"] .dsh-dial-value')?.textContent?.trim() === '05:00', undefined, { timeout: 4000 })
+  assert.equal(await timer().locator('.dsh-timer-dial').getAttribute('role'), 'slider')
   for (let attempt = 0; attempt < 60 && await timer().getByRole('button', { name: /^(Start|开始)$/ }).isDisabled(); attempt++) await page.waitForTimeout(50)
   assert.equal(await timer().getByRole('button', { name: /^(Start|开始)$/ }).isEnabled(), true, 'start becomes available once the document is known')
   checks.push('计时器：不再停在 loading，控件的可用性随数据就绪切换')
