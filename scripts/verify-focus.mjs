@@ -75,7 +75,7 @@ try {
 
   // Pomodoro: 25:00, starts down, skip flips to the break phase.
   const pomodoro = widget('pomodoro-demo').locator('.dsh-pomodoro')
-  const pomodoroClock = pomodoro.locator('.dsh-pomodoro-clock')
+  const pomodoroClock = pomodoro.locator('.dsh-ring-value')
   assert.equal(await clockOf(pomodoroClock), '25:00')
   await pomodoro.getByRole('button', { name: /^(开始专注|Start focus)$/ }).click()
   await page.waitForTimeout(1500)

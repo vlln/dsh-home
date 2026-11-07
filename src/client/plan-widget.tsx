@@ -61,8 +61,8 @@ function PlanBody({ data, today, now, t, readOnly, showDone, onToggle, onUpdate,
   const nowClock = `${String(new Date(now).getHours()).padStart(2, '0')}:${String(new Date(now).getMinutes()).padStart(2, '0')}`
   const nowLabel = nowClock
 
-  const rowFor = (item: PlannerItem, showDay = false): ReactNode => <PlannerRow key={item.id} item={item} today={today} t={t}
-    readOnly={readOnly} editing={editingId === item.id} showDay={showDay}
+  const rowFor = (item: PlannerItem, showDay = false, showTime = false): ReactNode => <PlannerRow key={item.id} item={item} today={today} t={t}
+    readOnly={readOnly} editing={editingId === item.id} showDay={showDay} showTime={showTime}
     onToggle={() => onToggle?.(item)}
     onEdit={() => setEditingId(item.id)}
     onSave={fields => { onUpdate?.(item, fields); setEditingId(null) }}
@@ -99,7 +99,7 @@ function PlanBody({ data, today, now, t, readOnly, showDone, onToggle, onUpdate,
         : <ul className="dsh-plan-list">{timeline}</ul>}
       {free.length > 0 && <section className="dsh-todo-group" data-group="free">
         <h4 className="dsh-todo-heading">{t('plan.unscheduled')}<span className="dsh-todo-count">{free.length}</span></h4>
-        <ul className="dsh-todo-list">{free.map(item => rowFor(item, true))}</ul>
+        <ul className="dsh-todo-list">{free.map(item => rowFor(item, true, true))}</ul>
       </section>}
       {timed.length === 0 && free.length === 0 && <p className="dsh-plan-hint">{t('plan.emptyHint')}</p>}
       {adding && <ItemEditor t={t} initial={emptyDraft(today)} autoFocus

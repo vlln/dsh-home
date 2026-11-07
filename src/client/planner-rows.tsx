@@ -20,6 +20,8 @@ export interface PlannerRowProps {
   editing: boolean
   /** 是否显示日期徽标（今天视图里通常不显示）。 */
   showDay?: boolean
+  /** 是否显示时间（计划表的时间列已经写过时传 false）。 */
+  showTime?: boolean
   onToggle: () => void
   onEdit: () => void
   onSave: (fields: ItemFields) => void
@@ -27,7 +29,7 @@ export interface PlannerRowProps {
   onCancel: () => void
 }
 
-export function PlannerRow({ item, today, t, readOnly, editing, showDay = true, onToggle, onEdit, onSave, onDelete, onCancel }: PlannerRowProps): ReactNode {
+export function PlannerRow({ item, today, t, readOnly, editing, showDay = true, showTime = true, onToggle, onEdit, onSave, onDelete, onCancel }: PlannerRowProps): ReactNode {
   if (editing) {
     return <li className="dsh-todo-item" data-editing="true">
       <ItemEditor t={t} compact autoFocus
@@ -35,7 +37,7 @@ export function PlannerRow({ item, today, t, readOnly, editing, showDay = true, 
         onSave={onSave} onDelete={onDelete} onCancel={onCancel} />
     </li>
   }
-  const time = itemTime(item)
+  const time = showTime ? itemTime(item) : ''
   const dayLabel = showDay && item.day !== today ? itemDayLabel(item, today, t) : ''
   return <li className="dsh-todo-item" data-done={item.done ? 'true' : 'false'}>
     <button type="button" className="dsh-todo-check" role="checkbox" aria-checked={item.done}

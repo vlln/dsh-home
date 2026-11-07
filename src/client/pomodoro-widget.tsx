@@ -51,11 +51,22 @@ function PomodoroBody({ pomodoro, today, t, readOnly, onStart, onPause, onSkip, 
   const progress = snapshot.durationMs === 0 ? 0 : Math.min(1, (snapshot.durationMs - snapshot.remainingMs) / snapshot.durationMs)
   return <div className="dsh-pomodoro" data-phase={snapshot.phase}>
     <div className="dsh-pomodoro-head">
-      <span className="dsh-pomodoro-phase">{snapshot.phase === 'focus' ? t('pomodoro.focus') : t('pomodoro.break')}</span>
+      <span className="dsh-chip" data-tone={snapshot.phase === 'focus' ? 'business' : 'success'}>
+        {snapshot.phase === 'focus' ? t('pomodoro.focus') : t('pomodoro.break')}
+      </span>
       <span className="dsh-pomodoro-rounds">{t('pomodoro.rounds', { count: rounds })}</span>
     </div>
-    <span className="dsh-pomodoro-clock" role="timer" data-running={running ? 'true' : 'false'}>{formatClock(snapshot.remainingMs)}</span>
-    <span className="dsh-pomodoro-track" aria-hidden="true"><span className="dsh-pomodoro-fill" style={{ width: `${Math.round(progress * 100)}%` }} /></span>
+    <div className="dsh-ring" data-running={running ? 'true' : 'false'}>
+      <svg className="dsh-ring-svg" viewBox="0 0 120 120" aria-hidden="true">
+        <circle className="dsh-ring-track" cx="60" cy="60" r="52" />
+        <circle className="dsh-ring-progress" cx="60" cy="60" r="52" pathLength="1"
+          strokeDasharray={`${Math.max(0.001, progress).toFixed(4)} 1`} transform="rotate(-90 60 60)" />
+      </svg>
+      <div className="dsh-ring-inner">
+        <span className="dsh-ring-value" role="timer">{formatClock(snapshot.remainingMs)}</span>
+        <span className="dsh-ring-caption">{t(snapshot.phase === 'focus' ? 'pomodoro.focus' : 'pomodoro.break')}</span>
+      </div>
+    </div>
     <div className="dsh-timer-actions">
       <button type="button" className="dsh-timer-button dsh-timer-primary" disabled={readOnly} onClick={running ? onPause : onStart}>
         {running ? t('timer.pause') : t('pomodoro.start')}

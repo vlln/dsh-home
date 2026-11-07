@@ -56,6 +56,7 @@ function BalanceBody({ state, t, loading, onRefresh, readOnly }: {
   if (!state.available) {
     return <div className="dsh-balance" data-available="false">
       <span className="dsh-balance-label">{t('balance.title')}</span>
+      <span className="dsh-balance-amount">—</span>
       <span className="dsh-balance-reason">{t(reasonKey(state.reason))}</span>
       {!readOnly && <button type="button" className="dsh-timer-button" disabled={loading} onClick={onRefresh}>{t('balance.refresh')}</button>}
     </div>
@@ -99,11 +100,19 @@ function ConnectedBalance(props: WidgetContentProps<BalanceConfig>): ReactNode {
   if (failed) {
     return <div className="dsh-balance" data-available="false">
       <span className="dsh-balance-label">{t('balance.title')}</span>
+      <span className="dsh-balance-amount">—</span>
       <span className="dsh-balance-reason">{t('balance.unavailable')}</span>
       {!readOnly && <button type="button" className="dsh-timer-button" onClick={() => void load()}>{t('balance.refresh')}</button>}
     </div>
   }
-  if (state === null) return <p className="dsh-planner-loading" role="status">{loading ? t('balance.loading') : ''}</p>
+  if (state === null) {
+    return <div className="dsh-balance" data-available="false">
+      <span className="dsh-balance-label">{t('balance.title')}</span>
+      <span className="dsh-balance-amount">—</span>
+      <span className="dsh-balance-reason">{loading ? t('balance.loading') : t('balance.idle')}</span>
+      {!readOnly && <button type="button" className="dsh-timer-button" disabled={loading} onClick={() => void load()}>{t('balance.query')}</button>}
+    </div>
+  }
   return <BalanceBody state={state} t={t} loading={loading} readOnly={readOnly} onRefresh={() => void load()} />
 }
 

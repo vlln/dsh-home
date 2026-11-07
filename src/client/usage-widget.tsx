@@ -33,6 +33,24 @@ function percent(value: number): string {
   return `${Math.round(value * 100)}%`
 }
 
+function donutGradient(buckets: TokenBuckets): string {
+  const parts = [
+    { value: buckets.input, color: 'var(--dsw-alias-state-business-primary)' },
+    { value: buckets.cacheRead, color: 'var(--dsw-alias-state-success-primary)' },
+    { value: buckets.output, color: 'var(--dsw-alias-state-warn-primary)' },
+    { value: buckets.cacheWrite, color: 'var(--dsw-alias-state-idle-primary)' },
+  ].filter(part => part.value > 0)
+  const sum = parts.reduce((total, part) => total + part.value, 0)
+  if (sum === 0) return 'conic-gradient(color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent) 0 100%)'
+  let cursor = 0
+  const stops = parts.map(part => {
+    const from = cursor
+    cursor += (part.value / sum) * 100
+    return `${part.color} ${from.toFixed(2)}% ${cursor.toFixed(2)}%`
+  })
+  return `conic-gradient(from -90deg, ${stops.join(', ')})`
+}
+
 function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Translate; compact: boolean; week: boolean }): ReactNode {
   const today = bucketsOf(data.today)
   const total = totalTokens(today)
@@ -42,14 +60,21 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
   const peak = Math.max(1, ...days.map(day => totalTokens(bucketsOf(day))))
   return <div className="dsh-usage" data-compact={compact ? 'true' : 'false'}>
     <div className="dsh-usage-hero">
-      <span className="dsh-usage-total" aria-label={t('usage.today')}>{compactCount(total)}</span>
-      <span className="dsh-usage-unit">{t('usage.today')} · {t('usage.unit')}</span>
+      <div className="dsh-usage-figure">
+        <span className="dsh-usage-total" aria-label={t('usage.today')}>{compactCount(total)}</span>
+        <span className="dsh-usage-unit">{t('usage.today')} · {t('usage.unit')}</span>
+      </div>
+      <div className="dsh-usage-donut" style={{ background: donutGradient(today) }} role="img" aria-label={t('usage.split')}>
+        <span className="dsh-usage-donut-hole">
+          <b>{hit === null ? '—' : percent(hit)}</b>
+          <i>{t('usage.hit')}</i>
+        </span>
+      </div>
     </div>
-    <div className="dsh-usage-detail">
-      <span>{t('usage.input')} <b>{compactCount(today.input)}</b></span>
-      <span>{t('usage.output')} <b>{compactCount(today.output)}</b></span>
-      <span>{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></span>
-      {hit !== null && <span>{t('usage.hit')} <b>{percent(hit)}</b></span>}
+    <div className="dsh-usage-chips">
+      <span className="dsh-chip" data-tone="business"><i className="dsh-chip-dot" aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></span>
+      <span className="dsh-chip" data-tone="success"><i className="dsh-chip-dot" aria-hidden="true" />{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></span>
+      <span className="dsh-chip" data-tone="warn"><i className="dsh-chip-dot" aria-hidden="true" />{t('usage.output')} <b>{compactCount(today.output)}</b></span>
     </div>
     {week && <div className="dsh-usage-bars" role="img" aria-label={t('usage.week')}>
       {days.map(day => {
