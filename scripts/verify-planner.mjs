@@ -126,6 +126,21 @@ try {
   }, undefined, { timeout: 4000 })
   checks.push('habit: mark → streak 1 → unmark')
 
+  // Keyboard: Escape closes the inline editor without saving.
+  await widget('todo-demo').locator('.dsh-todo-item', { hasText: '回归：日历新建' }).locator('.dsh-todo-main').click()
+  await widget('todo-demo').locator('.dsh-item-editor').waitFor({ timeout: 4000 })
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(() => document.querySelectorAll('[data-widget-id="todo-demo"] .dsh-item-editor').length === 0, undefined, { timeout: 4000 })
+  assert.equal((await planData()).items.find(item => item.id === created.id)?.title, '回归：日历新建', 'Escape kept the title')
+  checks.push('keyboard: Escape closes the editor without saving')
+
+  // No declared shape overflows horizontally.
+  for (const id of ['todo-demo', 'plan-demo', 'calendar-demo', 'habit-demo']) {
+    const overflow = await widget(id).evaluate(node => node.scrollWidth - node.clientWidth)
+    assert(overflow <= 1, `${id} overflows by ${overflow}px`)
+  }
+  checks.push('layout: every card fits its declared column span')
+
   await page.reload()
   await openHome()
   await widget('todo-demo').locator('.dsh-todo-title', { hasText: '回归：日历新建' }).waitFor({ timeout: 8000 })
