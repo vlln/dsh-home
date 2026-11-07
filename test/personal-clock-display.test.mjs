@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { personalClockDisplayParts } from '../src/client/personal-clock-display.ts'
 import { defaultClockConfig, formatPersonalClock } from '../src/client/personal-model.ts'
 
-const config = { label: '', timeZone: 'America/Los_Angeles', hour12: false }
+const config = { timeZone: 'America/Los_Angeles' }
 
 test('medallion follows configured zone at local midnight, including the previous UTC year', () => {
   const before = personalClockDisplayParts(Date.UTC(2026, 0, 1, 7, 59), config, 'en-US')
@@ -20,19 +20,17 @@ test('medallion follows configured zone at local midnight, including the previou
 test('display parts retain Intl locale order, literals and localized day periods without parsing text', () => {
   const now = Date.UTC(2026, 9, 20, 10, 24)
   for (const locale of ['en-US', 'zh-CN', 'ar-EG', 'ja-JP', 'fr-FR']) {
-    for (const hour12 of [false, true]) {
-      const selected = { ...config, hour12 }
-      const parts = personalClockDisplayParts(now, selected, locale)
-      assert.deepEqual(parts.timeParts, new Intl.DateTimeFormat(locale, {
-        timeZone: selected.timeZone, hour: '2-digit', minute: '2-digit', hour12,
-      }).formatToParts(now))
-      // Some ICU versions use a narrow NBSP only in formatToParts day-period literals.
-      assert.equal(parts.timeParts.map(part => part.value).join('').replace(/\s/g, ' '),
-        formatPersonalClock(now, selected, locale).time.replace(/\s/g, ' '))
-      const date = new Intl.DateTimeFormat(locale, { timeZone: selected.timeZone, day: 'numeric', month: 'short' }).formatToParts(now)
-      assert.equal(parts.day, date.find(part => part.type === 'day').value)
-      assert.equal(parts.month, new Intl.DateTimeFormat(locale, { timeZone: selected.timeZone, month: 'short' }).format(now))
-    }
+    const selected = config
+    const parts = personalClockDisplayParts(now, selected, locale)
+    assert.deepEqual(parts.timeParts, new Intl.DateTimeFormat(locale, {
+      timeZone: selected.timeZone, hour: '2-digit', minute: '2-digit',
+    }).formatToParts(now))
+    // Some ICU versions use a narrow NBSP only in formatToParts day-period literals.
+    assert.equal(parts.timeParts.map(part => part.value).join('').replace(/\s/g, ' '),
+      formatPersonalClock(now, selected, locale).time.replace(/\s/g, ' '))
+    const date = new Intl.DateTimeFormat(locale, { timeZone: selected.timeZone, day: 'numeric', month: 'short' }).formatToParts(now)
+    assert.equal(parts.day, date.find(part => part.type === 'day').value)
+    assert.equal(parts.month, new Intl.DateTimeFormat(locale, { timeZone: selected.timeZone, month: 'short' }).format(now))
   }
 })
 

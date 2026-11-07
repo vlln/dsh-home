@@ -159,3 +159,30 @@ test('apply never mutates the document it was given', () => {
   apply(started, { op: 'focus.gc', instanceIds: [] })
   assert.deepEqual(started, frozen)
 })
+
+test('a timer target is a display-only setting stored in the same slot', () => {
+  const started = apply(emptyFocus(), { op: 'timer.start', instanceId: 'timer-1' })
+  const targeted = apply(started.doc, { op: 'timer.target', instanceId: 'timer-1', targetMs: 25 * 60_000 }, NOW + 60_000)
+  assert.equal(targeted.changed, true)
+  const timer = targeted.doc.timers['timer-1']
+  assert.equal(timer.targetMs, 1_500_000)
+  assert.equal(timer.startedAt, NOW, 'setting a target does not restart the timer')
+  assert.equal(timer.running, true)
+  assert.equal(timerElapsed(timer, NOW + 60_000), 60_000, 'elapsed time is untouched')
+  const same = apply(targeted.doc, { op: 'timer.target', instanceId: 'timer-1', targetMs: 1_500_000 }, NOW + 90_000)
+  assert.equal(same.changed, false, 'the same target is a no-op')
+  const fresh = apply(emptyFocus(), { op: 'timer.target', instanceId: 'timer-9', targetMs: 5 * 60_000 }).doc.timers['timer-9']
+  assert.deepEqual({ running: fresh.running, accumulatedMs: fresh.accumulatedMs, targetMs: fresh.targetMs },
+    { running: false, accumulatedMs: 0, targetMs: 300_000 })
+  for (const targetMs of [-1, 1.5, '300000', 13 * 3600_000, Number.NaN]) {
+    assert.throws(() => apply(started.doc, { op: 'timer.target', instanceId: 'timer-1', targetMs }), /targetMs/u, String(targetMs))
+  }
+})
+
+test('a stored timer without targetMs normalizes to zero', () => {
+  const doc = emptyFocus()
+  doc.timers['timer-1'] = { label: 'old', startedAt: null, accumulatedMs: 1000, running: false }
+  const normalized = normalizeFocus({ ...doc, version: 1 })
+  assert.equal(normalized.timers['timer-1'].targetMs, 0)
+  assert.equal(normalizeFocus({ ...doc, version: 1, timers: { 'timer-1': { ...doc.timers['timer-1'], targetMs: -5 } } }), null, 'garbage target rejects the document')
+})

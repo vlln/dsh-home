@@ -20,6 +20,9 @@ export const MAX_SLOTS = 64
 /** 计时器名称字数上限。 */
 export const MAX_LABEL = 80
 
+/** 计时器目标时长上限（12 小时）；0 表示不限。 */
+export const MAX_TARGET_MS = 12 * 3600_000
+
 /** 番茄钟默认时长。 */
 export const DEFAULT_FOCUS_MS = 25 * 60_000
 export const DEFAULT_BREAK_MS = 5 * 60_000
@@ -56,7 +59,7 @@ function strictKeys(raw, keys) {
 
 function normalizeTimer(raw) {
   if (!isRecord(raw)) throw focusError('timer must be an object', 'bad-timer')
-  strictKeys(raw, ['label', 'startedAt', 'accumulatedMs', 'running'])
+  strictKeys(raw, ['label', 'startedAt', 'accumulatedMs', 'running', 'targetMs'])
   const label = raw.label === undefined ? '' : typeof raw.label === 'string' ? raw.label.slice(0, MAX_LABEL) : (() => {
     throw focusError('timer label must be a string', 'bad-timer')
   })()
@@ -71,8 +74,13 @@ function normalizeTimer(raw) {
       ? raw.accumulatedMs
       : (() => { throw focusError('timer accumulatedMs must be a non-negative integer', 'bad-timer') })()
   if (raw.running !== undefined && typeof raw.running !== 'boolean') throw focusError('timer running must be a boolean', 'bad-timer')
+  const targetMs = raw.targetMs === undefined
+    ? 0
+    : typeof raw.targetMs === 'number' && Number.isSafeInteger(raw.targetMs) && raw.targetMs >= 0 && raw.targetMs <= MAX_TARGET_MS
+      ? raw.targetMs
+      : (() => { throw focusError('timer targetMs must be a non-negative integer', 'bad-timer') })()
   const running = startedAt !== null && raw.running !== false
-  return { label, startedAt: running ? startedAt : null, accumulatedMs, running }
+  return { label, startedAt: running ? startedAt : null, accumulatedMs, running, targetMs }
 }
 
 function normalizeCompleted(raw) {
@@ -227,7 +235,7 @@ export function applyFocusOp(doc, op, { now = Date.now() } = {}) {
       const current = timers[id]
       if (Object.keys(timers).length >= MAX_SLOTS && current === undefined) throw focusError(`at most ${MAX_SLOTS} timers`, 'too-many-slots')
       if (current !== undefined && current.running) return result(base, false)
-      const slot = current ?? { label: '', startedAt: null, accumulatedMs: 0, running: false }
+      const slot = current ?? { label: '', startedAt: null, accumulatedMs: 0, running: false, targetMs: 0 }
       timers[id] = { ...slot, startedAt: now, running: true }
       return result(base, true)
     }
@@ -245,10 +253,21 @@ export function applyFocusOp(doc, op, { now = Date.now() } = {}) {
       timers[id] = { ...current, accumulatedMs: 0, startedAt: null, running: false }
       return result(base, true)
     }
+    case 'timer.target': {
+      // 目标时长只影响显示（还剩多久），不重置已累计的时间。
+      const id = slotId(op.instanceId)
+      if (typeof op.targetMs !== 'number' || !Number.isSafeInteger(op.targetMs) || op.targetMs < 0 || op.targetMs > MAX_TARGET_MS) {
+        throw focusError('targetMs must be a non-negative integer within 12 hours', 'bad-target')
+      }
+      const current = timers[id] ?? { label: '', startedAt: null, accumulatedMs: 0, running: false, targetMs: 0 }
+      if (current.targetMs === op.targetMs) return result(base, false)
+      timers[id] = { ...current, targetMs: op.targetMs }
+      return result(base, true)
+    }
     case 'timer.rename': {
       const id = slotId(op.instanceId)
       const label = typeof op.label === 'string' ? op.label.trim().slice(0, MAX_LABEL) : ''
-      const current = timers[id] ?? { label: '', startedAt: null, accumulatedMs: 0, running: false }
+      const current = timers[id] ?? { label: '', startedAt: null, accumulatedMs: 0, running: false, targetMs: 0 }
       timers[id] = { ...current, label }
       return result(base, true)
     }

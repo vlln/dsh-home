@@ -40,6 +40,8 @@ try {
   await context.request.get(url.href)
   backup = await api('workbench.get'); prefs = await api('prefs.get')
   await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null, libraryPosition: null } })
+  // The timer slot is per instance id and survives workbench restores; start it clean.
+  await api('focus.apply', { operation: { op: 'timer.clear', instanceId: 'timer-demo' } })
   await api('workbench.set', {
     instances: [...backup.instances.filter(item => !instances.some(demo => demo.instanceId === item.instanceId)), ...instances],
     layout: { ...backup.layout, instanceLayout: true, hidden: backup.instances.map(item => item.instanceId),
@@ -53,7 +55,8 @@ try {
   // Timer: starts at 00:00, ticks, pauses and survives a reload.
   const timerClock = widget('timer-demo').locator('.dsh-timer-clock')
   assert.equal(await clockOf(timerClock), '00:00')
-  assert.equal(await widget('timer-demo').locator('.dsh-timer-label').textContent(), '回归计时')
+  assert.equal(await widget('timer-demo').locator('.dsh-timer-name').textContent(), '回归计时')
+  assert.match(await widget('timer-demo').locator('.dsh-timer-wheel [data-current="true"]').textContent(), /^(None|不限)$/u, 'the wheel starts at no target')
   await widget('timer-demo').getByRole('button', { name: /^(开始|Start)$/ }).click()
   await page.waitForTimeout(1600)
   const ticking = await clockOf(timerClock)
@@ -72,6 +75,39 @@ try {
   await widget('timer-demo').getByRole('button', { name: /^(归零|Reset)$/ }).click()
   await page.waitForFunction(() => document.querySelector('[data-widget-id="timer-demo"] .dsh-timer-clock')?.textContent?.trim() === '00:00', undefined, { timeout: 4000 })
   checks.push('timer: start → tick → pause → reload keeps the value → reset')
+
+  // The wheel is the only target control: drag/keys, no dialog, no modal.
+  assert.equal(await widget('timer-demo').locator('.dsh-widget-config-modal').count(), 0, 'no settings dialog')
+  const wheel = widget('timer-demo').locator('.dsh-timer-wheel')
+  await wheel.focus()
+  await wheel.press('ArrowUp')
+  await page.waitForFunction(() => (document.querySelector('[data-widget-id="timer-demo"] .dsh-timer-wheel')?.getAttribute('aria-valuenow') ?? '0') === '5', undefined, { timeout: 4000 })
+  await page.waitForFunction(() => document.querySelector('[data-widget-id="timer-demo"] .dsh-timer-clock')?.textContent?.trim() === '05:00', undefined, { timeout: 4000 })
+  assert.equal((await focusDoc()).timers['timer-demo'].targetMs, 5 * 60_000, 'the target is stored in the timer slot')
+  // Dragging the wheel (the gesture the card is designed around) moves two steps.
+  await wheel.press('Home')
+  await page.waitForFunction(() => document.querySelector('[data-widget-id="timer-demo"] .dsh-timer-wheel')?.getAttribute('aria-valuenow') === '0', undefined, { timeout: 4000 })
+  const wheelBox = await wheel.boundingBox()
+  assert(wheelBox !== null)
+  await page.mouse.move(wheelBox.x + wheelBox.width / 2, wheelBox.y + 40)
+  await page.mouse.down()
+  await page.mouse.move(wheelBox.x + wheelBox.width / 2, wheelBox.y, { steps: 6 })
+  await page.mouse.up()
+  await page.waitForFunction(() => document.querySelector('[data-widget-id="timer-demo"] .dsh-timer-wheel')?.getAttribute('aria-valuenow') === '10', undefined, { timeout: 4000 })
+  assert.equal((await focusDoc()).timers['timer-demo'].targetMs, 10 * 60_000, 'a 40px drag moves two steps')
+  await wheel.press('Home')
+  await page.waitForFunction(() => document.querySelector('[data-widget-id="timer-demo"] .dsh-timer-clock')?.textContent?.trim() === '00:00', undefined, { timeout: 4000 })
+  assert.equal((await focusDoc()).timers['timer-demo'].targetMs, 0, 'Home clears the target')
+  // Rename in place: click the name, type, Enter.
+  await widget('timer-demo').locator('.dsh-timer-name').click()
+  const nameInput = widget('timer-demo').locator('.dsh-timer-name-input')
+  await nameInput.waitFor()
+  await nameInput.fill('改过的名字')
+  await nameInput.press('Enter')
+  for (let attempt = 0; attempt < 60 && (await api('workbench.get')).instances.find(item => item.instanceId === 'timer-demo')?.config?.label !== '改过的名字'; attempt++) await page.waitForTimeout(50)
+  assert.equal((await api('workbench.get')).instances.find(item => item.instanceId === 'timer-demo')?.config?.label, '改过的名字')
+  await widget('timer-demo').locator('.dsh-timer-name', { hasText: '改过的名字' }).waitFor()
+  checks.push('timer: 目标时长滚轮（方向键/拖动）、改名就地完成，全程无弹窗')
 
   // Pomodoro: 25:00, starts down, skip flips to the break phase.
   const pomodoro = widget('pomodoro-demo').locator('.dsh-pomodoro')

@@ -1,11 +1,22 @@
 /** Pure per-instance personal widget models; no store, DOM, or React dependencies. */
 /** v2: 便笺就是一个文本块，首行即标题；旧配置里的 title 合并进第一行。 */
 export type NotesConfig = { text: string }
-export type ClockConfig = { label: string; timeZone: string; hour12: boolean }
+/** v3：时钟只剩时区一个选项；标题与 12/24 制都已移除。 */
+export type ClockConfig = { timeZone: string }
 
 export const PERSONAL_CONFIG_MAX_BYTES = 8 * 1024
 export const PERSONAL_LABEL_MAX_LENGTH = 120
 export const CLOCK_ZONE_MAX_LENGTH = 100
+
+/** 下拉里提供的时区：常见的几档 + 浏览器时区；用户手改的时区也会作为一项保留。 */
+export const CLOCK_ZONES: readonly string[] = [
+  'UTC',
+  'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Taipei', 'Asia/Tokyo', 'Asia/Seoul',
+  'Asia/Singapore', 'Asia/Bangkok', 'Asia/Kolkata', 'Asia/Dubai',
+  'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Europe/Madrid', 'Europe/Moscow',
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Sao_Paulo',
+  'Australia/Sydney', 'Australia/Perth', 'Pacific/Auckland', 'Pacific/Honolulu',
+]
 const encoder = new TextEncoder()
 
 /** Count serialized UTF-8, including JSON escaping and property names, not JS code units. */
@@ -26,7 +37,7 @@ function fields(value: unknown, names: readonly string[]): value is Record<strin
 }
 
 export function defaultNotesConfig(): NotesConfig { return { text: '' } }
-export function defaultClockConfig(): ClockConfig { return { label: '', timeZone: '', hour12: false } }
+export function defaultClockConfig(): ClockConfig { return { timeZone: '' } }
 
 export function validateNotesConfig(config: unknown): config is NotesConfig {
   if (!fields(config, ['text'])) return false
@@ -53,17 +64,24 @@ export function isValidTimeZone(zone: unknown): zone is string {
 }
 
 export function validateClockConfig(config: unknown): config is ClockConfig {
-  return fields(config, ['label', 'timeZone', 'hour12'])
-    && typeof config.label === 'string' && config.label.length <= PERSONAL_LABEL_MAX_LENGTH
-    && typeof config.hour12 === 'boolean' && isValidTimeZone(config.timeZone)
+  return fields(config, ['timeZone']) && isValidTimeZone(config.timeZone)
     && personalConfigBytes(config as ClockConfig) <= PERSONAL_CONFIG_MAX_BYTES
+}
+
+/** v2 → v3：丢掉标题与 12/24 制，只保留时区；非法时区退回浏览器时区。 */
+export function migrateClockConfig(config: unknown, fromVersion: number): ClockConfig {
+  if (fromVersion >= 3) return validateClockConfig(config) ? config : defaultClockConfig()
+  const zone = config !== null && typeof config === 'object' && !Array.isArray(config)
+    ? (config as { timeZone?: unknown }).timeZone : undefined
+  return { timeZone: isValidTimeZone(zone) ? zone : '' }
 }
 
 /** The caller supplies an explicit translated locale tag, never language guessed from prose. */
 export function formatPersonalClock(now: number, config: ClockConfig, locale: string): { time: string; date: string } {
   const zone = config.timeZone === '' ? {} : { timeZone: config.timeZone }
   return {
-    time: new Intl.DateTimeFormat(locale, { ...zone, hour: '2-digit', minute: '2-digit', hour12: config.hour12 }).format(now),
+    // No hour12 override: the locale owns the hour cycle (en-US 12h, zh-CN 24h).
+    time: new Intl.DateTimeFormat(locale, { ...zone, hour: '2-digit', minute: '2-digit' }).format(now),
     date: new Intl.DateTimeFormat(locale, { ...zone, year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(now),
   }
 }

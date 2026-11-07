@@ -16,7 +16,7 @@ const fixture = new Function('PREVIEW_NOW', `${producer}; return builtinPreviewD
 const today = new Date().toISOString().slice(0, 10)
 const activity = { generatedAt: Date.now(), timeZone: 'America/Los_Angeles', today, available: true, complete: true, failed: 0, scanError: false, scanning: false, progress: { done: 3, total: 3 }, sessions: [], matchedSessions: 0, workspaces: [], days: Array.from({ length: 365 }, (_, n) => ({ key: new Date(Date.parse(today) - (364 - n) * 86400000).toISOString().slice(0, 10), messages: n % 5 === 0 ? 0 : (n * 7) % 19, sessions: n % 4 })) }
 const specs = [
-  ['recent', {}, 0, 0, 8, 6], ['clock', { label: 'Local time', timeZone: '', hour12: false }, 8, 0, 4, 4],
+  ['recent', {}, 0, 0, 8, 6], ['clock', { timeZone: '' }, 8, 0, 4, 4],
   ['activity', { cwd: '', range: 'quarter' }, 0, 6, 8, 6], ['notes', { text: 'Pick up from here\n\nKeep the interface calm and useful. Finish the release regressions, then review the compact widget hierarchy.' }, 8, 6, 4, 6],
   ['quick', { links: [{ kind: 'url', label: 'Design references', target: 'https://www.boardui.com/zh-hans' }, { kind: 'session', label: 'Review changes', target: 'sample-1' }] }, 0, 12, 4, 5],
   ['running', {}, 4, 12, 4, 6], ['areas', {}, 8, 12, 4, 5],
@@ -29,7 +29,7 @@ try {
   // default 12 columns instead of inheriting the width the station was last left at.
   await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
   const instances = specs.map(([name, config]) => ({ instanceId: `visual-${name}`, typeId: `@vlln/dsh-home:${name}`,
-    configVersion: name === 'quick' ? 2 : name === 'notes' || name === 'active' ? 2 : 1, config }))
+    configVersion: name === 'quick' ? 2 : name === 'notes' || name === 'active' ? 2 : name === 'clock' ? 3 : 1, config }))
   const positions = Object.fromEntries(specs.map(([name, , x, y, w, h]) => [`visual-${name}`, { x, y, w, h }]))
   await api('workbench.set', { instances: [...backup.instances, ...instances], layout: { ...backup.layout, instanceLayout: true, order: [...backup.layout.order, ...instances.map(i => i.instanceId)], hidden: backup.instances.map(i => i.instanceId), positions: { ...backup.layout.positions, 12: { ...backup.layout.positions?.[12], ...positions } } } })
   page = await context.newPage(); page.on('pageerror', error => errors.push(error.message))
@@ -74,7 +74,13 @@ try {
     checks.push(`${width}px: no horizontal page overflow; readable headings and square heatmap cells`)
     if (width === 1600) {
       await page.locator('[data-widget-id="visual-notes"] .dsh-note').click(); await page.locator('[data-widget-id="visual-notes"] .dsh-note-input').waitFor(); await page.keyboard.press('Escape'); await page.locator('[data-widget-id="visual-notes"] .dsh-note-input').blur()
-      const clockButton = page.locator('[data-widget-id="visual-clock"]').getByRole('button', { name: /^(Time options|时间选项)$/ }); await clockButton.click(); await page.locator('.dsh-widget-config-modal').waitFor(); await page.keyboard.press('Escape')
+      const zone = page.locator('[data-widget-id="visual-clock"] .dsh-clock-zone')
+      assert.equal(await zone.count(), 1, 'the clock offers its zone as a select')
+      await zone.selectOption('Asia/Tokyo')
+      await page.waitForFunction(() => document.querySelector('[data-widget-id="visual-clock"] .dsh-clock-zone')?.value === 'Asia/Tokyo')
+      const clockConfig = await (async () => (await api('workbench.get')).instances.find(item => item.instanceId === 'visual-clock')?.config)()
+      assert.equal(clockConfig?.timeZone, 'Asia/Tokyo', 'the chosen zone is saved')
+      await zone.selectOption('')
       const footprintButton = page.locator('[data-widget-id="visual-activity"]').getByRole('button', { name: /^(Filter range|筛选范围)$/ }); await footprintButton.click(); await page.locator('.dsh-widget-config-modal').waitFor(); await page.keyboard.press('Escape')
       const recentViewport = page.locator('[data-widget-id="visual-recent"] .dsh-widget-viewport')
       const rows = () => page.locator('[data-widget-id="visual-recent"] .dsh-session-row').count()

@@ -378,9 +378,11 @@ export const CSS = `
 .dsh-active-toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .dsh-active-range { height: 22px; padding: 0 10px; font-size: 11px; line-height: 22px; }
 .dsh-active-col { outline: none; cursor: default; }
-.dsh-active-col:is(:hover, :focus-visible) .dsh-active-bar { opacity: 1; box-shadow: inset 0 0 0 1px var(--dsw-alias-label-secondary); }
+.dsh-active-col:is(:hover, :focus-visible) .dsh-active-bar:not([data-zero="true"]) { opacity: 1; box-shadow: inset 0 0 0 1px var(--dsw-alias-label-secondary); }
 .dsh-active-col:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; border-radius: var(--dsw-radius-xs); }
-.dsh-active-bar[data-zero="true"] { opacity: .25; }
+.dsh-home-widget .dsh-active .dsh-active-bar[data-zero="true"] { opacity: 0; }
+/* 零活动的那一天不画柱子，也不留底色：只剩可悬停的列与日期标签。 */
+.dsh-home-widget .dsh-active .dsh-rhythm-col, .dsh-home-widget .dsh-active .dsh-rhythm-col:hover { background: transparent; }
 .dsh-active-hero { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .dsh-active-bars { flex: 1 1 auto; min-height: 40px; max-height: 72px; }
 .dsh-active-days { margin-top: -2px; }

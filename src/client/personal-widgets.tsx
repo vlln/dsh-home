@@ -1,25 +1,16 @@
 /** Personal builtins use only the public widget registry; the host owns drafts and persistence. */
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import {
-  IconClockOutlineRegular, IconEditOutlineRegular, SettingsValueField, Switch,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconClockOutlineRegular, IconEditOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useBuiltin } from './builtin-registration.tsx'
 import type { Translate } from './format.ts'
-import type { HomeWidgets, WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
-import { WidgetConfigEditor } from './widget-settings.tsx'
+import type { HomeWidgets, WidgetContentProps } from './widget-contract.ts'
 import {
-  CLOCK_ZONE_MAX_LENGTH, PERSONAL_LABEL_MAX_LENGTH,
-  defaultClockConfig, defaultNotesConfig, formatPersonalClock, isValidTimeZone, migrateNotesConfig,
-  startMinuteClock, validateClockConfig, validateNotesConfig,
+  CLOCK_ZONES, defaultClockConfig, defaultNotesConfig, formatPersonalClock, migrateClockConfig,
+  migrateNotesConfig, startMinuteClock, validateClockConfig, validateNotesConfig,
 } from './personal-model.ts'
 import type { ClockConfig, NotesConfig } from './personal-model.ts'
 import { personalClockDisplayParts } from './personal-clock-display.ts'
-
-function textFieldLabels(t: Translate) {
-  // No composition-layer override exists for widget instance drafts; hide that badge/reset row.
-  return { overridden: false, overriddenLabel: t('personal.edited'), resetLabel: t('personal.reset'), disabled: false }
-}
 
 export function NotesContent(props: WidgetContentProps<NotesConfig>): ReactNode {
   const { config, preview, editing, saveConfig } = props
@@ -66,7 +57,7 @@ export function NotesContent(props: WidgetContentProps<NotesConfig>): ReactNode 
 }
 
 export function ClockContent(props: WidgetContentProps<ClockConfig>): ReactNode {
-  const { config, visible, preview } = props
+  const { config, visible, preview, editing, saveConfig } = props
   const { t, state } = useBuiltin()
   const [liveNow, setNow] = useState(() => preview ? state.now : Date.now())
   const now = preview ? state.now : liveNow
@@ -86,8 +77,11 @@ export function ClockContent(props: WidgetContentProps<ClockConfig>): ReactNode 
   const locale = t('clock.dateLocale')
   const { time, date } = formatPersonalClock(now, config, locale)
   const { timeParts, day, month } = personalClockDisplayParts(now, config, locale)
-  return <div className="dsh-personal-clock" data-hour12={config.hour12}>
-    {config.label !== '' && <h3 className="dsh-personal-label">{config.label}</h3>}
+  const editable = saveConfig !== undefined && preview === undefined && !editing
+  const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  const zones = config.timeZone !== '' && !CLOCK_ZONES.includes(config.timeZone)
+    ? [config.timeZone, ...CLOCK_ZONES] : CLOCK_ZONES
+  return <div className="dsh-personal-clock">
     <div className="dsh-personal-clock-display">
       <time className="dsh-personal-clock-time" dateTime={new Date(now).toISOString()} aria-label={time}>
         {timeParts.map((part, index) => <span key={index} data-part={part.type} aria-hidden="true">{part.value}</span>)}
@@ -97,39 +91,14 @@ export function ClockContent(props: WidgetContentProps<ClockConfig>): ReactNode 
         <span className="dsh-personal-clock-month" aria-hidden="true">{month}</span>
       </div>
     </div>
-    <p className="dsh-personal-clock-full-date">{date}</p>
-    <div className="dsh-personal-clock-meta">
-      <p className="dsh-personal-hint">{config.timeZone || t('clock.browserZone')}</p>
-      <WidgetConfigEditor t={t} widgetProps={props} title={t('widget.clock.title')} label={t('clock.edit')}
-        Fields={ClockSettings} validate={validateClockConfig} />
-    </div>
-  </div>
-}
-
-export function ClockSettings({ config, onConfigChange }: WidgetSettingsProps<ClockConfig>): ReactNode {
-  const { t } = useBuiltin()
-  const id = useId()
-  const [labelTooLong, setLabelTooLong] = useState(false)
-  const [zoneTooLong, setZoneTooLong] = useState(false)
-  return <div className="dsh-personal-settings">
-    <SettingsValueField {...textFieldLabels(t)} id={`${id}-label`} label={t('clock.label')}
-      text={config.label} invalid={labelTooLong} invalidLabel={t('personal.labelLimit')} hint={t('personal.labelLimit')}
-      onEdit={label => {
-        setLabelTooLong(label.length > PERSONAL_LABEL_MAX_LENGTH)
-        if (label.length <= PERSONAL_LABEL_MAX_LENGTH) onConfigChange({ ...config, label })
-      }} onReset={() => { setLabelTooLong(false); onConfigChange({ ...config, label: '' }) }} />
-    <SettingsValueField {...textFieldLabels(t)} id={`${id}-zone`} label={t('clock.timeZone')}
-      text={config.timeZone} invalid={zoneTooLong || !isValidTimeZone(config.timeZone)} invalidLabel={t('clock.zoneInvalid')}
-      placeholder="Asia/Shanghai" hint={t('clock.zoneHint')}
-      onEdit={timeZone => {
-        // Invalid intermediate zone text stays in the host-owned draft; Save validation rejects it.
-        setZoneTooLong(timeZone.length > CLOCK_ZONE_MAX_LENGTH)
-        if (timeZone.length <= CLOCK_ZONE_MAX_LENGTH) onConfigChange({ ...config, timeZone })
-      }} onReset={() => { setZoneTooLong(false); onConfigChange({ ...config, timeZone: '' }) }} />
-    <div className="dsh-personal-switch-row">
-      <span>{t('clock.hour12')}</span>
-      <Switch checked={config.hour12} label={t('clock.hour12')}
-        onChange={hour12 => onConfigChange({ ...config, hour12 })} />
+    <div className="dsh-personal-clock-zone">
+      {/* One option, chosen from a list: no typing, no dialog, no editable heading. */}
+      <select className="dsh-clock-zone" aria-label={t('clock.timeZone')} title={t('clock.timeZone')}
+        value={config.timeZone} disabled={!editable}
+        onChange={event => { void saveConfig?.({ timeZone: event.target.value }) }}>
+        <option value="">{t('clock.browserZone', { zone: browserZone })}</option>
+        {zones.map(zone => <option key={zone} value={zone}>{zone}</option>)}
+      </select>
     </div>
   </div>
 }
@@ -146,10 +115,10 @@ export function registerPersonalWidgets(registry: HomeWidgets, t: Translate): ()
       defaultConfig: defaultNotesConfig, validateConfig: validateNotesConfig, migrateConfig: migrateNotesConfig, Content: NotesContent,
     }))
     disposers.push(registry.register<ClockConfig>({
-      typeId: '@vlln/dsh-home:clock', apiVersion: 1, configVersion: 1, source: '@vlln/dsh-home',
+      typeId: '@vlln/dsh-home:clock', apiVersion: 1, configVersion: 3, source: '@vlln/dsh-home',
       title: () => t('widget.clock.title'), description: () => t('widget.clock.description'), icon: IconClockOutlineRegular,
-      preview: { config: () => ({ ...defaultClockConfig(), timeZone: 'UTC' }), data: { now: Date.UTC(2026, 9, 20, 10, 24) } }, sizing: { default: {w:4,h:4}, supported: [{w:4,h:4}] },
-      defaultConfig: defaultClockConfig, validateConfig: validateClockConfig, Content: ClockContent,
+      preview: { config: () => ({ timeZone: 'UTC' }), data: { now: Date.UTC(2026, 9, 20, 10, 24) } }, sizing: { default: {w:4,h:4}, supported: [{w:4,h:4}] },
+      defaultConfig: defaultClockConfig, validateConfig: validateClockConfig, migrateConfig: migrateClockConfig, Content: ClockContent,
     }))
   } catch (error) { dispose(); throw error }
   return dispose

@@ -10,8 +10,9 @@ export function personalClockDisplayParts(now: number, config: ClockConfig, loca
     ...zone, day: 'numeric', month: 'short',
   }).formatToParts(now)
   return {
+    // The locale owns the hour cycle; there is no 12/24 setting to honour.
     timeParts: new Intl.DateTimeFormat(locale, {
-      ...zone, hour: '2-digit', minute: '2-digit', hour12: config.hour12,
+      ...zone, hour: '2-digit', minute: '2-digit',
     }).formatToParts(now),
     day: dateParts.find(part => part.type === 'day')?.value ?? '',
     // A standalone month retains locale-owned units (for example zh-CN's 月)

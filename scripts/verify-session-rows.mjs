@@ -34,6 +34,8 @@ const ids = seeded.map(item => item.instanceId)
 const source = await readFile(new URL('../src/client/builtin-registration.tsx', import.meta.url), 'utf8')
 const producer = stripTypeScriptTypes(source.slice(source.indexOf('export function builtinPreviewData('), source.indexOf('/** An isolated runtime')).replace('export function', 'function'), { mode: 'strip' })
 const ledger = new Function('PREVIEW_NOW', `${producer}; return builtinPreviewData`)(Date.now())(key => key).ledger
+// Force one idle day inside the default 7-day window: its column must stay untinted.
+ledger.days[10] = { ...ledger.days[10], activeMs: 0, runMs: 0, turns: 0, sessions: 0 }
 const active = () => page.locator('[data-widget-id="active-demo"]')
 const status = () => page.locator('[data-widget-id="status-demo"]')
 const notes = () => page.locator('[data-widget-id="notes-demo"]')
@@ -50,6 +52,7 @@ try {
   backup = await api('workbench.get'); prefs = await api('prefs.get')
   await writeFile(new URL('backup.json', out), JSON.stringify({ backup, prefs }, null, 2))
   await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null, libraryPosition: null } })
+  await api('focus.apply', { operation: { op: 'timer.clear', instanceId: 'timer-demo' } })
   await api('workbench.set', {
     instances: [...backup.instances.filter(item => !ids.includes(item.instanceId)), ...seeded.map(({ rect, ...item }) => item)],
     layout: { ...backup.layout, instanceLayout: true, hidden: backup.instances.map(item => item.instanceId),
@@ -161,6 +164,12 @@ try {
   checks.push('会话行：状态点在最左、工作区胶囊、纯文字标题、时间在右')
   await recent.screenshot({ path: new URL('recent-rows.png', out).pathname, animations: 'disabled' })
 
+  // A day with no activity draws no bar and no tinted column: no green sliver.
+  const zeroBar = active().locator('.dsh-active-bar[data-zero="true"]').first()
+  assert.equal(await zeroBar.count() >= 1, true, 'the fixture includes an idle day')
+  assert.equal(await zeroBar.evaluate(el => getComputedStyle(el).opacity), '0', 'an idle day draws no bar')
+  assert.equal(await zeroBar.evaluate(el => getComputedStyle(el.parentElement).backgroundColor), 'rgba(0, 0, 0, 0)', 'an idle day has no column tint')
+
   // 5. Gallery previews are the real card at its real size, not a pinned illustration.
   const previews = await page.locator('.dsh-directory-item').evaluateAll(tiles => tiles.map(tile => {
     const body = tile.querySelector('.dsh-card-preview-body')
@@ -219,6 +228,7 @@ try {
   await page?.screenshot({ path: new URL('failure.png', out).pathname }).catch(() => {})
 } finally {
   await page?.close()
+  await api('focus.apply', { operation: { op: 'timer.clear', instanceId: 'timer-demo' } }).catch(() => {})
   if (backup) await api('workbench.set', { layout: backup.layout, instances: backup.instances })
   if (prefs) await api('prefs.set', { prefs: prefs.prefs })
   await browser.close()

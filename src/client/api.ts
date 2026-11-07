@@ -284,6 +284,8 @@ export interface FocusTimer {
   startedAt: number | null
   accumulatedMs: number
   running: boolean
+  /** 0 = 不限；否则到点后表盘停在 00:00。 */
+  targetMs: number
 }
 
 /** 一个番茄钟槽。 */
@@ -308,6 +310,7 @@ export interface FocusDoc {
 export type FocusOperation =
   | { op: 'timer.start' | 'timer.pause' | 'timer.reset' | 'timer.clear'; instanceId: string }
   | { op: 'timer.rename'; instanceId: string; label: string }
+  | { op: 'timer.target'; instanceId: string; targetMs: number }
   | { op: 'pomodoro.start' | 'pomodoro.pause' | 'pomodoro.settle' | 'pomodoro.skip' | 'pomodoro.reset' | 'pomodoro.clear'; instanceId: string }
   | { op: 'focus.gc'; instanceIds: string[] }
 

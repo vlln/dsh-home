@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import {
   PERSONAL_CONFIG_MAX_BYTES,
   defaultClockConfig, defaultNotesConfig, formatPersonalClock, isValidTimeZone,
-  migrateNotesConfig, millisecondsToNextMinute, personalConfigBytes, startMinuteClock,
+  migrateClockConfig, migrateNotesConfig, millisecondsToNextMinute, personalConfigBytes, startMinuteClock,
   validateClockConfig, validateNotesConfig,
 } from '../src/client/personal-model.ts'
 import { enPersonal, zhPersonal } from '../src/client/personal-locales.ts'
@@ -52,33 +52,40 @@ test('notes reject wrong schema and accessors; v1 titles migrate into the first 
   assert.deepEqual(migrateNotesConfig({ text: 3 }, 2), { text: '' })
 })
 
-test('clock validates Intl-supported zones and treats only the empty string as browser zone', () => {
+test('clock takes exactly one time zone and treats only the empty string as browser zone', () => {
   for (const zone of ['', 'UTC', 'Asia/Shanghai', 'America/Los_Angeles', 'Europe/London', 'Asia/Kathmandu']) {
     assert.equal(isValidTimeZone(zone), true, zone)
-    assert.equal(validateClockConfig({ label: '', timeZone: zone, hour12: false }), true)
+    assert.equal(validateClockConfig({ timeZone: zone }), true)
   }
   for (const zone of [null, undefined, 0, {}, 'Mars/Olympus', 'Not/A_Zone', ' UTC', 'UTC ', ' ', 'x'.repeat(101)]) {
     assert.equal(isValidTimeZone(zone), false, String(zone))
-    assert.equal(validateClockConfig({ label: '', timeZone: zone, hour12: false }), false)
+    assert.equal(validateClockConfig({ timeZone: zone }), false)
   }
-  for (const config of [null, [], {}, { label: '', timeZone: '' }, { label: '', timeZone: '', hour12: 'true' },
-    { label: '', timeZone: '', hour12: false, seconds: true },
-    { label: 'a'.repeat(121), timeZone: '', hour12: false }]) {
+  for (const config of [null, [], {}, { timeZone: '', label: 'stale' },
+    { timeZone: '', hour12: true }, { timeZone: '', seconds: true }, { timeZone: '', extra: 1 }]) {
     assert.equal(validateClockConfig(config), false)
   }
+  assert.deepEqual(migrateClockConfig({ label: 'x', timeZone: 'Asia/Shanghai', hour12: true }, 2), { timeZone: 'Asia/Shanghai' })
+  assert.deepEqual(migrateClockConfig({ timeZone: '' }, 2), { timeZone: '' })
+  assert.deepEqual(migrateClockConfig({ timeZone: 'Mars/Olympus' }, 2), { timeZone: '' })
+  assert.deepEqual(migrateClockConfig(null, 2), { timeZone: '' })
+  assert.deepEqual(migrateClockConfig({ timeZone: 'UTC' }, 3), { timeZone: 'UTC' })
 })
 
 test('clock formats minute-only time and localized date in the selected zone across midnight', () => {
   const now = Date.UTC(2026, 0, 1, 0, 5, 47)
-  const config = { label: '', timeZone: 'America/Los_Angeles', hour12: false }
+  const config = { timeZone: 'America/Los_Angeles' }
   const formatted = formatPersonalClock(now, config, 'en-US')
-  assert.equal(formatted.time, '16:05')
+  assert.equal(formatted.time, new Intl.DateTimeFormat('en-US', {
+    timeZone: config.timeZone, hour: '2-digit', minute: '2-digit',
+  }).format(now), 'the locale owns the hour cycle')
+  assert.match(formatted.time, /PM/u)
   assert.equal(formatted.date, new Intl.DateTimeFormat('en-US', {
     timeZone: config.timeZone, year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
   }).format(now))
   assert.match(formatted.date, /2025/)
-  assert.equal(formatPersonalClock(now, { ...config, hour12: true }, 'en-US').time,
-    new Intl.DateTimeFormat('en-US', { timeZone: config.timeZone, hour: '2-digit', minute: '2-digit', hour12: true }).format(now))
+  assert.equal(formatPersonalClock(now, config, 'zh-CN').time,
+    new Intl.DateTimeFormat('zh-CN', { timeZone: config.timeZone, hour: '2-digit', minute: '2-digit' }).format(now))
   const chinese = formatPersonalClock(now, { ...config, timeZone: 'Asia/Shanghai' }, 'zh-CN')
   assert.match(chinese.date, /2026.*1.*1/)
   assert.notEqual(chinese.date, formatted.date)
@@ -88,7 +95,7 @@ test('empty clock zone follows browser/system Intl default without a fixed-zone 
   const now = Date.UTC(2026, 5, 30, 23, 59, 50)
   const config = defaultClockConfig()
   assert.equal(formatPersonalClock(now, config, 'en-US').time,
-    new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }).format(now))
+    new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit' }).format(now))
   assert.deepEqual(config, defaultClockConfig())
 })
 
