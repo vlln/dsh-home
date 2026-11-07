@@ -253,7 +253,31 @@ function ConnectedTimer(props: WidgetContentProps<TimerConfig>): ReactNode {
   }
   const ready = data.focus !== null
   const readOnly = props.editing || !ready || !data.focusStorage.writable
-  const persistTarget = (ms: number): void => { void data.store.mutateFocus({ op: 'timer.target', instanceId, targetMs: ms }).catch(() => {}) }
+  // Never leave a card that looks alive but silently drops every write: surface the
+  // first failed mutation (a stale host half or a read-only store looks exactly like this).
+  const [problem, setProblem] = useState<'readonly' | 'save' | null>(null)
+  // A host can accept the request and still drop it (an old server half is exactly that).
+  // Remember what we asked for and check the echoed document; only then clear the badge.
+  const wantedTarget = useRef<number | null>(null)
+  const wantedRun = useRef<boolean | null>(null)
+  const run = (operation: Parameters<typeof data.store.mutateFocus>[0]): Promise<void> =>
+    data.store.mutateFocus(operation).catch(() => { setProblem('save'); throw new Error('timer write failed') })
+  const persistTarget = (ms: number): void => {
+    wantedTarget.current = ms
+    void run({ op: 'timer.target', instanceId, targetMs: ms }).catch(() => {})
+  }
+  useEffect(() => {
+    if (slot === undefined) return
+    if (wantedTarget.current !== null) {
+      if (slot.targetMs === wantedTarget.current) wantedTarget.current = null
+      else setProblem('save')
+    }
+    if (wantedRun.current !== null) {
+      if (slot.running === wantedRun.current) wantedRun.current = null
+      else setProblem('save')
+    }
+    if (wantedTarget.current === null && wantedRun.current === null) setProblem(previous => previous === 'save' ? null : previous)
+  }, [slot])
   // A fresh timer starts at five minutes rather than 00:00: Start must mean something.
   useEffect(() => {
     if (!ready || readOnly) return
@@ -261,17 +285,20 @@ function ConnectedTimer(props: WidgetContentProps<TimerConfig>): ReactNode {
     persistTarget(DEFAULT_TARGET_MS)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, readOnly, slot?.targetMs, slot?.running, slot?.accumulatedMs])
+  // Editing dims the card on purpose; the badge is only for a host that cannot write.
+  const alert = props.editing ? null : data.focusStorage.writable ? problem : 'readonly'
   return <div className="dsh-timer-wrap" aria-busy={ready ? undefined : 'true'}>
     <TimerBody elapsed={elapsed} targetMs={targetMs} running={running} readOnly={readOnly} t={t}
       onPreview={setTargetMs} onCommit={persistTarget}
-      onStart={() => { void data.store.mutateFocus({ op: 'timer.start', instanceId }).catch(() => {}) }}
-      onPause={() => { void data.store.mutateFocus({ op: 'timer.pause', instanceId }).catch(() => {}) }}
-      onReset={() => { void data.store.mutateFocus({ op: 'timer.reset', instanceId }).catch(() => {}) }}
+      onStart={() => { wantedRun.current = true; void run({ op: 'timer.start', instanceId }).catch(() => {}) }}
+      onPause={() => { wantedRun.current = false; void run({ op: 'timer.pause', instanceId }).catch(() => {}) }}
+      onReset={() => { wantedRun.current = false; void run({ op: 'timer.reset', instanceId }).catch(() => {}) }}
       onRestart={() => {
-        void data.store.mutateFocus({ op: 'timer.reset', instanceId })
-          .then(() => data.store.mutateFocus({ op: 'timer.start', instanceId }))
-          .catch(() => {})
+        wantedRun.current = true
+        void run({ op: 'timer.reset', instanceId }).then(() => run({ op: 'timer.start', instanceId })).catch(() => {})
       }} />
+    {alert !== null && <span className="dsh-timer-alert" role="status" title={t('timer.writeHint')}>
+      {t(alert === 'readonly' ? 'timer.readOnly' : 'timer.writeFailed')}</span>}
     {!ready && !data.focusLoading && <button type="button" className="dsh-planner-retry"
       onClick={() => void data.store.refreshFocus()}>{t('planner.retry')}</button>}
   </div>

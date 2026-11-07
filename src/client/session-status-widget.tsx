@@ -71,6 +71,7 @@ export function SessionStatusContent(props: WidgetContentProps<SessionStatusConf
       {SESSION_STATUS_GROUPS.map(value => <button key={value} type="button" className="dsh-status-chip"
         data-group={value} data-active={value === group} aria-pressed={value === group}
         disabled={!canChoose} onClick={() => { void props.saveConfig?.({ status: value }) }}>
+        <i className="dsh-status-dot" aria-hidden="true" />
         <span>{t(`sessionStatus.group.${value}`)}</span>
         <span className="dsh-status-count" aria-hidden="true">{counts[value]}</span>
       </button>)}

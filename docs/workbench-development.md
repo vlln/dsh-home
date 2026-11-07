@@ -344,6 +344,15 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 - 真实鼠标六案（x2y2,x3y2,x4y5,x6y2,x3y7,x5y5）均无瞬时红色、无逐帧 peer 重叠、active / placeholder 漂移 0px、跨轴误差 0px；held / release / Done / reload 一致。
 - 原四组精确轴向撑开浏览器回归继续通过，原始用户布局已独立全量比对未改变。
 
+## 语义色固定、年视图无横滚（2026-11-07，0.46.x / dsh 0.2.1-rc.5）
+
+- 澄清 0.45 的过度收敛：不是「只留蓝灰」，而是**彩色按语义固定**。绿=`--dsh-positive` 表示「做成了」（习惯打点、连续天数、番茄休息阶段、会话「在跑」点），琥珀=`--dsh-warning` 表示注意，红=`--dsh-danger` 表示错误 / 破坏性，蓝=`--dsh-accent` 表示信息与数据。会话状态筛选胶囊的选中态仍是墨色，颜色由 6px 小圆点承担；工作区胶囊仍是唯一中性色。
+- 工作足迹的「一年」不再允许横向滚动：`activityWeeks` 对年视图启用紧凑几何（间距 1px、单元格最低 2px），`--dsh-activity-gap` 由测量结果下发，`.dsh-activity-scroll` 改成 `overflow:hidden`。4 列卡上 53 列 × 2px 仍能装下，格子从 12px 起按可用宽度连续缩到 2px。
+- 最近活跃窗口由 2 / 7 / 14 改为 7 / 14 / 30 天，配置版本升到 v3；v2 的 `2d` 与 v1 的 `today` 一律迁到 7 天。30 天时横轴只标每 5 天与最后一天，柱子仍是 30 根。
+- 计时器增加写入诊断：`mutateFocus` 失败不再被 `.catch(() => {})` 吞掉，卡片左上角显示「未能保存」并带「重启 DSH 后再试」的原生提示；只读存储显示「只读」。这直接对应一次真实事故：3080 的进程从 11-05 起没重启，服务端仍是加计时目标写入之前的版本，客户端看起来一切正常但每次拖动 / Start 都被丢弃。
+- `verify-design-standard` 新增：选中「一年」后断言 `.dsh-activity-scroll` 的 `scrollWidth == clientWidth`、单元格 ≤ 8px；最近活跃切到 30 天后断言 30 根柱子且 `scrollHeight/scrollWidth` 不超出卡片。
+- 同轮通过：`verify-focus`、`verify-session-rows`。**未覆盖**：触摸；真实旧服务端的端到端复现（用只读存储与写入失败路径替代）。
+
 ## 视觉标准与无滚动摘要卡实跑（2026-11-07，0.45.x / dsh 0.2.1-rc.5）
 
 - 颜色角色收敛到 `src/client/design-system.ts` 一处：宿主 alias 管墨色 / 表面 / 描边；产品只声明 `--dsh-accent`（唯一强调色）、`--dsh-warning` / `--dsh-danger`（真实状态）、`--dsh-ramp-1…4`（同色相数据梯度）、`--dsh-pill-bg` / `--dsh-pill-ink`（唯一胶囊）与主值字号。组件样式不再出现十六进制、`--dsw-alias-state-*` 或按组件分配的色相；`--dsh-hue-*` / `--dsh-pill-*` 彩虹色板删除。

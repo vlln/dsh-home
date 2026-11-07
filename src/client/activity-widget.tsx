@@ -94,7 +94,7 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
   if (!result && error) return <div className="dsh-empty" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>
   if (!result) return <div className="dsh-empty" role="status">{t('activity.loading')}</div>
   if (!result.available) return <div className="dsh-empty">{t('activity.unavailable')}</div>
-  const { weeks, count, first, cellSize, chartWidth, blocks } = activityWeeks(result.days, result.today,
+  const { weeks, count, first, cellSize, chartWidth, blocks, gap } = activityWeeks(result.days, result.today,
     chart?.w ?? width, config.range, chart?.h ?? Math.max(0, height - 96))
   const days = result.days.filter(day => day.key >= first && day.key <= result.today)
   const active = days.filter(day => day.messages > 0).length
@@ -117,7 +117,7 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
     sessions={result.sessions} ready={detailReady} complete={result.complete} loading={loading} error={error}
     matched={result.matchedSessions} onBack={() => { setDate(undefined) }} /> : null
   return <div className="dsh-activity" data-activity-complete={result.complete} data-activity-range={config.range} data-activity-layout={blocks.length ? 'blocks' : 'weeks'}
-    style={{ '--dsh-activity-cell-size': `${cellSize}px`, '--dsh-activity-chart-width': `${chartWidth}px` } as CSSProperties}>
+    style={{ '--dsh-activity-cell-size': `${cellSize}px`, '--dsh-activity-chart-width': `${chartWidth}px`, '--dsh-activity-gap': `${gap}px` } as CSSProperties}>
     <div className="dsh-activity-summary" aria-label={t('activity.summary', { days: count, active, messages })}>
       <div className="dsh-activity-primary"><strong className="dsh-activity-number">{active}</strong><span>{t('activity.activeDays')}</span></div>
       <div className="dsh-activity-secondary">

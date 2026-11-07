@@ -13,15 +13,15 @@ export const activityStyles = `
 .dsh-activity-secondary > span + span { padding-inline-start:12px; border-inline-start:.5px solid var(--dsw-alias-border-l2); }
 /* Both axes use the same bounded cell size. Auto adds natural weeks as width
    grows; only explicit year (or exceptionally tiny cards) needs local scrolling. */
-/* 卡片高度吃紧时先缩格子，永远不出现竖向滚动条；只有显式「一年」的窄卡允许横向浏览。 */
-.dsh-activity-scroll { flex:1 1 auto; min-height:0; overflow-x:auto; overflow-y:hidden; max-width:100%; padding:${ACTIVITY_SCROLL_PADDING}px; border-radius:var(--dsw-radius-xs); scroll-padding-inline:${ACTIVITY_SCROLL_PADDING}px; }
+/* 卡片装不下时先缩格子：竖向与横向都不出现滚动条（一年用 2px 点阵兜底）。 */
+.dsh-activity-scroll { flex:1 1 auto; min-height:0; overflow:hidden; max-width:100%; padding:${ACTIVITY_SCROLL_PADDING}px; border-radius:var(--dsw-radius-xs); scroll-padding-inline:${ACTIVITY_SCROLL_PADDING}px; }
 .dsh-activity-scroll:focus-visible { outline:2px solid var(--dsh-accent); outline-offset:-2px; }
-.dsh-activity-grid { display:grid; gap:${ACTIVITY_GAP}px; width:max-content; margin-inline:auto; }
-.dsh-activity-week { display:grid; grid-template-rows:16px repeat(7, var(--dsh-activity-cell-size)); gap:${ACTIVITY_GAP}px; min-width:0; }
+.dsh-activity-grid { display:grid; gap:var(--dsh-activity-gap,${ACTIVITY_GAP}px); width:max-content; margin-inline:auto; }
+.dsh-activity-week { display:grid; grid-template-rows:16px repeat(7, var(--dsh-activity-cell-size)); gap:var(--dsh-activity-gap,${ACTIVITY_GAP}px); min-width:0; }
 .dsh-activity-blocks { display:flex; align-items:start; gap:${ACTIVITY_BLOCK_GAP}px; width:max-content; margin-inline:auto; }
 .dsh-activity-block { display:flex; flex-direction:column; gap:6px; }
 .dsh-activity-block-label { font:var(--dsw-font-xxs-12); color:var(--dsw-alias-label-secondary); font-variant-numeric:tabular-nums; }
-.dsh-activity-weekdays, .dsh-activity-block-days { display:grid; grid-template-columns:repeat(7, var(--dsh-activity-cell-size)); gap:${ACTIVITY_GAP}px; }
+.dsh-activity-weekdays, .dsh-activity-block-days { display:grid; grid-template-columns:repeat(7, var(--dsh-activity-cell-size)); gap:var(--dsh-activity-gap,${ACTIVITY_GAP}px); }
 .dsh-activity-weekdays { text-align:center; font:var(--dsw-font-xxxs-11); color:var(--dsw-alias-label-tertiary); }
 .dsh-activity-caption { display:flex; align-items:center; flex-wrap:wrap; gap:2px 12px; font:var(--dsw-font-xxxs-11); color:var(--dsw-alias-label-tertiary); font-variant-numeric:tabular-nums; }
 .dsh-activity-range { flex:none; }

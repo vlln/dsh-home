@@ -34,8 +34,9 @@ function Bars({ days, t, todayKey }: { days: readonly DayBucket[]; t: Translate;
         </Tooltip>
       ))}
     </div>
-    <div className="dsh-rhythm-days dsh-active-days" aria-hidden="true">
-      {days.map(day => <span key={day.key}>{day.key.slice(8)}</span>)}
+    {/* 30 天不再逐日写 30 个数字：每 5 天一个刻度，最后一天始终保留。 */}
+    <div className="dsh-rhythm-days dsh-active-days" data-dense={days.length > 14 ? 'true' : undefined} aria-hidden="true">
+      {days.map((day, index) => <span key={day.key}>{days.length > 14 && (index % 5 !== 0) && index !== days.length - 1 ? '' : day.key.slice(8)}</span>)}
     </div>
   </>
 }
@@ -67,7 +68,7 @@ export function registerActiveWidget(registry: HomeWidgetRegistry, t: Translate)
     typeId: '@vlln/dsh-home:active', apiVersion: 1,
     title: () => t('widget.active.title'), description: () => t('gallery.description.active'), source: '@vlln/dsh-home',
     preview: { data: activePreviewData() }, sizing: { default: { w: 8, h: 4 }, supported: [{ w: 4, h: 4 }, { w: 8, h: 4 }, { w: 12, h: 6 }] },
-    configVersion: 2, defaultConfig: () => ({ range: '7d' }), validateConfig: (config): config is ActiveConfig => validateActiveConfig(config),
+    configVersion: 3, defaultConfig: () => ({ range: '7d' }), validateConfig: (config): config is ActiveConfig => validateActiveConfig(config),
     migrateConfig: migrateActiveConfig,
     Content: ActiveBody,
   })

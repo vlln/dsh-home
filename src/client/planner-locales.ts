@@ -104,6 +104,9 @@ export const zhPlanner = {
   'timer.minutes': '{n} 分钟',
   'timer.restart': '重新开始',
   'timer.reached': '到点',
+  'timer.readOnly': '只读',
+  'timer.writeFailed': '未能保存',
+  'timer.writeHint': '宿主没有接受这次写入；重启 DSH 后再试。',
 
   'pomodoro.focus': '专注',
   'pomodoro.break': '休息',
@@ -279,6 +282,9 @@ export const enPlanner: Record<keyof typeof zhPlanner, string> = {
   'timer.minutes': '{n} minutes',
   'timer.restart': 'Start over',
   'timer.reached': 'Time is up',
+  'timer.readOnly': 'Read only',
+  'timer.writeFailed': 'Not saved',
+  'timer.writeHint': 'The host did not accept this write. Restart DSH and try again.',
 
   'pomodoro.focus': 'Focus',
   'pomodoro.break': 'Break',

@@ -21,7 +21,9 @@ export const plannerStyles = `
 .dsh-ring-svg { position:absolute; inset:0; width:100%; height:100%; }
 .dsh-ring-track { fill:none; stroke:var(--dsh-accent-soft); stroke-width:14; }
 .dsh-ring-progress { fill:none; stroke:var(--dsh-accent); stroke-width:14; stroke-linecap:round; transition:stroke-dasharray .4s ease; }
-/* 休息阶段与专注共用同一个强调色：阶段写在标签里，不换色相。 */
+/* 休息阶段用成功绿：它表示「这一轮完成了，现在休息」，不是一个新色相。 */
+.dsh-pomodoro[data-phase="break"] .dsh-ring-track { stroke:var(--dsh-positive-soft); }
+.dsh-pomodoro[data-phase="break"] .dsh-ring-progress { stroke:var(--dsh-positive); }
 .dsh-ring-inner { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
 .dsh-ring-value { color:var(--dsw-alias-label-primary); font-size:22px; font-weight:600; line-height:1.1; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
 .dsh-ring-caption { color:var(--dsw-alias-label-tertiary); font-size:10px; }
@@ -103,8 +105,8 @@ export const plannerStyles = `
 .dsh-habit-row:hover { background:var(--dsw-alias-bg-skeleton); }
 .dsh-habit-row[data-due="false"] { opacity:.55; }
 .dsh-habit-mark { flex:none; width:24px; height:24px; clip-path:circle(50%); padding:0; display:inline-flex; align-items:center; justify-content:center; border:2px solid var(--dsw-alias-border-l4); border-radius:50%; background:var(--dsw-alias-bg-layer-1); color:var(--dsw-alias-label-primary-foreground); cursor:pointer; transition:background .12s ease, border-color .12s ease; }
-.dsh-habit-mark:hover { border-color:color-mix(in srgb, var(--dsh-accent) 55%, transparent); }
-.dsh-habit-mark[aria-checked="true"] { border-color:var(--dsh-accent); background:var(--dsh-accent); }
+.dsh-habit-mark:hover { border-color:color-mix(in srgb, var(--dsh-positive) 55%, transparent); }
+.dsh-habit-mark[aria-checked="true"] { border-color:var(--dsh-positive); background:var(--dsh-positive); }
 .dsh-habit-mark .dsh-todo-tick { opacity:0; }
 .dsh-habit-mark[aria-checked="true"] .dsh-todo-tick { opacity:1; }
 .dsh-habit-text { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
@@ -113,7 +115,7 @@ export const plannerStyles = `
 .dsh-habit-meta { color:var(--dsw-alias-label-caption); font-size:10px; line-height:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dsh-habit-streak { flex:none; padding:1px 8px; border-radius:999px; background:var(--dsw-alias-interactive-bg-active); color:var(--dsw-alias-label-secondary); font-size:10px; line-height:16px; font-variant-numeric:tabular-nums; }
 .dsh-habit-streak[data-zero="true"] { background:transparent; color:var(--dsw-alias-label-caption); }
-.dsh-habit-streak[data-zero="false"] { background:var(--dsh-accent-soft); color:var(--dsh-accent); }
+.dsh-habit-streak[data-zero="false"] { background:var(--dsh-positive-soft); color:var(--dsh-positive); }
 .dsh-habit-delete { flex:none; width:18px; height:18px; padding:0; border:0; border-radius:6px; background:transparent; color:var(--dsw-alias-label-caption); font-size:14px; line-height:1; cursor:pointer; opacity:0; }
 .dsh-habit-row:hover .dsh-habit-delete, .dsh-habit-delete:focus-visible { opacity:1; }
 .dsh-habit-delete:hover { color:var(--dsh-danger); }
@@ -141,6 +143,7 @@ export const plannerStyles = `
 .dsh-timer-face { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; pointer-events:none; }
 .dsh-dial-value { color:var(--dsw-alias-label-primary); font-family:var(--dsw-font-family); font-size:22px; font-weight:650; line-height:1.1; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
 .dsh-dial-note { color:var(--dsh-warning); font-size:10px; line-height:12px; font-weight:600; }
+.dsh-timer-alert { position:absolute; left:0; top:0; padding:1px 6px; border-radius:var(--dsw-radius-xs); background:var(--dsh-warning-soft); color:var(--dsh-warning); font-size:10px; line-height:16px; font-weight:600; cursor:help; }
 .dsh-timer-actions { display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; flex:none; }
 .dsh-timer-button { padding:4px 12px; border:0; border-radius:999px; background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-secondary); font-size:11px; line-height:18px; font-weight:600; cursor:pointer; }
 .dsh-timer-button:hover:not(:disabled) { background:var(--dsw-alias-interactive-bg-active); color:var(--dsw-alias-label-primary); }

@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildActivity, validateActivityQuery } from '../src/activity.mjs'
 import { foldSession } from '../src/ledger.mjs'
-import { activityChartHeight, activityWeeks, activityYearWidth, activityLevel, shiftCalendarDay, validateActivityConfig, ACTIVITY_NATURAL_CELL, ACTIVITY_MIN_CELL, ACTIVITY_MAX_CELL } from '../src/client/activity-model.ts'
+import { activityChartHeight, activityWeeks, activityYearWidth, activityLevel, shiftCalendarDay, validateActivityConfig, ACTIVITY_NATURAL_CELL, ACTIVITY_MIN_CELL, ACTIVITY_MAX_CELL, ACTIVITY_COMPACT_CELL } from '../src/client/activity-model.ts'
 const now = Date.parse('2026-11-04T18:00:00Z')
 const user = time => ({ type: 'user/message', time: Date.parse(time), data: { source: { kind: 'user' }, content: [{ type: 'text', text: 'hello' }] } })
 function session(id, events, extra = {}) { return foldSession({ id, createdAt: now - 86400000, cwd: '/project', ...extra }, events, now) }
@@ -71,9 +71,12 @@ test('auto adds natural full weeks monotonically, fitting intermediate windows b
     assert.ok(natural.count > 84 && natural.count < 365)
     const explicitYear = activityWeeks([], today, 200, 'year')
     assert.equal(explicitYear.count, 365)
-    assert.equal(explicitYear.cellSize, ACTIVITY_MIN_CELL)
-    assert.equal(explicitYear.chartWidth + 6, activityYearWidth(today))
-    assert.ok(explicitYear.chartWidth > 200, 'explicit year keeps local scrolling rather than shrinking cells')
+    assert.ok(explicitYear.cellSize >= ACTIVITY_COMPACT_CELL && explicitYear.cellSize < ACTIVITY_MIN_CELL, 'a narrow year shrinks below the normal minimum')
+    assert.ok(explicitYear.chartWidth + 6 <= 200, 'a narrow year fits the card instead of scrolling')
+    for (const width of [180, 240, 338, 540, 766, 1200]) {
+      const year = activityWeeks([], today, width, 'year')
+      assert.ok(year.chartWidth + 6 <= width, `year fits at ${width}: ${year.chartWidth}`)
+    }
   }
 })
 test('quarter uses three chronological 28-day blocks with exact boundaries and Monday weekday padding', () => {
@@ -113,7 +116,7 @@ test('chart height bounds keep cells square and the grid inside the measured box
       if (range === 'auto') { assert.ok(bounded.count >= wide.count); assert.ok(bounded.count <= 365) }
       else assert.equal(bounded.count, wide.count)
       assert.ok(bounded.cellSize <= wide.cellSize)
-      assert.ok(bounded.cellSize >= ACTIVITY_MIN_CELL)
+      assert.ok(bounded.cellSize >= (range === 'year' ? ACTIVITY_COMPACT_CELL : ACTIVITY_MIN_CELL))
       assert.ok(activityChartHeight(bounded) <= height + 0.5, `${range} ${width}x${height}: ${activityChartHeight(bounded)} fits`)
       // Auto never overflows horizontally: weeks still fit the available width.
       if (range === 'auto') assert.ok(bounded.chartWidth <= width - 6 + 0.5, `auto ${width}: ${bounded.chartWidth}`)

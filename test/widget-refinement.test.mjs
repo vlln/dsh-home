@@ -19,7 +19,7 @@ test('activity summary uses observed counts with bounded responsive square calen
   assert.match(activity, /post<ActivitySnapshot>\('activity', \{ cwd, timeZone: zone/)
   assert.match(activityStyles, /margin-inline:auto/)
   assert.match(activityStyles, /dsh-activity-caption.*justify-content:space-between/s)
-  assert.match(activityStyles, /overflow-x:auto/)
+  assert.match(activityStyles, /overflow:hidden/)
   assert.deepEqual(Object.keys(zhActivity).sort(), Object.keys(enActivity).sort())
 })
 test('content patterns use container geometry without hiding outer overflow or adding a UI framework', async () => {

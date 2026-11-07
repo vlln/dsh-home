@@ -54,7 +54,7 @@ test('digest cards never scroll and never page', async () => {
   assert.match(pinned, /useVisibleRows\(rowsRef/)
   assert.match(refinement, /dsh-recent > \.dsh-rows[^}]*overflow:hidden/)
   assert.match(refinement, /dsh-pinned-rows[^}]*overflow:hidden/)
-  assert.match(activityCss, /\.dsh-activity-scroll \{[^}]*overflow-y:hidden/s)
+  assert.match(activityCss, /\.dsh-activity-scroll \{[^}]*overflow:hidden/s)
   assert.doesNotMatch(activityCss, /\.dsh-activity-scroll \{[^}]*overflow-y:auto/s)
   // The time zone line and the "empty cells are not inactivity" paragraph are gone.
   assert.doesNotMatch(activity, /activity\.zone|activity\.partial'|activity\.incomplete/)

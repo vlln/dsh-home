@@ -16,6 +16,12 @@ const labels = { 'gallery.sample.continue': 'Refine the palette standard', 'gall
 const fixture = new Function('PREVIEW_NOW', `${producer}; return builtinPreviewData`)(Date.now())(key => labels[key] ?? key)
 // Twelve sessions across six workspaces: enough capsules to see whether they stay one colour.
 const cwds = ['DshPlugins', 'Workbench', 'Skills', 'pdf-figures-skill', 'repro-decision', 'alpha']
+const base = Date.parse(fixture.ledger.days.at(-1).key)
+fixture.ledger.days = Array.from({ length: 30 }, (_, i) => ({
+  ...fixture.ledger.days[i % fixture.ledger.days.length],
+  key: new Date(base - (29 - i) * 86_400_000).toISOString().slice(0, 10),
+  activeMs: ((i * 37) % 9) * 900_000, sessions: i % 3,
+}))
 fixture.ledger.sessions = Array.from({ length: 12 }, (_, i) => ({
   ...fixture.ledger.sessions[i % fixture.ledger.sessions.length], id: `sample-${i}`, cwd: cwds[i % cwds.length],
   lastAt: Date.now() - i * 600_000, title: `${labels['gallery.sample.project']} ${i + 1}`,
@@ -29,12 +35,14 @@ const specs = [
   ['activity', { cwd: '', range: 'auto' }, 4, 0, 4, 6], ['notes', { text: 'Palette standard\n\nOne accent, one capsule.' }, 4, 6, 4, 6],
   ['timer', {}, 4, 12, 4, 5], ['clock', { timeZone: '' }, 4, 17, 4, 4],
   ['areas', {}, 8, 0, 4, 5], ['rhythm', {}, 8, 5, 4, 4], ['usage', { week: true }, 8, 9, 4, 6],
+  ['active', { range: '7d' }, 8, 15, 4, 4],
 ]
 try {
   await context.request.get(url.href); backup = await api('workbench.get'); prefs = await api('prefs.get')
   await writeFile(new URL('backup.json', out), JSON.stringify({ backup, prefs }, null, 2))
   await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
-  const instances = specs.map(([name, config]) => ({ instanceId: `std-${name}`, typeId: `@vlln/dsh-home:${name}`, configVersion: 1, config }))
+  const versions = { active: 3 }
+  const instances = specs.map(([name, config]) => ({ instanceId: `std-${name}`, typeId: `@vlln/dsh-home:${name}`, configVersion: versions[name] ?? 1, config }))
   const positions = Object.fromEntries(specs.map(([name, , x, y, w, h]) => [`std-${name}`, { x, y, w, h }]))
   await api('workbench.set', { instances: [...backup.instances, ...instances], layout: { ...backup.layout, instanceLayout: true, order: [...backup.layout.order, ...instances.map(i => i.instanceId)], hidden: backup.instances.map(i => i.instanceId), positions: { ...backup.layout.positions, 12: { ...backup.layout.positions?.[12], ...positions } } } })
   page = await context.newPage(); page.on('pageerror', error => errors.push(error.message))
@@ -57,8 +65,7 @@ try {
       for (const [part, size] of Object.entries({ content: box.content, rows: box.rows, chart: box.chart })) {
         if (size === null) continue
         assert(size.sh <= size.h + 1, `${box.id} ${part} shows a vertical scrollbar: ${JSON.stringify(size)}`)
-        assert(size.sw <= size.w + 1 || box.id === 'std-activity' && (await page.locator('[data-widget-id="std-activity"] .dsh-activity').getAttribute('data-activity-range')) === 'year',
-          `${box.id} ${part} shows a horizontal scrollbar: ${JSON.stringify(size)}`)
+        assert(size.sw <= size.w + 1, `${box.id} ${part} shows a horizontal scrollbar: ${JSON.stringify(size)}`)
       }
     }
     const rowCount = await page.locator('[data-widget-id="std-recent"] .dsh-session-row').count()
@@ -85,6 +92,27 @@ try {
     await page.screenshot({ path: new URL(`board-${width}.png`, out).pathname, fullPage: true, animations: 'disabled' })
     checks.push(`${width}px: no card scrollbar, one capsule fill, one accent, host-primary actions`)
   }
+  // A year on a 4-column card must shrink to dots instead of scrolling sideways.
+  const scale = page.locator('[data-widget-id="std-activity"] .dsh-activity-scale')
+  await scale.selectOption('year')
+  await page.waitForFunction(() => document.querySelector('[data-widget-id="std-activity"] .dsh-activity')?.getAttribute('data-activity-range') === 'year')
+  await page.waitForTimeout(300)
+  const yearBox = await page.locator('[data-widget-id="std-activity"] .dsh-activity-scroll').evaluate(el => ({ w: el.clientWidth, sw: el.scrollWidth, h: el.clientHeight, sh: el.scrollHeight }))
+  assert(yearBox.sw <= yearBox.w + 1 && yearBox.sh <= yearBox.h + 1, `a year fits the card without scrollbars: ${JSON.stringify(yearBox)}`)
+  const yearCell = await page.locator('[data-widget-id="std-activity"] .dsh-activity-cell[data-date]').first().boundingBox()
+  assert(yearCell.width <= 8 && Math.abs(yearCell.width - yearCell.height) < 0.6, `year cells shrink to dots: ${yearCell.width}`)
+  await page.screenshot({ path: new URL('board-activity-year.png', out).pathname, fullPage: true, animations: 'disabled' })
+  await scale.selectOption('auto')
+  // Recent activity: three windows, no 2-day, 30 days keeps the card intact.
+  const activeCard = page.locator('[data-widget-id="std-active"]')
+  assert.equal(await activeCard.locator('.dsh-active-range').count(), 3, 'three windows')
+  assert.equal(await activeCard.getByRole('button', { name: /2 (days|天)/u }).count(), 0, 'the 2-day window is gone')
+  await activeCard.getByRole('button', { name: /30 (days|天)/u }).click()
+  await page.waitForFunction(() => document.querySelector('[data-widget-id="std-active"] .dsh-active')?.getAttribute('data-range') === '30d')
+  assert.equal(await activeCard.locator('.dsh-active-col').count(), 30, 'thirty bars')
+  const activeBox = await activeCard.locator('.dsh-home-widget-content').evaluate(el => ({ h: el.clientHeight, sh: el.scrollHeight, w: el.clientWidth, sw: el.scrollWidth }))
+  assert(activeBox.sh <= activeBox.h + 1 && activeBox.sw <= activeBox.w + 1, `30 days fit the card: ${JSON.stringify(activeBox)}`)
+  checks.push('a year of footprints and 30 days of activity fit without scrollbars')
   // Clicking a day keeps the card the same height and returns to the calendar.
   const card = page.locator('[data-widget-id="std-activity"]')
   const before = await card.evaluate(el => el.clientHeight)

@@ -37,6 +37,9 @@ export const designSystemStyles = `
   --dsh-warning-soft: color-mix(in srgb, var(--dsh-warning) 12%, transparent);
   --dsh-danger: var(--dsw-alias-state-error-primary);
   --dsh-danger-soft: color-mix(in srgb, var(--dsh-danger) 12%, transparent);
+  /* 成功 / 完成：绿。只用于「做成了」的状态，不做装饰。 */
+  --dsh-positive: var(--dsw-alias-state-success-primary);
+  --dsh-positive-soft: color-mix(in srgb, var(--dsh-positive) 12%, transparent);
   /* 数据图形：同一色相的四档。 */
   --dsh-ramp-1: color-mix(in srgb, var(--dsh-accent) 18%, var(--dsw-alias-bg-layer-1));
   --dsh-ramp-2: color-mix(in srgb, var(--dsh-accent) 44%, var(--dsw-alias-bg-layer-1));
@@ -112,7 +115,12 @@ export const designSystemStyles = `
 .dsh-chip[data-tone="danger"] { background: var(--dsh-danger-soft); color: var(--dsh-danger); }
 .dsh-chip[data-tone="accent"] { background: var(--dsh-accent-soft); color: var(--dsh-accent); }
 
-/* 会话状态筛选：与其它 chip 同一语法；选中态为墨色。 */
+/* 会话状态筛选：与其它 chip 同一语法；选中态为墨色，状态含义由小圆点承担：
+   在跑=绿、在等你=琥珀、未读=蓝。颜色按语义固定，不按组件分配。 */
+.dsh-status-chip[data-group="running"] { --dsh-status-color: var(--dsh-positive); }
+.dsh-status-chip[data-group="waiting"] { --dsh-status-color: var(--dsh-warning); }
+.dsh-status-chip[data-group="done"] { --dsh-status-color: var(--dsh-accent); }
+.dsh-status-dot { width: 6px; height: 6px; flex: none; border-radius: 50%; clip-path: circle(50%); background: var(--dsh-status-color, var(--dsw-alias-label-tertiary)); }
 .dsh-status-chip {
   display: inline-flex;
   align-items: center;
