@@ -1,19 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { directoryMark, dayCoverage, localDayWindow } from '../src/client/widget-visual-model.ts'
+import { dayCoverage, localDayWindow } from '../src/client/widget-visual-model.ts'
 import { widgetExpressionStyles } from '../src/client/widget-expression-styles.ts'
 
-test('directory identity is deterministic, decorative and safe for real path forms', () => {
-  for (const cwd of [undefined, '', '/', '/projects/dsh-home', 'C:\\Projects\\Widget', '/项目/工作台', '/.hidden']) {
-    const a = directoryMark(cwd)
-    assert.deepEqual(a, directoryMark(cwd))
-    assert(a.label.length > 0)
-    assert(['business','success','warn'].includes(a.tone))
-  }
-  assert.equal(directoryMark('C:\\Projects\\Widget').label, 'W')
-  assert.equal(directoryMark('/项目/工作台').label, '工')
-  assert.equal(directoryMark('/').label, '·')
-})
 test('dial coverage unions overlaps, clips day boundaries and never inflates short intervals', () => {
   const input = [{left:0,width:25},{left:20,width:30},{left:75,width:.001},{left:95,width:20},{left:-2,width:3},{left:NaN,width:4},{left:50,width:0}]
   const copy = structuredClone(input)
@@ -35,6 +24,6 @@ test('local calendar windows honor both DST boundaries', () => {
 })
 test('visual expression stays token driven without resize controls or identity coupling', () => {
   assert.match(widgetExpressionStyles, /--dsw-alias-state-success-primary/)
-  assert.match(widgetExpressionStyles, /dsh-directory-badge/)
+  assert.match(widgetExpressionStyles, /dsh-area-track/)
   assert.doesNotMatch(widgetExpressionStyles, /#[0-9a-fA-F]{3,8}\b|data-ds-dark-theme|data-widget-type|resize-handle|@vlln\/dsh-home:/)
 })

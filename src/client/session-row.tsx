@@ -1,17 +1,16 @@
-/** One session row shared by the recent and pinned lists.
+/** One session row shared by recent, pinned and the session-status views.
  *
- * Same visual language as the rest of the board: the workspace keeps its colored
- * directory mark (the badge), the name is plain card text, and the native `StateDot`
- * plus the native compact time sit on the right — no new fills or hues. Status follows
- * the native sidebar precedence (pending interaction → amber, running → ongoing,
- * completed → done), and a pending interaction replaces the time with its compact word.
+ * Reading order is the one the eye needs first: state dot → workspace capsule →
+ * session title → time. The dot moved to the far left so a column of rows can be
+ * scanned by state without reading any text; the capsule gives the workspace a
+ * surface of its own, so it no longer competes with the title.
  */
 import type { ReactNode } from 'react'
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
 import { compactAgo, type Translate } from './format.ts'
-import { DirectoryBadge } from './directory-badge.tsx'
 import type { RecentSession, RecentStatus } from './session-model.ts'
+import { WorkspacePill } from './workspace-pill.tsx'
 
 const DOT: Record<RecentStatus, StateDotState> = {
   approval: 'warning', plan: 'warning', question: 'warning',
@@ -28,27 +27,36 @@ export interface SessionRowProps {
   now: number
   t: Translate
   onOpen: () => void
+  /** Waiting rows explain *why* in place of the plain time. */
+  reason?: string
+  /** Waiting rows can be muted until the session has new activity. */
+  onDismiss?: () => void
 }
 
-export function SessionRow({ session, title, workspace, workspaceTitle, status, now, t, onOpen }: SessionRowProps): ReactNode {
-  // The trailing column is always the relative time: the state dot already carries the
-  // status, and repeating it as a word pushed the time out of the row.
+export function SessionRow({
+  session, title, workspace, workspaceTitle, status, now, t, onOpen, reason, onDismiss,
+}: SessionRowProps): ReactNode {
   const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
   const statusLabel = t(`recent.status.${status}`)
-  return <button
-    type="button"
-    className="dsh-row dsh-session-row"
-    data-session-id={session.id}
-    data-status={status}
-    aria-label={`${title} · ${workspace} · ${statusLabel}`}
-    onClick={onOpen}
-  >
-    <DirectoryBadge cwd={workspaceTitle} />
-    <span className="dsh-session-workspace" title={workspaceTitle ?? workspace}>{workspace}</span>
-    <span className="dsh-session-title" title={title}>{title}</span>
-    <span className="dsh-session-status" role="img" aria-label={statusLabel} title={statusLabel}>
-      <StateDot state={DOT[status]} />
-    </span>
-    <span className="dsh-session-trailing" aria-hidden="true">{trailing}</span>
-  </button>
+  return <div className="dsh-session-line" data-dismissible={onDismiss === undefined ? undefined : 'true'}>
+    <button
+      type="button"
+      className="dsh-row dsh-session-row"
+      data-session-id={session.id}
+      data-status={status}
+      aria-label={`${title} · ${workspace} · ${statusLabel}`}
+      onClick={onOpen}
+    >
+      <span className="dsh-session-status" role="img" aria-label={statusLabel} title={statusLabel}>
+        <StateDot state={DOT[status]} />
+      </span>
+      <WorkspacePill label={workspace} cwd={workspaceTitle ?? workspace}
+        title={workspaceTitle ?? workspace} unknown={workspaceTitle === undefined} />
+      <span className="dsh-session-title" title={title}>{title}</span>
+      {reason !== undefined && <span className="dsh-chip dsh-session-reason" data-tone="warn">{reason}</span>}
+      <span className="dsh-session-trailing" aria-hidden="true">{trailing}</span>
+    </button>
+    {onDismiss !== undefined && <button type="button" className="dsh-icon-button dsh-session-dismiss"
+      aria-label={t('queue.dismiss')} title={t('queue.dismiss')} onClick={onDismiss}>×</button>}
+  </div>
 }

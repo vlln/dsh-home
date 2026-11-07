@@ -1,5 +1,6 @@
 /** Pure per-instance personal widget models; no store, DOM, or React dependencies. */
-export type NotesConfig = { title: string; text: string }
+/** v2: 便笺就是一个文本块，首行即标题；旧配置里的 title 合并进第一行。 */
+export type NotesConfig = { text: string }
 export type ClockConfig = { label: string; timeZone: string; hour12: boolean }
 
 export const PERSONAL_CONFIG_MAX_BYTES = 8 * 1024
@@ -24,14 +25,24 @@ function fields(value: unknown, names: readonly string[]): value is Record<strin
   })
 }
 
-export function defaultNotesConfig(): NotesConfig { return { title: '', text: '' } }
+export function defaultNotesConfig(): NotesConfig { return { text: '' } }
 export function defaultClockConfig(): ClockConfig { return { label: '', timeZone: '', hour12: false } }
 
 export function validateNotesConfig(config: unknown): config is NotesConfig {
-  if (!fields(config, ['title', 'text'])) return false
-  if (typeof config.title !== 'string' || config.title.length > PERSONAL_LABEL_MAX_LENGTH
-    || typeof config.text !== 'string' || config.text.length > PERSONAL_CONFIG_MAX_BYTES) return false
+  if (!fields(config, ['text'])) return false
+  if (typeof config.text !== 'string' || config.text.length > PERSONAL_CONFIG_MAX_BYTES) return false
   return personalConfigBytes(config as NotesConfig) <= PERSONAL_CONFIG_MAX_BYTES
+}
+
+/** v1 → v2: 旧便笺的标题变成第一行，内容跟在空行之后；不会静默丢字。 */
+export function migrateNotesConfig(config: unknown, fromVersion: number): NotesConfig {
+  if (fromVersion >= 2) return validateNotesConfig(config) ? config : defaultNotesConfig()
+  if (config === null || typeof config !== 'object' || Array.isArray(config)) return defaultNotesConfig()
+  const old = config as { title?: unknown; text?: unknown }
+  const title = typeof old.title === 'string' ? old.title.trim() : ''
+  const text = typeof old.text === 'string' ? old.text.trim() : ''
+  const merged = title === '' ? text : text === '' ? title : `${title}\n\n${text}`
+  return { text: merged }
 }
 
 /** An empty zone deliberately omits Intl's timeZone option, following the browser's zone. */

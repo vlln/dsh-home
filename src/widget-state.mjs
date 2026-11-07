@@ -1,5 +1,61 @@
 /** Durable widget identities. Registry availability never determines stored instances. */
-export const BUILTIN_WIDGET_IDS = Object.freeze(['recent', 'tasks', 'resume', 'queue', 'today', 'running', 'areas', 'rhythm', 'quick'])
+export const BUILTIN_WIDGET_IDS = Object.freeze(['recent', 'today', 'running', 'areas', 'rhythm', 'quick'])
+/**
+ * 已下线类型 → 替代类型（`null` 表示没有替代）。
+ *
+ * 这些实例还留在旧 state.json 里：`running` 改为「会话状态」后，「在等我」只是它的一个视图，
+ * 所以队列实例并入 running；任务起点与「回到现场」整块删除，实例与布局一起清掉。
+ * `@vlln/dsh-home:running` 本身不在表里——它只是换了标题和内容。
+ */
+export const RETIRED_WIDGET_TYPES = Object.freeze({
+  '@vlln/dsh-home:tasks': null,
+  '@vlln/dsh-home:resume': null,
+  '@vlln/dsh-home:queue': '@vlln/dsh-home:running',
+})
+
+/**
+ * 把已下线类型的实例就地迁移/删除，并同步清掉布局里对它们的引用。
+ * 纯函数：返回新对象，未命中任何下线类型时原样返回（`changed: false`）。
+ * @param {{instances: object[], layout: object|null}} workbench
+ */
+export function retireWidgetTypes(workbench) {
+  const runningId = '@vlln/dsh-home:running'
+  let runningExists = workbench.instances.some(instance => instance.typeId === runningId)
+  let renamed = false
+  const dropped = new Set()
+  const instances = []
+  for (const instance of workbench.instances) {
+    if (!Object.hasOwn(RETIRED_WIDGET_TYPES, instance.typeId)) { instances.push(instance); continue }
+    const replacement = RETIRED_WIDGET_TYPES[instance.typeId]
+    if (replacement !== null && !runningExists) {
+      // Keep the card where it was: only the type changes, config is the new type's default.
+      runningExists = true
+      renamed = true
+      instances.push({ ...instance, typeId: replacement, configVersion: 1, config: {} })
+      continue
+    }
+    dropped.add(instance.instanceId)
+  }
+  if (!renamed && dropped.size === 0) return { changed: false, workbench }
+  return { changed: true, workbench: { ...workbench, instances, layout: pruneLayout(workbench.layout, dropped) } }
+}
+
+function pruneLayout(layout, dropped) {
+  if (layout === null || dropped.size === 0) return layout
+  const next = { ...layout }
+  for (const key of ['order', 'focusOrder', 'hidden']) {
+    if (Array.isArray(next[key])) next[key] = next[key].filter(id => !dropped.has(id))
+  }
+  if (next.size !== undefined) {
+    next.size = Object.fromEntries(Object.entries(next.size).filter(([id]) => !dropped.has(id)))
+  }
+  if (next.positions !== undefined) {
+    next.positions = Object.fromEntries(Object.entries(next.positions).map(([columns, rows]) => [
+      columns, Object.fromEntries(Object.entries(rows).filter(([id]) => !dropped.has(id))),
+    ]))
+  }
+  return next
+}
 export const MAX_INSTANCES = 64
 export const MAX_CONFIG_BYTES = 8 * 1024
 export const MAX_WORKBENCH_BYTES = 256 * 1024

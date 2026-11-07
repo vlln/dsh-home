@@ -11,13 +11,12 @@
 import type { ReactNode } from 'react'
 import type { LedgerSession, LedgerSnapshot, WidgetSize } from './api.ts'
 import type { SessionMeta } from './store.ts'
-import { formatAgo, formatDuration, hhmm, shortcutHint, shortDay, type Translate } from './format.ts'
-import { DirectoryBadge } from './directory-badge.tsx'
+import { formatDuration, hhmm, shortcutHint, shortDay, type Translate } from './format.ts'
 import { RecentBody } from './recent.tsx'
-import { TasksBody } from './tasks.tsx'
 import { PinnedBody } from './pinned-widget.tsx'
 import { dayCoverage, localDayWindow } from './widget-visual-model.ts'
-import type { SessionStatusMap } from './focus.tsx'
+import { WorkspacePill } from './workspace-pill.tsx'
+import type { SessionStatusMap } from './session-model.ts'
 
 /** 导航动作（由 index.tsx 接到官方 `uiWorkspace` 上）。 */
 export interface WidgetActions {
@@ -71,14 +70,6 @@ function IconToday() {
   )
 }
 
-function IconRunning() {
-  return (
-    <svg className="dsh-w-glyph" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M1.5 8h3l2-4 3 8 2-4h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
 function IconSessions() {
   return (
     <svg className="dsh-w-glyph" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -91,14 +82,6 @@ function IconRhythm() {
   return (
     <svg className="dsh-w-glyph" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="M3 12V8.5M6.4 12V5M9.8 12V7M13.2 12V4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function IconQuick() {
-  return (
-    <svg className="dsh-w-glyph" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M8.8 1.8 4 9h3.3l-.9 5.2L11.6 7H8.2l.6-5.2Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -228,43 +211,6 @@ function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
   )
 }
 
-function RunningBody({ t, data, sessions, now, actions }: WidgetProps) {
-  const running = Object.values(sessions)
-    .filter(session => session.running === true && session.blank !== true)
-    .slice(0, 4)
-  if (running.length === 0) return <Empty>{t('widget.running.empty')}</Empty>
-  const byId = new Map((data?.sessions ?? []).map(session => [session.id, session]))
-  return (
-    <>
-      <span className="dsh-label">{t('widget.running.count', { count: running.length })}</span>
-      <div className="dsh-rows">
-        {running.map((session) => {
-          const ledger = byId.get(session.id)
-          return (
-            <button
-              key={session.id}
-              type="button"
-              className="dsh-row"
-              onClick={() => { actions.openSession(session.id) }}
-            >
-              <span className="dsh-row-top">
-                <span className="dsh-row-live" />
-                <span className="dsh-row-title">{sessionTitle(ledger ?? { id: session.id, cwd: session.cwd }, sessions, t)}</span>
-                <span className="dsh-row-arrow" aria-hidden="true">→</span>
-              </span>
-              {ledger !== undefined && (
-                <span className="dsh-row-meta">
-                  {t('widget.running.open', { time: formatAgo(ledger.lastAt, now, t) })}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-    </>
-  )
-}
-
 function AreasBody({ t, data, actions }: WidgetProps) {
   const groups = new Map<string, {
     name: string
@@ -308,7 +254,7 @@ function AreasBody({ t, data, actions }: WidgetProps) {
         )
         const title = (
           <span className="dsh-row-top">
-            <DirectoryBadge cwd={group.cwd} /><span className="dsh-row-title">{group.name}</span>
+            <WorkspacePill label={group.name} cwd={group.cwd} title={group.cwd} />
             <span className="dsh-area-duration">{formatDuration(group.ms, t)}</span>
           </span>
         )
@@ -389,16 +335,8 @@ export const BUILTIN_WIDGETS: readonly BuiltinWidget[] = [
     title: t => t('widget.pinned.title'), body: PinnedBody,
   },
   {
-    id: 'tasks', order: 10, defaultSize: 's', defaultHeight: 8, Glyph: IconQuick,
-    title: t => t('widget.tasks.title'), body: TasksBody,
-  },
-  {
     id: 'today', order: 20, defaultSize: 'm', defaultHeight: 4, Glyph: IconToday,
     title: t => t('widget.today.title'), body: TodayBody,
-  },
-  {
-    id: 'running', order: 30, defaultSize: 's', defaultHeight: 4, Glyph: IconRunning,
-    title: t => t('widget.running.title'), body: RunningBody,
   },
   {
     id: 'areas', order: 40, defaultSize: 's', defaultHeight: 4, Glyph: IconSessions,

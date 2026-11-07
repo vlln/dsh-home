@@ -13,7 +13,7 @@ try{
  // 12 columns instead of inheriting whatever width the station was last left at
  // (another breakpoint's map is intentionally independent and would not hold this id).
  await api('prefs.set',{prefs:{...prefs.prefs,canvasWidth:null}})
- const fixture={instanceId:'fixed-note',typeId:'@vlln/dsh-home:notes',configVersion:1,config:{title:'Fixed-size widget',text:'Keep my original custom dimensions and text.'}}
+ const fixture={instanceId:'fixed-note',typeId:'@vlln/dsh-home:notes',configVersion:2,config:{text:'Fixed-size widget\n\nKeep my original custom dimensions and text.'}}
  const original={x:0,y:0,w:5,h:7},layout={...backup.layout,instanceLayout:true,hidden:backup.instances.map(i=>i.instanceId),order:[...backup.layout.order,fixture.instanceId],positions:{...backup.layout.positions,12:{...backup.layout.positions?.[12],[fixture.instanceId]:original}}}
  await api('workbench.set',{instances:[...backup.instances,fixture],layout})
  page=await context.newPage();page.on('pageerror',e=>errors.push(e.message))

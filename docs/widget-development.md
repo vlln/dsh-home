@@ -126,6 +126,8 @@ Home 的 `@vlln/dsh-home/widgets` 导出只有 `types` 条件，对应包内
 
 组件库与拖动影像渲染同一个 `Content`，不是另写的缩略图。可选定义 `preview: { config: () => sampleConfig, data: sampleJson }`，配置会经过正常校验，数据遵守相同 JSON 上界且独立克隆。缺省 config 使用 `defaultConfig()`，缺省 data 为 `null`，不自动读取实时现场。原 `Preview` 字段已废弃，仅保留类型兼容，不再用于展示。
 
+组件库按定义声明的默认网格尺寸渲染**真实卡片尺寸**（列宽 `w*84+(w-1)*12`，行高 `h*44+(h-1)*12`），再整体缩放到托盘宽度，因此 `width/height` props 与桌面实例一致，容器查询与按高度分批的逻辑不会在预览里变形；不要把「托盘里看起来多大」当成 `width`。
+
 `Content` 在预览中收到 `props.preview = { data }`，普通桌面实例不带此字段。组件必须在 preview 存在时停用网络、计时器、订阅、导航和写入，使用样例或空数据渲染同一视图。内置组件提供隔离的空 runtime / 样例数据，不创建 HomeStore，不调用模型或活动 API。预览正文 inert 且不进入键盘导航；这不是安全沙箱，不能替不遵守约定的第三方代码清理副作用。预览异常只隔离该卡，不持久化预览实例。
 
 ## 4. 组件 props 与自行编辑

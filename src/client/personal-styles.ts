@@ -1,15 +1,18 @@
 /** Append to the host's injected stylesheet; personal widgets never install global CSS effects. */
 export const personalStyles = `
-.dsh-personal-notes,.dsh-personal-clock{min-width:0;max-width:100%;color:var(--dsw-alias-label-primary)}
-/* One paper edge, not another card inside the widget. The quote is decoration,
-   never invented note content or an extra action. */
-.dsh-personal-notes{box-sizing:border-box;position:relative;isolation:isolate;display:flex;flex-direction:column;gap:10px;height:100%;min-height:0;padding:4px 4px 0 18px;border-inline-start:3px solid var(--dsw-alias-state-warn-primary);background:linear-gradient(100deg,color-mix(in srgb,var(--dsw-alias-state-warn-primary) 6%,transparent),transparent 70%)}
-.dsh-personal-note-quote{flex:none;height:28px;overflow:hidden;color:var(--dsw-alias-state-warn-primary);font-family:var(--dsw-font-family);font-size:52px;font-weight:600;line-height:1;pointer-events:none;user-select:none}
-.dsh-personal-notes > .dsh-personal-label,.dsh-personal-notes > .dsh-personal-hint{flex:none}
-.dsh-personal-notes > .dsh-personal-note-text{flex:1 1 auto;min-height:1.6em;overflow:auto;scroll-padding-block:4px;padding:0 4px 0 0;border:0;border-radius:0;background:transparent}
-.dsh-personal-notes > .dsh-widget-own-editor{flex:none;justify-content:flex-start;margin-top:auto;padding-top:6px;border:0}
+.dsh-personal-clock{min-width:0;max-width:100%;color:var(--dsw-alias-label-primary)}
+/* 便笺：直接写在卡片上。首行是标题（加粗），其余是正文；没有弹窗、没有引号装饰。 */
+.dsh-note{display:flex;flex-direction:column;gap:6px;min-width:0;min-height:100%;color:var(--dsw-alias-label-primary)}
+.dsh-note[data-editable="true"]{cursor:text}
+.dsh-note[data-editable="true"]:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px;border-radius:var(--dsw-radius-sm)}
+.dsh-note-title{margin:0;font:var(--dsw-font-s-strong-14);font-weight:600;font-size:15px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--dsw-alias-label-primary)}
+.dsh-note-title[data-placeholder="true"]{font-weight:400;color:var(--dsw-alias-label-tertiary)}
+.dsh-note-body{margin:0;font-size:var(--dsh-content-font-size,13px);line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;color:var(--dsw-alias-label-secondary)}
+.dsh-note[data-editing="true"]{height:100%}
+.dsh-note-input{flex:1 1 auto;box-sizing:border-box;width:100%;min-height:100%;margin:0;padding:0;border:0;outline:none;resize:none;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:var(--dsh-content-font-size,13px);line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4}
+.dsh-note-input::placeholder{color:var(--dsw-alias-label-tertiary)}
+.dsh-note-error{margin:0;color:var(--dsw-alias-state-error-primary);font:var(--dsw-font-xxs-12)}
 .dsh-personal-label{margin:0;font:var(--dsw-font-s-strong-14);white-space:pre-wrap;overflow-wrap:anywhere}
-.dsh-personal-note-text{font-size:var(--dsh-content-font-size);line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4}
 .dsh-personal-hint{margin:0;color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xs-13);overflow-wrap:anywhere}
 /* The fixed h4 viewport has room for a time/date row and existing editor,
    not an additional weekday strip. Keep typography responsive to card width. */

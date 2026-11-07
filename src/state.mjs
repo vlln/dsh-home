@@ -13,7 +13,7 @@
 import { emptyPlanner, MAX_DOC_BYTES, normalizePlanner } from './planner.mjs'
 import { emptyFocus, normalizeFocus } from './focus.mjs'
 import { constants, copyFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { initialInstances, validBreakpoint, validateWorkbench, validateWorkbenchLayout, widgetStateError } from './widget-state.mjs'
+import { initialInstances, retireWidgetTypes, validBreakpoint, validateWorkbench, validateWorkbenchLayout, widgetStateError } from './widget-state.mjs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 
@@ -122,8 +122,11 @@ export function loadState() {
     const workbench = parsed.version === 2
       ? { layout: parsed.layout, instances: initialInstances(layout) }
       : { layout: parsed.layout, instances: validateWorkbench({ layout, instances: parsed.instances }, normalizeLayout).instances }
-    const state = { ...parsed, ...workbench, version: STATE_VERSION }
-    return withStorage(state, { writable: true, status: parsed.version === 2 ? 'migrated' : 'ready', error: null })
+    // Retired widget types leave the board on read (instances + every layout reference),
+    // so an upgrade never leaves "unknown widget" cards behind.
+    const retired = retireWidgetTypes(workbench)
+    const state = { ...parsed, ...retired.workbench, version: STATE_VERSION }
+    return withStorage(state, { writable: true, status: parsed.version === 2 || retired.changed ? 'migrated' : 'ready', error: null })
   } catch (error) {
     return readOnlyState(widgetStateError(error.code === 'state-version' ? error.message : 'Saved workbench is corrupt or cannot migrate safely; original file retained', error.code === 'state-version' ? 'state-version' : 'state-corrupt'))
   }

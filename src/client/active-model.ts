@@ -6,16 +6,26 @@
 import type { JsonValue } from './widget-contract.ts'
 import type { DayBucket, LedgerSnapshot } from './api.ts'
 
-export type ActiveRange = 'today' | '2d' | '7d' | '14d'
+export type ActiveRange = '2d' | '7d' | '14d'
 export type ActiveConfig = { range: ActiveRange }
 
-export const ACTIVE_RANGES: readonly ActiveRange[] = ['today', '2d', '7d', '14d']
-export const ACTIVE_DAY_COUNT: Record<ActiveRange, number> = { today: 1, '2d': 2, '7d': 7, '14d': 14 }
+/** 「今天」曾经也是这里的一个窗口；24 小时时间带与柱状图不是同一种图，已移出。 */
+export const ACTIVE_RANGES: readonly ActiveRange[] = ['2d', '7d', '14d']
+export const ACTIVE_DAY_COUNT: Record<ActiveRange, number> = { '2d': 2, '7d': 7, '14d': 14 }
 
-/** 配置只认这四个窗口；手改的文件退回默认，不抛错。 */
+/** 配置只认这三个窗口；手改的文件（含旧 today）退回默认，不抛错。 */
 export function validateActiveConfig(value: unknown): value is ActiveConfig {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    && ACTIVE_RANGES.includes((value as { range?: unknown }).range as ActiveRange)
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  if (!Object.keys(value).every(key => key === 'range')) return false
+  return ACTIVE_RANGES.includes((value as { range?: unknown }).range as ActiveRange)
+}
+
+/** v1 → v2：删掉「今天」窗口后，旧配置落到 7 天；其它非法值同样落回 7 天。 */
+export function migrateActiveConfig(config: unknown, fromVersion: number): ActiveConfig {
+  if (fromVersion >= 2) return validateActiveConfig(config) ? config : { range: '7d' }
+  const range = config !== null && typeof config === 'object' && !Array.isArray(config)
+    ? (config as { range?: unknown }).range : undefined
+  return { range: ACTIVE_RANGES.includes(range as ActiveRange) ? range as ActiveRange : '7d' }
 }
 
 /** 画廊预览用的样例：固定日期，避免每次渲染都变。 */

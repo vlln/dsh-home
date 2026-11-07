@@ -2,9 +2,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  PERSONAL_CONFIG_MAX_BYTES, PERSONAL_LABEL_MAX_LENGTH,
+  PERSONAL_CONFIG_MAX_BYTES,
   defaultClockConfig, defaultNotesConfig, formatPersonalClock, isValidTimeZone,
-  millisecondsToNextMinute, personalConfigBytes, startMinuteClock,
+  migrateNotesConfig, millisecondsToNextMinute, personalConfigBytes, startMinuteClock,
   validateClockConfig, validateNotesConfig,
 } from '../src/client/personal-model.ts'
 import { enPersonal, zhPersonal } from '../src/client/personal-locales.ts'
@@ -13,40 +13,43 @@ import { HomeWidgetRegistry, validateWidgetConfig } from '../src/client/widget-r
 const encoder = new TextEncoder()
 
 test('notes accept empty and literal plain text without trimming, parsing or mutation', () => {
-  const config = { title: '  Title  ', text: '  first\n\n\t<script>alert("x")</script>\n**not Markdown**  ' }
+  const config = { text: '  第一行\n\n\t<script>alert("x")</script>\n**not Markdown**  ' }
   const before = structuredClone(config)
   assert.equal(validateNotesConfig(config), true)
   assert.equal(validateNotesConfig(defaultNotesConfig()), true)
   assert.deepEqual(config, before)
 })
 
-test('notes bound UTF-8 serialized JSON including escapes and title overhead at 8 KiB', () => {
+test('notes bound UTF-8 serialized JSON including escapes at 8 KiB', () => {
   const baseBytes = personalConfigBytes(defaultNotesConfig())
-  const exact = { title: '', text: 'a'.repeat(PERSONAL_CONFIG_MAX_BYTES - baseBytes) }
+  const exact = { text: 'a'.repeat(PERSONAL_CONFIG_MAX_BYTES - baseBytes) }
   assert.equal(personalConfigBytes(exact), PERSONAL_CONFIG_MAX_BYTES)
   assert.equal(validateNotesConfig(exact), true)
-  assert.equal(validateNotesConfig({ ...exact, text: exact.text + 'a' }), false)
-  assert.equal(validateNotesConfig({ ...exact, title: 'a' }), false)
+  assert.equal(validateNotesConfig({ text: exact.text + 'a' }), false)
   for (const glyph of ['中', '😀', '\n', '"', '\\', '\u0000']) {
-    const text = glyph.repeat(2_500)
-    const config = { title: 'title', text }
+    const config = { text: glyph.repeat(2_500) }
     assert.equal(personalConfigBytes(config), encoder.encode(JSON.stringify(config)).byteLength)
     assert.equal(validateNotesConfig(config), personalConfigBytes(config) <= PERSONAL_CONFIG_MAX_BYTES)
   }
 })
 
-test('notes reject wrong schema and excess title length without invoking accessors', () => {
-  for (const config of [null, [], '', { title: '' }, { text: '' }, { title: 1, text: '' },
-    { title: '', text: null }, { title: '', text: '', html: true },
-    { title: 'a'.repeat(PERSONAL_LABEL_MAX_LENGTH + 1), text: '' }]) {
+test('notes reject wrong schema and accessors; v1 titles migrate into the first line', () => {
+  for (const config of [null, [], '', {}, { title: '' }, { text: 1 },
+    { text: null }, { text: '', title: 'old' }, { text: '', html: true }]) {
     assert.equal(validateNotesConfig(config), false)
   }
-  assert.equal(validateNotesConfig({ title: 'a'.repeat(PERSONAL_LABEL_MAX_LENGTH), text: '' }), true)
   let accessed = false
-  const accessor = { title: '', get text() { accessed = true; throw new Error('not data') } }
+  const accessor = { get text() { accessed = true; throw new Error('not data') } }
   assert.equal(validateNotesConfig(accessor), false)
   assert.equal(accessed, false)
-  assert.equal(validateNotesConfig(Object.assign(Object.create(null), { title: '', text: '' })), true)
+  assert.equal(validateNotesConfig(Object.assign(Object.create(null), { text: '' })), true)
+  assert.deepEqual(migrateNotesConfig({ title: 'T', text: 'B' }, 1), { text: 'T\n\nB' })
+  assert.deepEqual(migrateNotesConfig({ title: '', text: 'B' }, 1), { text: 'B' })
+  assert.deepEqual(migrateNotesConfig({ title: 'T', text: '' }, 1), { text: 'T' })
+  assert.deepEqual(migrateNotesConfig({ title: '  ', text: '  ' }, 1), { text: '' })
+  assert.deepEqual(migrateNotesConfig(null, 1), { text: '' })
+  assert.deepEqual(migrateNotesConfig({ text: 'kept' }, 2), { text: 'kept' })
+  assert.deepEqual(migrateNotesConfig({ text: 3 }, 2), { text: '' })
 })
 
 test('clock validates Intl-supported zones and treats only the empty string as browser zone', () => {
@@ -102,13 +105,13 @@ test('default factories and public registry create independent instance configur
   assert.equal(b.config.text, '')
   assert.equal(defaultNotesConfig().text, '')
   const draft = structuredClone(a.config)
-  draft.title = 'Draft only'
-  assert.equal(a.config.title, '')
+  draft.text = 'Draft only'
+  assert.equal(a.config.text, 'Only A')
   const saved = validateWidgetConfig(registry.get('@test/personal:notes'), draft)
-  draft.title = 'Changed again'
-  assert.equal(saved.title, 'Draft only')
-  assert.equal(a.config.title, '')
-  assert.throws(() => validateWidgetConfig(registry.get('@test/personal:notes'), { title: '', text: '中'.repeat(4_000) }))
+  draft.text = 'Changed again'
+  assert.equal(saved.text, 'Draft only')
+  assert.equal(a.config.text, 'Only A')
+  assert.throws(() => validateWidgetConfig(registry.get('@test/personal:notes'), { text: '中'.repeat(4_000) }))
   const clockA = defaultClockConfig()
   clockA.timeZone = 'UTC'
   assert.equal(defaultClockConfig().timeZone, '')

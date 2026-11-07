@@ -7,7 +7,7 @@
  * @module @vlln/dsh-home/client/timer-widget
  */
 
-import { useId } from 'react'
+import { useEffect, useId } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { useHomeData, useNow } from './home-data.ts'
@@ -82,20 +82,29 @@ function ConnectedTimer(props: WidgetContentProps<TimerConfig>): ReactNode {
   const data = useHomeData()
   const instanceId = props.instance.instanceId
   const slot = data.focus?.timers[instanceId]
+  // Self-healing read: the page loads shared data on mount, but this card must not stay
+  // blank if it mounts before (or without) that effect, or after a failed read.
+  useEffect(() => {
+    if (data.focus === null && !data.focusLoading && data.focusError === null) void data.store.refreshFocus()
+  }, [data.focus, data.focusLoading, data.focusError, data.store])
   if (data.focusError !== null) {
     return <div className="dsh-planner-fallback" role="status">
       <p>{t('planner.unavailable')}</p>
       <button type="button" className="dsh-planner-retry" onClick={() => void data.store.refreshFocus()}>{t('planner.retry')}</button>
     </div>
   }
-  if (data.focus === null) return <p className="dsh-planner-loading" role="status">{t('planner.loading')}</p>
-  const readOnly = props.editing || !data.focusStorage.writable
+  // The face is never blocked on the document: a card that says "reading…" forever is worse
+  // than one that starts at 00:00 and enables its buttons once the timer is known.
+  const ready = data.focus !== null
+  const readOnly = props.editing || !ready || !data.focusStorage.writable
   const value = slot ?? { label: '', startedAt: null, accumulatedMs: 0, running: false }
-  return <div className="dsh-timer-wrap">
+  return <div className="dsh-timer-wrap" aria-busy={ready ? undefined : 'true'}>
     <TimerBody slot={value} label={props.config.label} t={t} readOnly={readOnly}
       onStart={() => { void data.store.mutateFocus({ op: 'timer.start', instanceId }).catch(() => {}) }}
       onPause={() => { void data.store.mutateFocus({ op: 'timer.pause', instanceId }).catch(() => {}) }}
       onReset={() => { void data.store.mutateFocus({ op: 'timer.reset', instanceId }).catch(() => {}) }} />
+    {!ready && !data.focusLoading && <button type="button" className="dsh-planner-retry"
+      onClick={() => void data.store.refreshFocus()}>{t('planner.retry')}</button>}
     <WidgetConfigEditor t={t} widgetProps={props} title={t('widget.timer.title')} label={t('timer.settings')}
       Fields={TimerSettings} validate={validateTimerConfig} />
   </div>

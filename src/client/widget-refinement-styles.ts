@@ -7,7 +7,7 @@ export const widgetRefinementStyles = `
 .dsh-home-widget .dsh-row-title { font:var(--dsw-font-s-strong-14); }
 .dsh-home-widget :is(.dsh-row-meta,.dsh-label) { font:var(--dsw-font-xxs-12); }
 .dsh-home-widget .dsh-muted { color:var(--dsw-alias-label-tertiary); }
-.dsh-home-widget :is(.dsh-row,.dsh-queue-main,.dsh-focus-primary,.dsh-focus-secondary,.dsh-icon-button) { transition:background-color 120ms ease-out,color 120ms ease-out; }
+.dsh-home-widget :is(.dsh-row,.dsh-session-row,.dsh-focus-primary,.dsh-focus-secondary,.dsh-icon-button) { transition:background-color 120ms ease-out,color 120ms ease-out; }
 .dsh-home-widget .dsh-row:focus-visible { background:var(--dsw-alias-interactive-bg-hover); }
 .dsh-home-widget .dsh-row-static:focus-visible { background:transparent; }
 .dsh-home-widget:focus-within { border-color:var(--dsw-alias-border-l4); }
@@ -73,13 +73,6 @@ export const widgetRefinementStyles = `
 
 /* Queue status is present in the data already: a quiet row and a colored dot,
    with the real reason retained as text rather than an invented status. */
-.dsh-home-widget .dsh-queue-row { margin:0; gap:4px; }
-.dsh-home-widget .dsh-queue-main { gap:5px; padding:8px 10px; background:var(--dsw-alias-bg-layer-1); border:.5px solid var(--dsw-alias-border-l1); }
-.dsh-home-widget .dsh-queue .dsh-w-body { gap:6px; }
-.dsh-home-widget .dsh-queue-main:is(:hover,:focus-visible) { background:var(--dsw-alias-interactive-bg-hover); }
-.dsh-home-widget .dsh-queue-meta { gap:6px 10px; }
-.dsh-home-widget .dsh-queue-meta .dsh-chip { display:inline-flex; align-items:center; gap:5px; height:auto; min-height:18px; padding:0; border-radius:0; background:transparent; font:var(--dsw-font-xxs-12); }
-.dsh-home-widget .dsh-queue-meta .dsh-chip::before { content:''; width:6px; height:6px; flex:none; border-radius:50%; corner-shape:round; background:currentColor; }
 
 /* Recent card: filters and footer stay fixed, the row list owns the scroll. Session row
    styling lives next to its component in styles.ts under .dsh-session-row. */
@@ -100,15 +93,6 @@ export const widgetRefinementStyles = `
 .dsh-pinned-rows .dsh-row + .dsh-row { border-top:.5px solid var(--dsw-alias-border-l1); }
 
 /* Task choices remain choices; the only primary action still prepares a draft. */
-.dsh-home-widget .dsh-tasks { gap:10px; }
-.dsh-home-widget .dsh-tasks > .dsh-muted { line-height:1.5; }
-.dsh-home-widget .dsh-task-options { gap:4px; }
-.dsh-home-widget .dsh-task-options > button[aria-pressed="true"] { background:var(--dsw-alias-button-ghost-active-fill); color:var(--dsw-alias-label-primary); }
-.dsh-home-widget .dsh-task-preview { padding:10px 12px; border:0; border-radius:var(--dsw-radius-md); background:var(--dsw-alias-bg-layer-1); }
-.dsh-home-widget .dsh-task-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; }
-.dsh-home-widget .dsh-task-options > button { min-width:0; height:auto; min-height:28px; white-space:normal; }
-.dsh-home-widget .dsh-tasks > button { flex-shrink:0; }
-.dsh-home-widget .dsh-tasks > button:last-of-type { width:100%; }
 .dsh-home-widget .dsh-quick-widget-links { background:var(--dsw-alias-bg-layer-1); border:0; border-radius:var(--dsw-radius-md); padding:4px; }
 .dsh-home-widget .dsh-quick-widget > .dsh-widget-own-editor { justify-content:flex-start; padding-top:6px; }
 .dsh-home-widget .dsh-personal-clock { min-height:100%; }
@@ -126,7 +110,7 @@ export const widgetRefinementStyles = `
 .dsh-home .dsh-w { animation:none; }
 .dsh-home .react-grid-layout,.dsh-home .react-grid-item { transition-duration:150ms; }
 @media (prefers-reduced-motion: reduce) {
-  .dsh-home-widget :is(.dsh-row,.dsh-row-arrow,.dsh-queue-main,.dsh-focus-primary,.dsh-focus-secondary,.dsh-icon-button),
+  .dsh-home-widget :is(.dsh-row,.dsh-row-arrow,.dsh-focus-primary,.dsh-focus-secondary,.dsh-icon-button),
   .dsh-home .react-grid-layout,.dsh-home .react-grid-item { transition:none; }
 }
 `

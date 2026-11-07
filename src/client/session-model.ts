@@ -3,8 +3,18 @@
  * Catalog supplies live metadata; the ledger supplies activity, not the session universe.
  */
 import type { LedgerSession, WidgetSize } from './api.ts'
-import type { SessionStatus } from './focus.tsx'
 import type { SessionMeta } from './store.ts'
+
+/** 宿主 `sessionStatus` 根钩子的快照值。 */
+export interface SessionStatus {
+  running?: boolean
+  /** rc.5 使用对象；保留早期宿主的字符串兼容。 */
+  pendingInteraction?: 'approval' | 'plan-review' | 'question' | { kind: string }
+  completionUnread?: boolean
+}
+
+/** 会话状态表。 */
+export type SessionStatusMap = Map<string, SessionStatus>
 
 /** Extra catalog fields must be preserved by the store's catalog adapter. */
 export type CatalogSession = SessionMeta & {
@@ -152,4 +162,75 @@ export function recentEmptyState(total: number, matched: number, indexing: boole
   if (matched > 0) return null
   if (indexing) return 'indexing'
   return total === 0 ? 'empty' : 'noMatch'
+}
+
+/** 「会话状态」的三个视图；等待交互曾是独立组件，现在只是 running 的另一个视图。 */
+export type SessionStatusGroup = 'running' | 'waiting' | 'done'
+export const SESSION_STATUS_GROUPS: readonly SessionStatusGroup[] = ['running', 'waiting', 'done']
+
+/** 细状态 → 视图；idle/unknown 不属于任何视图，也就不出现在这个组件里。 */
+export function statusGroupOf(status: RecentStatus): SessionStatusGroup | null {
+  if (status === 'running') return 'running'
+  if (status === 'approval' || status === 'plan' || status === 'question') return 'waiting'
+  if (status === 'unread') return 'done'
+  return null
+}
+
+export interface StatusSession {
+  session: RecentSession
+  status: RecentStatus
+  group: SessionStatusGroup
+  at: number
+}
+
+/**
+ * 按视图分组的行。`dismissed` 只静音「在等你」到下一次活动：看过了不等于永远别看。
+ * 排序是最近活动在前，同刻按 id，保证同一份数据两次渲染顺序一致。
+ */
+export function statusSessions(
+  sessions: readonly RecentSession[],
+  statuses: ReadonlyMap<string, SessionStatus> | undefined,
+  dismissed: Readonly<Record<string, number>> = {},
+): StatusSession[] {
+  const rows: StatusSession[] = []
+  for (const session of sessions) {
+    const status = recentSessionStatus(session, statuses?.get(session.id))
+    const group = statusGroupOf(status)
+    if (group === null) continue
+    const at = session.lastAt ?? 0
+    // Only an explicit dismissal mutes a row; an unknown activity time must not be
+    // mistaken for "already seen" (both would compare as 0).
+    const muted = dismissed[session.id]
+    if (group === 'waiting' && muted !== undefined && muted >= at) continue
+    rows.push({ session, status, group, at })
+  }
+  return rows.sort((left, right) => right.at - left.at
+    || (left.session.id < right.session.id ? -1 : left.session.id > right.session.id ? 1 : 0))
+}
+
+/** 每个视图的条数，用于顶部筛选上的计数。 */
+export function groupCounts(rows: readonly StatusSession[]): Record<SessionStatusGroup, number> {
+  const counts: Record<SessionStatusGroup, number> = { running: 0, waiting: 0, done: 0 }
+  for (const row of rows) counts[row.group] += 1
+  return counts
+}
+
+/**
+ * 当前展示哪个视图：用户选的优先；它空了就落到第一个有内容的视图，
+ * 这样卡片不会因为一个空状态变成一张空卡。全都空时仍尊重用户的选择。
+ */
+export function effectiveGroup(counts: Record<SessionStatusGroup, number>, chosen: SessionStatusGroup): SessionStatusGroup {
+  if (counts[chosen] > 0) return chosen
+  return SESSION_STATUS_GROUPS.find(group => counts[group] > 0) ?? chosen
+}
+
+/**
+ * 工作区胶囊的颜色档：同一路径永远同一档，不同路径尽量分散到六个色相。
+ * 只决定装饰色，不携带状态含义。
+ */
+export function workspaceHue(cwd: string | undefined): number {
+  const key = cwd ?? ''
+  let hash = 0
+  for (const char of key) hash = (hash * 31 + char.codePointAt(0)!) >>> 0
+  return hash % 6
 }

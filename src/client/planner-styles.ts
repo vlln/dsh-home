@@ -12,6 +12,9 @@ export const plannerStyles = `
 /* 图表用的额外色相：宿主 token 只有蓝/绿/琥珀/红，参考图需要更丰富的配色。
    这些是固定的中饱和色，深浅背景下都可读；UI 骨架仍只用宿主的语义 token。 */
 .dsh-home, .dsh-w { --dsh-hue-blue:#4176e6; --dsh-hue-teal:#0d9488; --dsh-hue-green:#22c55e; --dsh-hue-amber:#f59e0b; --dsh-hue-violet:#8b5cf6; --dsh-hue-pink:#ec4899; }
+/* 胶囊/状态筛选：实心色块上的白字要过对比度，所以同色相压深一档（700/800），
+   和图表的亮色分工：图表用亮色，文字底用深色。 */
+.dsh-home, .dsh-w { --dsh-pill-blue:#2563eb; --dsh-pill-teal:#0f766e; --dsh-pill-green:#15803d; --dsh-pill-amber:#b45309; --dsh-pill-violet:#7c3aed; --dsh-pill-pink:#be185d; }
 
 .dsh-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:11px; line-height:16px; font-weight:600; white-space:nowrap;
   background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-secondary); }
@@ -257,5 +260,21 @@ export const plannerStyles = `
 
 /* 余额：有数字时用绿色，占位符用淡色。 */
 .dsh-balance-amount[data-known="true"] { color:var(--dsh-hue-green); }
+
+/* 会话状态：顶部三个筛选胶囊，计数跟着走；选中态用该状态的语义色实心。 */
+.dsh-session-status { display:flex; flex-direction:column; gap:8px; min-height:0; min-width:0; }
+.dsh-status-filter { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.dsh-status-chip { display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 10px; border:0; border-radius:999px;
+  background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-secondary); font:inherit; font-size:11px; line-height:16px; font-weight:600; cursor:pointer; }
+.dsh-status-chip:hover:not(:disabled) { background:var(--dsw-alias-interactive-bg-active); color:var(--dsw-alias-label-primary); }
+.dsh-status-chip:disabled { cursor:default; }
+.dsh-status-chip[data-active="true"] { color:var(--dsw-alias-label-primary-foreground); background:var(--dsw-alias-label-primary); }
+.dsh-status-chip[data-group="running"][data-active="true"] { background:var(--dsh-pill-green); }
+.dsh-status-chip[data-group="waiting"][data-active="true"] { background:var(--dsh-pill-amber); }
+.dsh-status-chip[data-group="done"][data-active="true"] { background:var(--dsh-pill-blue); }
+.dsh-status-count { font-variant-numeric:tabular-nums; opacity:.65; }
+.dsh-status-chip[data-active="true"] .dsh-status-count { opacity:1; }
+.dsh-status-rows { margin:0; }
+.dsh-status-empty { margin:0; }
 
 `

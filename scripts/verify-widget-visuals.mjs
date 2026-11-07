@@ -17,16 +17,19 @@ const today = new Date().toISOString().slice(0, 10)
 const activity = { generatedAt: Date.now(), timeZone: 'America/Los_Angeles', today, available: true, complete: true, failed: 0, scanError: false, scanning: false, progress: { done: 3, total: 3 }, sessions: [], matchedSessions: 0, workspaces: [], days: Array.from({ length: 365 }, (_, n) => ({ key: new Date(Date.parse(today) - (364 - n) * 86400000).toISOString().slice(0, 10), messages: n % 5 === 0 ? 0 : (n * 7) % 19, sessions: n % 4 })) }
 const specs = [
   ['recent', {}, 0, 0, 8, 6], ['clock', { label: 'Local time', timeZone: '', hour12: false }, 8, 0, 4, 4],
-  ['activity', { cwd: '', range: 'quarter' }, 0, 6, 8, 6], ['notes', { title: 'Pick up from here', text: 'Keep the interface calm and useful.\n\nFinish the release regressions, then review the compact widget hierarchy. No automatic task submission.' }, 8, 6, 4, 6],
-  ['quick', { links: [{ kind: 'url', label: 'Design references', target: 'https://www.boardui.com/zh-hans' }, { kind: 'session', label: 'Review changes', target: 'sample-1' }] }, 0, 12, 4, 5], ['queue', {}, 4, 12, 4, 5], ['today', {}, 8, 12, 4, 5],
-  ['tasks', {}, 0, 17, 4, 8], ['resume', {}, 4, 17, 8, 5], ['running', {}, 4, 22, 4, 4], ['areas', {}, 8, 22, 4, 4], ['rhythm', {}, 0, 22, 4, 4],
+  ['activity', { cwd: '', range: 'quarter' }, 0, 6, 8, 6], ['notes', { text: 'Pick up from here\n\nKeep the interface calm and useful. Finish the release regressions, then review the compact widget hierarchy.' }, 8, 6, 4, 6],
+  ['quick', { links: [{ kind: 'url', label: 'Design references', target: 'https://www.boardui.com/zh-hans' }, { kind: 'session', label: 'Review changes', target: 'sample-1' }] }, 0, 12, 4, 5],
+  ['running', {}, 4, 12, 4, 6], ['areas', {}, 8, 12, 4, 5],
+  ['todo', {}, 0, 17, 4, 8], ['plan', {}, 4, 17, 4, 8], ['calendar', {}, 8, 17, 4, 8],
+  ['habit', {}, 0, 25, 4, 6], ['timer', { label: 'Writing' }, 4, 25, 4, 4], ['active', { range: '7d' }, 8, 25, 4, 6],
 ]
 try {
   await context.request.get(url.href); backup = await api('workbench.get'); prefs = await api('prefs.get'); await writeFile(new URL('backup.json', out), JSON.stringify({ backup, prefs }, null, 2))
   // The fixture writes its rectangles into the 12-column breakpoint; pin the board to the
   // default 12 columns instead of inheriting the width the station was last left at.
   await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
-  const instances = specs.map(([name, config]) => ({ instanceId: `visual-${name}`, typeId: `@vlln/dsh-home:${name}`, configVersion: name === 'quick' ? 2 : 1, config }))
+  const instances = specs.map(([name, config]) => ({ instanceId: `visual-${name}`, typeId: `@vlln/dsh-home:${name}`,
+    configVersion: name === 'quick' ? 2 : name === 'notes' || name === 'active' ? 2 : 1, config }))
   const positions = Object.fromEntries(specs.map(([name, , x, y, w, h]) => [`visual-${name}`, { x, y, w, h }]))
   await api('workbench.set', { instances: [...backup.instances, ...instances], layout: { ...backup.layout, instanceLayout: true, order: [...backup.layout.order, ...instances.map(i => i.instanceId)], hidden: backup.instances.map(i => i.instanceId), positions: { ...backup.layout.positions, 12: { ...backup.layout.positions?.[12], ...positions } } } })
   page = await context.newPage(); page.on('pageerror', error => errors.push(error.message))
@@ -51,7 +54,8 @@ try {
       assert(heatmap.ratio >= .6, `quarter chart must use wide cards: ${JSON.stringify(heatmap)}`)
       assert(heatmap.sidebar || Math.abs(heatmap.offset - heatmap.remainder) <= 8, 'bounded calendar content must be balanced, not left-stranded')
     }
-    assert.equal(await page.locator('.dsh-directory-badge:not([aria-hidden="true"])').count(), 0)
+    const rowLead = await page.locator('.dsh-session-row').evaluateAll(nodes => nodes.map(node => node.firstElementChild?.className ?? ''))
+    assert(rowLead.every(name => name === 'dsh-session-status'), 'every session row leads with its state dot')
     assert.equal(await page.locator('.dsh-day-dial animate,.dsh-day-dial animateTransform').count(), 0)
     const motion = await page.locator('.dsh-home-widget .dsh-row').evaluateAll(nodes => nodes.map(el => getComputedStyle(el).transitionDuration))
     assert(motion.every(duration => duration.split(',').every(value => Number.parseFloat(value) === 0)))
@@ -62,14 +66,14 @@ try {
       content: [...el.querySelectorAll('.dsh-home-widget-content,.dsh-widget-viewport,.dsh-personal-clock,.dsh-recent')].map(n => ({ cls: n.className, height: n.clientHeight, scroll: n.scrollHeight })),
     })))
     await writeFile(new URL(`geometry-${width}.json`, out), JSON.stringify(geometry, null, 2))
-    for (const id of ['visual-today', 'visual-clock', 'visual-activity', 'visual-rhythm']) {
+    for (const id of ['visual-clock', 'visual-activity', 'visual-recent']) {
       const widget = geometry.find(g => g.id === id)
       assert(widget.content[0].scroll <= widget.content[0].height + 2, `${id} unnecessary outer scroll at ${width}: ${JSON.stringify(widget.content)}`)
     }
     await page.screenshot({ path: new URL(`widgets-${width}-light.png`, out).pathname, fullPage: true, animations: 'disabled' })
     checks.push(`${width}px: no horizontal page overflow; readable headings and square heatmap cells`)
     if (width === 1600) {
-      await page.locator('[data-widget-id="visual-notes"]').getByRole('button', { name: /^(Edit note|编辑便笺)$/ }).click(); await page.locator('.dsh-widget-config-modal').waitFor(); await page.keyboard.press('Escape')
+      await page.locator('[data-widget-id="visual-notes"] .dsh-note').click(); await page.locator('[data-widget-id="visual-notes"] .dsh-note-input').waitFor(); await page.keyboard.press('Escape'); await page.locator('[data-widget-id="visual-notes"] .dsh-note-input').blur()
       const clockButton = page.locator('[data-widget-id="visual-clock"]').getByRole('button', { name: /^(Time options|时间选项)$/ }); await clockButton.click(); await page.locator('.dsh-widget-config-modal').waitFor(); await page.keyboard.press('Escape')
       const footprintButton = page.locator('[data-widget-id="visual-activity"]').getByRole('button', { name: /^(Filter range|筛选范围)$/ }); await footprintButton.click(); await page.locator('.dsh-widget-config-modal').waitFor(); await page.keyboard.press('Escape')
       const recentViewport = page.locator('[data-widget-id="visual-recent"] .dsh-widget-viewport')

@@ -52,9 +52,16 @@ try {
   const clock = new Date()
   const today = `${clock.getFullYear()}-${String(clock.getMonth() + 1).padStart(2, '0')}-${String(clock.getDate()).padStart(2, '0')}`
   // Two timed rows for today, one before and one after "now", so the now line has a home.
-  const morning = (await api('planner.apply', { operation: { op: 'item.create', item: { title: '回归：早上', day: today, start: '09:00', end: '09:45' } } })).planner.items
+  // Times are derived from the clock: a fixed 09:00/23:00 only brackets "now" in the
+  // middle of the day and would fail in the small hours.
+  const pad2 = value => String(value).padStart(2, '0')
+  const nowMinutes = clock.getHours() * 60 + clock.getMinutes()
+  const beforeMinutes = Math.max(0, nowMinutes - 60)
+  const afterMinutes = Math.min(23 * 60 + 59, Math.max(nowMinutes + 60, beforeMinutes + 1))
+  const clockOf = minutes => `${pad2(Math.floor(minutes / 60))}:${pad2(minutes % 60)}`
+  const morning = (await api('planner.apply', { operation: { op: 'item.create', item: { title: '回归：早上', day: today, start: clockOf(beforeMinutes), end: clockOf(Math.min(23 * 60 + 59, beforeMinutes + 45)) } } })).planner.items
   const morningItem = morning.find(item => item.title === '回归：早上')
-  const night = (await api('planner.apply', { operation: { op: 'item.create', item: { title: '回归：夜里', day: today, start: '23:00' } } })).planner.items
+  const night = (await api('planner.apply', { operation: { op: 'item.create', item: { title: '回归：夜里', day: today, start: clockOf(afterMinutes) } } })).planner.items
   const nightItem = night.find(item => item.title === '回归：夜里')
   createdItems.push(morningItem.id, nightItem.id)
   page = await context.newPage()
@@ -101,7 +108,14 @@ try {
   assert.equal(await widget('plan-demo').locator('.dsh-plan-block').count(), times.length)
   const order = await widget('plan-demo').locator('.dsh-plan-list > li').evaluateAll(nodes => nodes.map(node => (
     node.classList.contains('dsh-plan-now') ? 'now' : node.querySelector('.dsh-todo-title')?.textContent ?? '?')))
-  assert.deepEqual(order, ['回归：早上', 'now', '回归：夜里'], `unexpected timeline: ${JSON.stringify(order)}`)
+  const expected = [
+    ...(beforeMinutes <= nowMinutes ? ['回归：早上'] : []),
+    ...(afterMinutes <= nowMinutes ? ['回归：夜里'] : []),
+    'now',
+    ...(beforeMinutes > nowMinutes ? ['回归：早上'] : []),
+    ...(afterMinutes > nowMinutes ? ['回归：夜里'] : []),
+  ]
+  assert.deepEqual(order, expected, `unexpected timeline: ${JSON.stringify(order)}`)
   checks.push('plan: blocks stay in time order with a now line between them')
 
   await widget('habit-demo').locator('.dsh-todo-add input').fill('回归：跑步')

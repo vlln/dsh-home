@@ -28,7 +28,7 @@ try {
   // inherited from whatever width the station was last left at.
   await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
   assert(!backup.instances.some(instance => instance.instanceId === id))
-  const fixture = { instanceId: id, typeId: '@vlln/dsh-home:notes', configVersion: 1, config: { title: 'Extending canvas regression', text: 'Disposable fixture' } }
+  const fixture = { instanceId: id, typeId: '@vlln/dsh-home:notes', configVersion: 2, config: { text: 'Extending canvas regression\n\nDisposable fixture' } }
   const initial = { x: 0, y: 0, w: 4, h: 6 }
   const seed = { ...backup.layout, instanceLayout: true, hidden: backup.instances.map(instance => instance.instanceId), order: [...backup.layout.order, id], positions: { ...backup.layout.positions, 12: { ...backup.layout.positions?.[12], [id]: initial } } }
   await api('workbench.set', { instances: [...backup.instances, fixture], layout: seed })

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { Button, IconTrashOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { formatAgo, formatDay, type Translate } from './format.ts'
 import type { WidgetActions } from './widgets.tsx'
-import type { SessionStatusMap } from './focus.tsx'
+import type { SessionStatusMap } from './session-model.ts'
 import { CardBoundary } from './boundary.tsx'
 import { SpatialGrid } from './spatial-grid.tsx'
 import { buildSpatialLayout, moveSpatialItem, sizeFromRect, SPATIAL_GAP, SPATIAL_ROW_HEIGHT, type SpatialItem } from './spatial-model.ts'
@@ -14,7 +14,7 @@ import type { HomeWidgets, RegisteredWidgetDefinition, WidgetContentProps, Widge
 import { widgetText } from './widget-settings.tsx'
 import { validateWidgetConfig } from './widget-registry.ts'
 import { WidgetGallery } from './widget-gallery.tsx'
-import { WidgetPreview } from './widget-preview.tsx'
+import { cardContentSize, WidgetContentPreview } from './widget-preview.tsx'
 import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
 import { legacyInstanceProjection } from './widget-sizing.ts'
@@ -256,7 +256,7 @@ export function HomePage(props: HomePageProps): ReactNode {
         {state.error !== null && <div className="dsh-error" role="alert">
           <span>{t('error.load')}</span><Button variant="ghost" size="sm" onClick={() => { void store.refresh() }}>{t('error.retry')}</Button>
         </div>}
-        {editing && trayOpen && <WidgetGallery definitions={definitions.filter(definition => !RETIRED_FROM_LIBRARY.has(definition.typeId))} t={t} disabled={!writable || busy || interacting}
+        {editing && trayOpen && <WidgetGallery definitions={definitions.filter(definition => !RETIRED_FROM_LIBRARY.has(definition.typeId))} t={t} language={locale()} disabled={!writable || busy || interacting}
           position={state.prefs.libraryPosition} onPositionChange={position => { store.setLibraryPosition(position) }}
           onClose={() => setTrayOpen(false)} onDrag={(definition,point,grab) => {
             if(!editable || interacting)return
@@ -271,7 +271,8 @@ export function HomePage(props: HomePageProps): ReactNode {
             libraryDrag={libraryDrag} onLibraryEnd={() => setLibraryDrag(null)}
             onLibraryDrop={(drag,accepted) => {try {if(registry.get(drag.definition.typeId)!==drag.definition||JSON.stringify(store.getSnapshot().layout)!==drag.baseLayout)throw new Error('Widget or layout changed');store.dropInstance(drag.definition,drag.id,accepted,cols)}catch{setManagementError(true)}}}
             libraryGhost={libraryDrag && <><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
-              <CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetPreview definition={libraryDrag.definition} t={t} size={libraryDrag.definition.defaults.size} width={Math.max(0,widgetWidthForColumns(libraryDrag.item.w)-32)} height={Math.max(0,libraryDrag.item.h*56-80)}/></CardBoundary></>}>
+              <CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetContentPreview definition={libraryDrag.definition} t={t} language={locale()}
+                size={libraryDrag.definition.defaults.size} {...cardContentSize(libraryDrag.item.w, libraryDrag.item.h)}/></CardBoundary></>}>
           {geometry.map(rect => {
             const instance = instancesById.get(rect.i)
             if (instance === undefined) return null

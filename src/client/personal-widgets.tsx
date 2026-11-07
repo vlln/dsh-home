@@ -9,9 +9,9 @@ import type { Translate } from './format.ts'
 import type { HomeWidgets, WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
 import { WidgetConfigEditor } from './widget-settings.tsx'
 import {
-  CLOCK_ZONE_MAX_LENGTH, PERSONAL_CONFIG_MAX_BYTES, PERSONAL_LABEL_MAX_LENGTH,
-  defaultClockConfig, defaultNotesConfig, formatPersonalClock, isValidTimeZone,
-  personalConfigBytes, startMinuteClock, validateClockConfig, validateNotesConfig,
+  CLOCK_ZONE_MAX_LENGTH, PERSONAL_LABEL_MAX_LENGTH,
+  defaultClockConfig, defaultNotesConfig, formatPersonalClock, isValidTimeZone, migrateNotesConfig,
+  startMinuteClock, validateClockConfig, validateNotesConfig,
 } from './personal-model.ts'
 import type { ClockConfig, NotesConfig } from './personal-model.ts'
 import { personalClockDisplayParts } from './personal-clock-display.ts'
@@ -22,45 +22,46 @@ function textFieldLabels(t: Translate) {
 }
 
 export function NotesContent(props: WidgetContentProps<NotesConfig>): ReactNode {
-  const { config } = props
+  const { config, preview, editing, saveConfig } = props
   const { t } = useBuiltin()
-  return <div className="dsh-personal-notes">
-    <span className="dsh-personal-note-quote" aria-hidden="true">“</span>
-    {config.title !== '' && <h3 className="dsh-personal-label">{config.title}</h3>}
-    {config.text === ''
-      ? <p className="dsh-personal-hint">{t('notes.empty')}</p>
-      : <div className="dsh-personal-note-text">{config.text}</div>}
-    <WidgetConfigEditor t={t} widgetProps={props} title={t('widget.notes.title')} label={t('notes.edit')}
-      Fields={NotesSettings} validate={validateNotesConfig} />
-  </div>
-}
-
-export function NotesSettings({ config, onConfigChange }: WidgetSettingsProps<NotesConfig>): ReactNode {
-  const { t } = useBuiltin()
-  const id = useId()
-  const [tooLong, setTooLong] = useState(false)
-  const update = (next: NotesConfig): void => {
-    // Do not send oversized JSON to the host draft cloner, and never truncate text silently.
-    if (!validateNotesConfig(next)) { setTooLong(true); return }
-    setTooLong(false)
-    onConfigChange(next)
+  const [draft, setDraft] = useState(config.text)
+  const [active, setActive] = useState(false)
+  const [error, setError] = useState<'limit' | 'save' | null>(null)
+  // In-place editing is the only editor: the card writes on idle/blur, never a dialog.
+  const editable = saveConfig !== undefined && preview === undefined && !editing
+  useEffect(() => { if (!active) setDraft(config.text) }, [config.text, active])
+  const commit = (text: string): void => {
+    if (saveConfig === undefined || text === config.text) return
+    if (!validateNotesConfig({ text })) { setError('limit'); return }
+    saveConfig({ text }).then(() => { setError(null) }, () => { setError('save') })
   }
-  return <div className="dsh-personal-settings">
-    <SettingsValueField {...textFieldLabels(t)} id={`${id}-title`} label={t('notes.title')}
-      text={config.title} invalid={false} hint={t('personal.labelLimit')} invalidLabel={t('personal.labelLimit')}
-      onEdit={title => update({ ...config, title })} onReset={() => update({ ...config, title: '' })} />
-    <label className="dsh-personal-field" htmlFor={`${id}-text`}>
-      <span>{t('notes.text')}</span>
-      {/* The official text field is single-line; notes need native multiline/plain-text editing. */}
-      <textarea id={`${id}-text`} className="dsh-personal-textarea" rows={7} value={config.text}
-        aria-describedby={`${id}-hint ${id}-bytes${tooLong ? ` ${id}-error` : ''}`}
-        onChange={event => update({ ...config, text: event.target.value })} />
-    </label>
-    <p id={`${id}-hint`} className="dsh-personal-hint">{t('notes.plainText')} {t('notes.limit')}</p>
-    <p id={`${id}-bytes`} className="dsh-personal-hint">{t('notes.bytes', {
-      used: personalConfigBytes(config), max: PERSONAL_CONFIG_MAX_BYTES,
-    })}</p>
-    {tooLong && <p id={`${id}-error`} className="dsh-personal-error" role="alert">{t('notes.limitError')}</p>}
+  useEffect(() => {
+    if (!active || draft === config.text) return
+    // Save on a typing pause; a short pause is cheaper than a write per keystroke.
+    const timer = window.setTimeout(() => { commit(draft) }, 600)
+    return () => { window.clearTimeout(timer) }
+  }, [draft, active, config.text, commit])
+  const begin = (): void => { if (editable) { setError(null); setActive(true) } }
+  if (!editable || !active) {
+    const shown = editable ? draft : config.text
+    const [shownTitle, ...shownRest] = shown.split('\n')
+    const shownBody = shownRest.join('\n').replace(/^\n+/u, '')
+    return <div className="dsh-note" data-empty={shown.trim() === '' ? 'true' : 'false'} data-editable={editable ? 'true' : 'false'}
+      role={editable ? 'button' : undefined} tabIndex={editable ? 0 : undefined} aria-label={editable ? t('notes.edit') : undefined}
+      onClick={editable ? begin : undefined} onKeyDown={editable ? event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); begin() }
+      } : undefined}>
+      {(shownTitle ?? '').trim() !== '' && <h3 className="dsh-note-title">{shownTitle}</h3>}
+      {shownBody.trim() !== '' && <p className="dsh-note-body">{shownBody}</p>}
+      {shown.trim() === '' && <p className="dsh-note-title" data-placeholder="true">{t('notes.placeholder')}</p>}
+    </div>
+  }
+  return <div className="dsh-note" data-editing="true">
+    <textarea className="dsh-note-input" aria-label={t('widget.notes.title')} value={draft} autoFocus
+      placeholder={t('notes.placeholder')} spellCheck={false}
+      onBlur={() => { commit(draft); setActive(false) }}
+      onChange={event => { setError(null); setDraft(event.target.value) }} />
+    {error !== null && <p className="dsh-note-error" role="alert">{t(error === 'limit' ? 'notes.limitError' : 'notes.saveError')}</p>}
   </div>
 }
 
@@ -139,10 +140,10 @@ export function registerPersonalWidgets(registry: HomeWidgets, t: Translate): ()
   const dispose = (): void => { for (const off of disposers.splice(0).reverse()) off() }
   try {
     disposers.push(registry.register<NotesConfig>({
-      typeId: '@vlln/dsh-home:notes', apiVersion: 1, configVersion: 1, source: '@vlln/dsh-home',
+      typeId: '@vlln/dsh-home:notes', apiVersion: 1, configVersion: 2, source: '@vlln/dsh-home',
       title: () => t('widget.notes.title'), description: () => t('widget.notes.description'), icon: IconEditOutlineRegular,
-      preview: { config: () => ({ title: t('gallery.sample.noteTitle'), text: t('gallery.sample.noteText') }) }, sizing: { default: {w:4,h:6}, supported: [{w:4,h:6},{w:4,h:8},{w:8,h:8},{w:8,h:12}] },
-      defaultConfig: defaultNotesConfig, validateConfig: validateNotesConfig, Content: NotesContent,
+      preview: { config: () => ({ text: `${t('gallery.sample.noteTitle')}\n\n${t('gallery.sample.noteText')}` }) }, sizing: { default: {w:4,h:6}, supported: [{w:4,h:6},{w:4,h:8},{w:8,h:8},{w:8,h:12}] },
+      defaultConfig: defaultNotesConfig, validateConfig: validateNotesConfig, migrateConfig: migrateNotesConfig, Content: NotesContent,
     }))
     disposers.push(registry.register<ClockConfig>({
       typeId: '@vlln/dsh-home:clock', apiVersion: 1, configVersion: 1, source: '@vlln/dsh-home',

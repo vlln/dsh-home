@@ -1,12 +1,4 @@
 /** Small presentation-only projections. Never a goal, completion score or status authority. */
-export function directoryMark(cwd?: string): { label: string; tone: 'business' | 'success' | 'warn' } {
-  const name = cwd?.split(/[\\/]/).filter(Boolean).pop() ?? ''
-  const label = Array.from(name.replace(/^[._-]+/, ''))[0]?.toLocaleUpperCase() ?? '·'
-  let hash = 0
-  for (const char of cwd ?? '') hash = (hash * 31 + char.codePointAt(0)!) >>> 0
-  return { label, tone: (['business', 'success', 'warn'] as const)[hash % 3]! }
-}
-
 /** Local calendar boundary, not a fixed 24-hour offset (DST days may be 23/25h). */
 export function localDayWindow(now: number): { start: number; end: number } {
   const date = new Date(now)

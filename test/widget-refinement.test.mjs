@@ -34,7 +34,7 @@ test('content patterns use container geometry without hiding outer overflow or a
   assert.match(personal, /16cqi/)
   assert.match(widgetRefinementStyles, /dsh-recent > .dsh-rows.*overflow-y:auto/)
   assert.doesNotMatch(widgetRefinementStyles, /dsh-home-widget-content[^}]*overflow:hidden/)
-  assert.match(personal, /dsh-personal-note-text.*overflow:auto/)
+  assert.match(personal, /dsh-note-input\{[^}]*min-height:100%/s)
 })
 test('refinements are theme driven, reduced-motion aware, and do not hardcode widget identities', () => {
   assert.match(widgetRefinementStyles, /prefers-reduced-motion/)

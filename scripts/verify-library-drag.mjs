@@ -53,13 +53,18 @@ try{
  // Outside release must not retain the last accepted on-canvas candidate.
  const count=(await api('workbench.get')).instances.length;const s2=await grip.boundingBox();await p.mouse.move(s2.x+60,s2.y+10);await p.mouse.down();await p.mouse.move(s2.x+20,s2.y+25,{steps:3});await p.mouse.move(100,40,{steps:10});await p.mouse.up();assert.equal((await api('workbench.get')).instances.length,count);checks.push('release outside desktop never creates a phantom instance')
  await p.locator(`[data-widget-id="${added.instanceId}"]`).waitFor()
- await p.getByRole('button',{name:/^(Done|完成)$/}).click();await p.locator(`[data-widget-id="${added.instanceId}"]`).getByRole('button',{name:/^(Edit note|编辑便笺)$/}).click();await p.locator('.dsh-widget-config-modal').waitFor();await p.locator('.dsh-widget-config-modal').getByRole('button',{name:/^(Cancel|取消)$/}).last().click();await p.getByRole('button',{name:/^(Edit layout|编辑布局)$/}).click()
+ await p.getByRole('button',{name:/^(Done|完成)$/}).click()
+ const droppedNote=p.locator(`[data-widget-id="${added.instanceId}"]`)
+ await droppedNote.getByRole('button',{name:/^(Edit note|编辑便笺)$/}).click();await droppedNote.locator('.dsh-note-input').waitFor()
+ assert.equal(await p.locator('.dsh-widget-config-modal').count(),0,'notes edit in place, not in a dialog')
+ await droppedNote.locator('.dsh-note-input').blur();await droppedNote.locator('.dsh-note-title').waitFor()
+ await p.getByRole('button',{name:/^(Edit layout|编辑布局)$/}).click()
  // Deletion is a drag onto the page-level target, then a separate confirmation.
  const delGrip=await p.locator(`[data-widget-id="${added.instanceId}"]`).locator('.dsh-tools .dsh-widget-grip').boundingBox();assert(delGrip)
  await p.mouse.move(delGrip.x+6,delGrip.y+6);await p.mouse.down();await p.mouse.move(delGrip.x+6,delGrip.y-24,{steps:4});await p.locator('.dsh-home-delete-zone').waitFor()
  const delZone=await p.locator('.dsh-home-delete-zone').boundingBox();assert(delZone)
  await p.mouse.move(delZone.x+delZone.width/2,delZone.y+delZone.height/2,{steps:8});await p.locator('.dsh-home-delete-zone[data-armed="true"]').waitFor();await p.mouse.up()
- await until(async()=>!(await api('workbench.get')).instances.some(i=>i.instanceId===added.instanceId));assert.equal(await p.locator('.dsh-home-delete-modal').count(),0);checks.push('widget-owned note editing and immediate drag-to-delete')
+ await until(async()=>!(await api('workbench.get')).instances.some(i=>i.instanceId===added.instanceId));assert.equal(await p.locator('.dsh-home-delete-modal').count(),0);checks.push('inline note editing (no dialog) and immediate drag-to-delete')
  await p.locator('.dsh-edit-bar').getByRole('button',{name:/^(Widgets|小组件)$/}).click();await p.locator('.dsh-library-panel').waitFor();await p.locator('.dsh-directory-item').first().evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished.catch(()=>{})))});await p.screenshot({path:new URL('library.png',out).pathname,fullPage:true,animations:'disabled'});assert.deepEqual(errors,[]);assert.equal(activityRequests.length,0);checks.push('real Content preview mounts without activity requests in isolated empty runtime')
 }catch(e){errors.push(e.stack??String(e));process.exitCode=1;await p?.screenshot({path:new URL('failure.png',out).pathname}).catch(()=>{})}
 finally{await p?.close();if(backup)await api('workbench.set',{layout:backup.layout,instances:backup.instances});if(prefs)await api('prefs.set',{prefs:prefs.prefs});await b.close();await writeFile(new URL('report.json',out),JSON.stringify({checks,errors},null,2));console.log(out.pathname,JSON.stringify({checks,errors}));}

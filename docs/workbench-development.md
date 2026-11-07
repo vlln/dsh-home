@@ -57,6 +57,16 @@
 - 分类色：习惯按 id 哈希固定色相；日历圆点按当天未完成数量取蓝/琥珀/粉；条目优先级 → 琥珀/红圆点；Token 甜甜圈按 input/cacheRead/output/cacheWrite 取蓝/绿/琥珀/紫。
 - 这套主题里 `--dsw-alias-bg-layer-2/3` 都是纯白、`--dsw-alias-label-quaternary` 不存在，浅面用 `bg-skeleton` / `interactive-bg-hover`，淡字用 `label-caption`，饱和底上的字用 `label-primary-foreground`。
 
+## 组件收敛与预览单源（0.40.0 起）
+
+- **下线类型在读取时迁移**：`src/widget-state.mjs` 的 `RETIRED_WIDGET_TYPES` 删除「常用任务」「回到现场」，把「在等我」并入 `@vlln/dsh-home:running`（已有 running 实例时直接丢弃队列实例）。`state.mjs` 的 `loadState` 在返回前裁剪实例，并同步清掉 `order / focusOrder / hidden / size / positions` 对它们的引用，所以升级后不会留下「未知组件」卡片；迁移结果随下一次正常写入落盘，旧文件复制为 `state.json.v2.bak`。`BUILTIN_WIDGET_IDS` 只影响新装，老布局靠这条迁移。
+- **会话状态**：`running` 类型改名为「会话状态」，配置 `{ status: 'running' | 'waiting' | 'done' | null }`。`null` 表示自动——展示第一个有内容的视图；点顶部胶囊后写入具体值，刷新保留。三类映射与官方 `sessionStatus` 一致（待审批 / 待确认计划 / 待回答 / 跑完没看），「在等你」的行显示原因并可 dismiss（静音到下一次活动，未知活动时间不当作已看过）。宿主没有该钩子时只显示「在跑」并说明。
+- **预览单一来源**：组件库没有插图分支。`widget-preview.tsx` 用定义声明的默认网格尺寸算出真实卡片像素（`preview-geometry.ts`，与画板的 84/44 + 12 间距同一套公式），把同一个 `Content` 放进同一个 `.dsh-w-body`，最后只对整块做视觉缩放。布局因此看到真实卡片的宽高，容器查询、分批行数和图表不会在预览里漂移；`width/height` props 仍是真实卡片尺寸，数据仍是合成样例。
+- **便笺 v2**：配置从 `{ title, text }` 变为 `{ text }`，`migrateConfig` 把旧标题并成第一行（中间空一行）。卡片内原地编辑，首行渲染为加粗标题；停笔 0.6 秒或失焦保存；超过 8 KiB 或宿主拒绝时保留草稿并显示原因，不覆盖原文。
+- **最近活跃 v2**：删掉「今天」窗口（它是 24 小时时间带，不是柱状）与页脚；旧配置 `today` 迁移到 `7d`。柱子用宿主 `Tooltip`（portal）在悬停/聚焦时给出日期与时长。
+- **计时器不再等数据**：`focus` 文档未就绪时先画 00:00 并禁用按钮，就绪后启用；读取失败显示重试，不再有「永远正在读取」。
+- **列表不再用负外边距**：`.dsh-rows` 的 `margin: 0 -8px` 在固定卡片里会制造 8px 横向滚动条（最小组成卡片可见），已去掉；工作区名改成实心胶囊，行顺序是状态点 → 胶囊 → 标题 → 时间。
+
 ## Token 与余额（0.34.0 / 0.36.0 起）
 
 - 账本在折叠事件时按天累计 token：`assistant/message` 的 `data.usage`，重试走 `assistant/attempt` 流里最后一个 usage chunk（与宿主 `token-meter` 的 `usageOf` 同口径）；同一 turn/step 的新样本替换旧样本，`llm/retry-started` 撤销上一份，避免重复计数。`FOLD_VERSION` 也随之升到 4，旧账本自动整份重折。

@@ -4,13 +4,10 @@ export const widgetExpressionStyles = `
 /* Sticky chrome is part of the canvas, not a white rectangular card. */
 .dsh-home .dsh-home-head { background:var(--dsh-home-canvas-fill); }
 .dsh-home .dsh-home-widget-content > .dsh-widget-viewport > .dsh-empty:only-child { min-height:100%; }
-.dsh-home-widget .dsh-queue { min-height:100%; }
-.dsh-home-widget .dsh-queue[data-empty="true"] { display:flex; justify-content:center; }
-.dsh-home-widget .dsh-queue-empty { text-align:center; }
 .dsh-home .dsh-home-widget { background:var(--dsw-alias-bg-layer-1); border-color:var(--dsw-alias-border-l2); }
 .dsh-home-widget { --dsh-widget-accent:var(--dsw-alias-state-business-primary); }
 .dsh-home-widget:has(:is(.dsh-rhythm-content,.dsh-area-rows,.dsh-activity)) { --dsh-widget-accent:var(--dsw-alias-state-success-primary); }
-.dsh-home-widget:has(:is(.dsh-pinned,.dsh-personal-notes,.dsh-queue)) { --dsh-widget-accent:var(--dsw-alias-state-warn-primary); }
+.dsh-home-widget:has(:is(.dsh-pinned,.dsh-note)) { --dsh-widget-accent:var(--dsw-alias-state-warn-primary); }
 .dsh-widget-symbol { display:inline-flex; align-items:center; justify-content:center; flex:none; width:28px; height:28px; border-radius:var(--dsw-radius-sm); color:var(--dsh-widget-accent,var(--dsw-alias-state-business-primary)); background:color-mix(in srgb,var(--dsh-widget-accent,var(--dsw-alias-state-business-primary)) 10%,transparent); }
 .dsh-widget-symbol svg { width:16px; height:16px; color:inherit; }
 .dsh-home .dsh-widget-symbol .dsh-w-glyph { color:inherit; }
@@ -41,18 +38,12 @@ export const widgetExpressionStyles = `
 .dsh-home-widget .dsh-area-track { height:7px; }
 .dsh-home-widget .dsh-area-track > span { background:var(--dsw-alias-state-success-primary); opacity:.8; }
 .dsh-home-widget .dsh-area-rows .dsh-row { gap:5px; padding-block:7px; }
-.dsh-area-rows .dsh-directory-badge { width:24px; height:24px; font:var(--dsw-font-xxs-strong-12); }
-.dsh-directory-badge { display:flex; align-items:center; justify-content:center; flex:none; width:32px; height:32px; border-radius:var(--dsw-radius-sm); font:var(--dsw-font-s-strong-14); --dsh-mark-color:var(--dsw-alias-state-business-primary); color:var(--dsh-mark-color); background:color-mix(in srgb,var(--dsh-mark-color) 12%,transparent); }
-.dsh-directory-badge[data-tone="success"] { --dsh-mark-color:var(--dsw-alias-state-success-primary); }
-.dsh-directory-badge[data-tone="warn"] { --dsh-mark-color:var(--dsw-alias-state-warn-primary); }
+.dsh-area-rows .dsh-ws-pill { max-width:72%; }
 .dsh-home-widget .dsh-pinned-summary { padding-bottom:6px; border-bottom:.5px solid var(--dsw-alias-border-l2); }
 .dsh-home-widget .dsh-pinned-summary strong { color:var(--dsw-alias-label-primary); font:var(--dsw-font-xs-strong-13); }
 .dsh-home-widget .dsh-focus-snippet { border-inline-start:3px solid var(--dsw-alias-state-business-primary); padding-inline-start:12px; margin-block:0; color:var(--dsw-alias-label-secondary); }
 .dsh-home-widget .dsh-focus-primary { background:var(--dsw-alias-button-info-fill); color:var(--dsw-alias-label-primary-foreground); }
 .dsh-home-widget .dsh-focus-primary:is(:hover,:focus-visible) { background:var(--dsw-alias-button-info-hover); }
-.dsh-home-widget .dsh-queue-main { border:0; background:var(--dsw-alias-bg-module-platform); border-inline-start:3px solid var(--dsw-alias-state-warn-primary); }
-.dsh-home-widget .dsh-task-preview { background:color-mix(in srgb,var(--dsw-alias-state-business-primary) 5%,var(--dsw-alias-bg-module-platform)); border-inline-start:3px solid var(--dsw-alias-state-business-primary); }
-.dsh-home-widget .dsh-task-options > button[aria-pressed="true"] { background:color-mix(in srgb,var(--dsw-alias-state-business-primary) 12%,transparent); color:var(--dsw-alias-state-business-primary); }
 .dsh-home-widget .dsh-quick-widget-links { padding:0; background:transparent; }
 .dsh-home-widget .dsh-quick-widget-link { background:var(--dsw-alias-bg-module-platform); }
 /* Content adapts within saved rectangles; whitespace is not an excuse to
@@ -73,13 +64,6 @@ export const widgetExpressionStyles = `
   .dsh-home-widget .dsh-today-content .dsh-today-stats { grid-column:2; grid-row:2; align-self:start; }
   .dsh-today-content .dsh-today-longest { grid-column:1 / -1; }
   .dsh-home-widget .dsh-quick-widget-links { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .dsh-home-widget .dsh-tasks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:20px; align-content:start; }
-  .dsh-tasks > :is(.dsh-muted,.dsh-task-error) { grid-column:1 / -1; }
-  .dsh-tasks > .dsh-field { grid-column:1; grid-row:2; }
-  .dsh-tasks > .dsh-task-options { grid-column:2; grid-row:2 / span 2; align-content:start; }
-  .dsh-tasks > button:first-of-type { grid-column:1; grid-row:3; }
-  .dsh-tasks > .dsh-task-preview { grid-column:1 / -1; }
-  .dsh-tasks > button:last-of-type { grid-column:1 / -1; }
 }
 @container widget (max-width:280px) {
   .dsh-day-dial { width:48px; height:48px; }

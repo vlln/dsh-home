@@ -14,8 +14,8 @@ import {
   LIBRARY_PANEL_MARGIN, clampLibraryPosition, libraryPositionFromDrag, libraryPositionFromKey,
   type LibraryPoint, type LibrarySize,
 } from './library-position.ts'
-export function WidgetGallery({ definitions, t, disabled, onDrag, onClose, position, onPositionChange }: {
-  definitions: readonly RegisteredWidgetDefinition[]; t:Translate; disabled:boolean
+export function WidgetGallery({ definitions, t, language, disabled, onDrag, onClose, position, onPositionChange }: {
+  definitions: readonly RegisteredWidgetDefinition[]; t:Translate; language:string; disabled:boolean
   onDrag:(definition:RegisteredWidgetDefinition,event:{x:number;y:number;pointerId:number;touch:boolean},grab:{x:number;y:number})=>void
   onClose:()=>void
   /** Stored corner in viewport pixels; `null` keeps the default corner from the stylesheet. */
@@ -153,7 +153,7 @@ export function WidgetGallery({ definitions, t, disabled, onDrag, onClose, posit
             users naturally grab it, not only the title strip. */}
         <article className="dsh-w dsh-directory-item" data-widget-type={definition.typeId} onPointerDown={event=>begin(definition,event)}>
         <WidgetFrameHeader title={title} t={t} editing disabled={disabled&&dragSource!==definition.typeId} icon={Icon?<Icon size={14}/>:undefined}/>
-        <div className="dsh-library-preview" inert><CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><div className="dsh-library-preview-scale"><WidgetPreview definition={definition} t={t} size={definition.defaults.size} width={480} height={260}/></div></CardBoundary></div>
+        <div className="dsh-library-preview" inert><CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetPreview definition={definition} t={t} language={language}/></CardBoundary></div>
       </article></Tooltip>
     })}</div>
     {filtered.length===0&&<div className="dsh-gallery-empty" role="status">{t('gallery.noMatch')}<Button size="sm" variant="outline" onClick={()=>{setSearch('');setSource('all')}}>{t('gallery.clear')}</Button></div>}

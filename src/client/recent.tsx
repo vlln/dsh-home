@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { FocusProps, SessionStatusMap } from './focus.tsx'
+import type { SessionStatusMap } from './session-model.ts'
 import { SessionRow } from './session-row.tsx'
 import type { WidgetProps } from './widgets.tsx'
 import {
@@ -12,7 +12,7 @@ import {
 
 export interface RecentProps extends WidgetProps {
   statuses?: SessionStatusMap
-  statusSource?: FocusProps['statusSource']
+  statusSource?: 'runtime' | 'none'
 }
 
 /** Body only: registry/page supplies the standard widget shell and heading. */
