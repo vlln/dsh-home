@@ -40,6 +40,16 @@
 - `HomeStore` 通过 `workbench.get/set` 一起加载 / 串行写入实例与布局；读取失败进入只读诊断，不覆盖成默认值。设置写失败保留原配置，后续重试不被失败队列污染。
 - 公共类型注册与持久化无强绑定：类型撤销保留实例，迁移失败返回原始实例及诊断；不要因缺席类型而裁剪存储。
 
+## 计划数据（0.32.0 起）
+
+- 待办 / 今日计划 / 日程 / 打卡是**同一份数据的四个视图**：`$DSH_HOME/data/dsh-home/planner.json`。条目字段 `{ id, kind, title, day, start, end, done, doneAt, priority, note, createdAt, updatedAt }`，习惯另存 `{ id, title, weekdays, marks, createdAt }`。
+- 写入是 op 式的（`planner.apply` + `operation`）：宿主在现有文档上应用并回传整份文档，客户端不重复实现 op 语义。两个窗口同时改不会互相覆盖，因为没有任何一端提交「整份覆盖」。
+- 上限：条目 500、习惯 30、标题 200 字、备注 2000 字、打点每习惯保留 400 天、文档 512 KiB。超限返回类型化错误码，不写坏文档。
+- 落盘沿用 `state.mjs` 的 `.tmp` + `rename`。文件损坏时 `planner.get` 返回 `storage.writable=false`，组件显示「数据不可用」；**不改写原文件**，且每次读取都以磁盘为准，所以把文件修好后无需重启宿主即可恢复。
+- 客户端共享层 `home-data.ts`：模块级 store + `useSyncExternalStore`，页面挂载读一次、回到可见时补一次，不轮询。任何一处写入后别处同一帧重渲染。
+- 计时数据另存 `focus.json`，只记 `startedAt + accumulatedMs`，剩多久由前端按墙钟算；番茄钟按「一轮一个阶段」结算，关页面到点只结算一轮并停在下一阶段起点，不追补。
+- 所有计划/计时组件在 `preview` 分支只读合成数据，不发请求、不订阅、不起计时（`scripts/verify-planner.mjs` 用请求计数断言）。
+
 ## 显式整理与组件自有编辑
 
 - `compactSpatialLayout` 仅由编辑模式「整理布局」调用。视觉顺序优先、逐卡 row-major first-fit，保留尺寸和元数据；已局部紧密的结果 no-op，普通拖动仍不压实。形状受限残洞可能保留，不承诺全局最优 / 无缝铺满。

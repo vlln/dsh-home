@@ -6,6 +6,10 @@ import { registerActivityWidget } from './activity-widget.tsx'
 import { registerActiveWidget } from './active-widget.tsx'
 import { registerPersonalWidgets } from './personal-widgets.tsx'
 import { registerQuickWidget } from './quick-widget.tsx'
+import { registerTodoWidget } from './todo-widget.tsx'
+import { registerPlanWidget } from './plan-widget.tsx'
+import { registerCalendarWidget } from './calendar-widget.tsx'
+import { registerHabitWidget } from './habit-widget.tsx'
 import { FocusQueue, FocusResume, type SessionStatusMap } from './focus.tsx'
 import type { HomeState, HomeStore } from './store.ts'
 import { emptyLayout, emptyPrefs } from './api.ts'
@@ -142,6 +146,6 @@ export function registerBuiltins(registry: HomeWidgetRegistry, t: Translate): ()
     source: '@vlln/dsh-home', preview: { data: builtinPreviewData(t) }, sizing: BUILTIN_SIZING[widget.id], configVersion: 1,
     defaultConfig: () => ({}), validateConfig: () => true, Content: widget.Content,
   }))
-  disposers.push(registerActivityWidget(registry, t), registerActiveWidget(registry, t), registerPersonalWidgets(registry, t), registerQuickWidget(registry, t))
+  disposers.push(registerActivityWidget(registry, t), registerActiveWidget(registry, t), registerPersonalWidgets(registry, t), registerQuickWidget(registry, t), registerTodoWidget(registry, t), registerPlanWidget(registry, t), registerCalendarWidget(registry, t), registerHabitWidget(registry, t))
   return () => { for (const off of disposers.reverse()) off() }
 }

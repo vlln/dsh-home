@@ -11,6 +11,7 @@
 
 import { activityStyles } from './activity-styles.ts'
 import { personalStyles } from './personal-styles.ts'
+import { plannerStyles } from './planner-styles.ts'
 import { quickStyles } from './quick-styles.ts'
 import { galleryStyles } from './gallery-styles.ts'
 import { libraryStyles } from './library-styles.ts'
@@ -839,7 +840,7 @@ export function injectStyles(): () => void {
   if (existing !== null) return () => {}
   const element = document.createElement('style')
   element.id = STYLE_ID
-  element.textContent = CSS + activityStyles + personalStyles + quickStyles + galleryStyles + libraryStyles + widgetRefinementStyles + widgetExpressionStyles
+  element.textContent = CSS + activityStyles + personalStyles + plannerStyles + quickStyles + galleryStyles + libraryStyles + widgetRefinementStyles + widgetExpressionStyles
   document.head.append(element)
   return () => { element.remove() }
 }

@@ -7,8 +7,14 @@
 
 import type { LibraryPoint } from './library-position.ts'
 
-/** 与 src/index.mjs 的 API_PATH 同源。 */
+/** 老入口（同源围栏自校验）；宿主仍保留，供旧客户端使用。 */
 export const API_PATH = '/plugins/dsh-home/api'
+
+/** 新入口：官方 `connection` 的 `/api` 围栏（只认 owner 对端）。 */
+export const CONNECTION_PATH = '/api/dsh-home/rpc'
+
+/** 当前入口；第一次 404/405 之后记住降级结果，不再重试。 */
+let preferredPath: string = CONNECTION_PATH
 
 /** 卡片尺寸档。 */
 export type WidgetSize = 's' | 'm' | 'l'
@@ -98,12 +104,14 @@ interface Envelope<T> {
 /** Keep server diagnostics on failed writes (especially a newly read-only document). */
 export class HomeApiError extends Error {
   readonly code: string
+  readonly status: number
   readonly storage?: StorageStatus
-  constructor(message: string, code: string, storage?: StorageStatus) {
+  constructor(message: string, code: string, storage?: StorageStatus, status = 0) {
     super(message)
     this.name = 'HomeApiError'
     this.code = code
     this.storage = storage
+    this.status = status
   }
 }
 function storageStatus(value: unknown): StorageStatus | undefined {
@@ -116,7 +124,22 @@ function storageStatus(value: unknown): StorageStatus | undefined {
 
 /** 发一条 op；失败抛带 code 的 Error。 */
 export async function post<T>(op: string, extra: Record<string, unknown> = {}, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(API_PATH, {
+  const attempt = async (target: string): Promise<T> => {
+    try {
+      return await postTo<T>(target, op, extra, signal)
+    } catch (error) {
+      const status = error instanceof HomeApiError ? error.status : 0
+      if (target !== preferredPath || (status !== 404 && status !== 405)) throw error
+      // 宿主没挂 connection 围栏（老版本或旧 profile）：降级到老入口并记住。
+      preferredPath = API_PATH
+      return postTo<T>(API_PATH, op, extra, signal)
+    }
+  }
+  return attempt(preferredPath)
+}
+
+async function postTo<T>(target: string, op: string, extra: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(target, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     credentials: 'same-origin',
@@ -128,10 +151,10 @@ export async function post<T>(op: string, extra: Record<string, unknown> = {}, s
   try {
     envelope = await response.json() as Envelope<T>
   } catch {
-    throw new Error(`home api: HTTP ${response.status} without JSON`)
+    throw new HomeApiError(`home api: HTTP ${response.status} without JSON`, 'http-error', undefined, response.status)
   }
   if (!response.ok || envelope.ok !== true) {
-    throw new HomeApiError(envelope.error?.message ?? `home api: HTTP ${response.status}`, envelope.error?.code ?? 'http-error', storageStatus(envelope.storage))
+    throw new HomeApiError(envelope.error?.message ?? `home api: HTTP ${response.status}`, envelope.error?.code ?? 'http-error', storageStatus(envelope.storage), response.status)
   }
   return envelope.value as T
 }
@@ -199,4 +222,131 @@ export function savePrefs(prefs: Prefs): Promise<Prefs> {
 /** 触发一次重扫（重建账本）。 */
 export function requestRescan(): Promise<{ started: boolean }> {
   return post<{ started: boolean }>('rescan')
+}
+
+/** 一条计划条目（待办或日程）。 */
+export interface PlannerItem {
+  id: string
+  kind: 'task' | 'event'
+  title: string
+  day: string | null
+  start: string | null
+  end: string | null
+  done: boolean
+  doneAt: number | null
+  priority: 0 | 1 | 2
+  note: string
+  createdAt: number
+  updatedAt: number
+}
+
+/** 一个习惯，`marks` 是「哪天做过」的日键集合。 */
+export interface PlannerHabit {
+  id: string
+  title: string
+  weekdays: number[] | null
+  marks: Record<string, true>
+  createdAt: number
+}
+
+/** 计划文档：一份数据、四个视图（待办 / 计划表 / 日程表 / 打卡）。 */
+export interface PlannerDoc {
+  version: number
+  revision: number
+  items: PlannerItem[]
+  habits: PlannerHabit[]
+}
+
+/** 计划写入操作；`title` 由客户端给出，其余由宿主校验。 */
+export type PlannerOperation =
+  | { op: 'item.create'; item: Partial<Omit<PlannerItem, 'id' | 'createdAt' | 'updatedAt' | 'done' | 'doneAt'>> }
+  | { op: 'item.update'; id: string; patch: Partial<Pick<PlannerItem, 'kind' | 'title' | 'day' | 'start' | 'end' | 'priority' | 'note'>> }
+  | { op: 'item.delete'; id: string }
+  | { op: 'item.toggle'; id: string; done?: boolean }
+  | { op: 'habit.create'; habit: { title: string; weekdays?: number[] | null } }
+  | { op: 'habit.update'; id: string; patch: { title?: string; weekdays?: number[] | null } }
+  | { op: 'habit.delete'; id: string }
+  | { op: 'habit.mark'; id: string; day: string; on?: boolean }
+
+/** 计划文档 + 可写状态。 */
+export interface PlannerDocument { planner: PlannerDoc; storage: StorageStatus }
+
+/** 一个计时器槽（按组件实例分槽）。 */
+export interface FocusTimer {
+  label: string
+  startedAt: number | null
+  accumulatedMs: number
+  running: boolean
+}
+
+/** 一个番茄钟槽。 */
+export interface FocusPomodoro {
+  phase: 'focus' | 'break'
+  startedAt: number | null
+  elapsedMs: number
+  focusMs: number
+  breakMs: number
+  completed: Record<string, number>
+}
+
+/** 计时文档：只存时间戳，剩多久由前端算。 */
+export interface FocusDoc {
+  version: number
+  revision: number
+  timers: Record<string, FocusTimer>
+  pomodoros: Record<string, FocusPomodoro>
+}
+
+/** 计时写入操作。 */
+export type FocusOperation =
+  | { op: 'timer.start' | 'timer.pause' | 'timer.reset' | 'timer.clear'; instanceId: string }
+  | { op: 'timer.rename'; instanceId: string; label: string }
+  | { op: 'pomodoro.start' | 'pomodoro.pause' | 'pomodoro.settle' | 'pomodoro.skip' | 'pomodoro.reset' | 'pomodoro.clear'; instanceId: string }
+  | { op: 'focus.gc'; instanceIds: string[] }
+
+/** 计时文档 + 可写状态。 */
+export interface FocusDocument { focus: FocusDoc; storage: StorageStatus }
+
+function isDocumentRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function assertPlanner(value: unknown): PlannerDoc {
+  if (!isDocumentRecord(value) || !Array.isArray(value.items) || !Array.isArray(value.habits)
+    || typeof value.revision !== 'number' || typeof value.version !== 'number') {
+    throw new HomeApiError('Invalid planner document', 'bad-planner-response')
+  }
+  return value as unknown as PlannerDoc
+}
+
+function assertFocus(value: unknown): FocusDoc {
+  if (!isDocumentRecord(value) || !isDocumentRecord(value.timers) || !isDocumentRecord(value.pomodoros)
+    || typeof value.revision !== 'number' || typeof value.version !== 'number') {
+    throw new HomeApiError('Invalid focus document', 'bad-focus-response')
+  }
+  return value as unknown as FocusDoc
+}
+
+/** 取计划文档。 */
+export async function fetchPlanner(): Promise<PlannerDocument> {
+  const value = await post<PlannerDocument>('planner.get')
+  return { planner: assertPlanner(value?.planner), storage: storageStatus(value?.storage) ?? { writable: true, status: 'ready', error: null } }
+}
+
+/** 应用一条计划操作，返回整份新文档。 */
+export async function applyPlanner(operation: PlannerOperation): Promise<PlannerDocument> {
+  const value = await post<PlannerDocument>('planner.apply', { operation })
+  return { planner: assertPlanner(value?.planner), storage: storageStatus(value?.storage) ?? { writable: true, status: 'ready', error: null } }
+}
+
+/** 取计时文档。 */
+export async function fetchFocus(): Promise<FocusDocument> {
+  const value = await post<FocusDocument>('focus.get')
+  return { focus: assertFocus(value?.focus), storage: storageStatus(value?.storage) ?? { writable: true, status: 'ready', error: null } }
+}
+
+/** 应用一条计时操作，返回整份新文档。 */
+export async function applyFocus(operation: FocusOperation): Promise<FocusDocument> {
+  const value = await post<FocusDocument>('focus.apply', { operation })
+  return { focus: assertFocus(value?.focus), storage: storageStatus(value?.storage) ?? { writable: true, status: 'ready', error: null } }
 }

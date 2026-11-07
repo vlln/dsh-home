@@ -9,6 +9,7 @@ import { CardBoundary } from './boundary.tsx'
 import { SpatialGrid } from './spatial-grid.tsx'
 import { buildSpatialLayout, moveSpatialItem, sizeFromRect, SPATIAL_GAP, SPATIAL_ROW_HEIGHT, type SpatialItem } from './spatial-model.ts'
 import type { HomeStore } from './store.ts'
+import { homeData } from './home-data.ts'
 import type { HomeWidgets, RegisteredWidgetDefinition, WidgetContentProps, WidgetInstance } from './widget-contract.ts'
 import { widgetText } from './widget-settings.tsx'
 import { validateWidgetConfig } from './widget-registry.ts'
@@ -97,6 +98,18 @@ export function HomePage(props: HomePageProps): ReactNode {
   const busy = saving || state.workbenchBusy
   const editable = editing && writable && !busy
   useEffect(() => { void store.refresh() }, [store])
+  // 计划与计时是页面级共享数据：挂载读一次，回到可见时补一次（不轮询）。
+  useEffect(() => {
+    homeData.load()
+    const onVisible = (): void => { if (document.visibilityState === 'visible') homeData.load() }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+      homeData.reset()
+    }
+  }, [])
   useEffect(() => {
     if (seenRef.current || state.ledger === null || !state.prefsLoaded || !writable) return
     const previous = state.prefs.lastSeenAt

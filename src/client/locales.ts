@@ -9,10 +9,11 @@ import { zhActivity, enActivity } from './activity-locales.ts'
 import { zhPersonal, enPersonal } from './personal-locales.ts'
 import { zhQuick, enQuick } from './quick-locales.ts'
 import { zhGallery, enGallery } from './gallery-locales.ts'
+import { zhPlanner, enPlanner } from './planner-locales.ts'
 
 /** 中文文案（键集的事实来源）。 */
 export const zh = {
-  ...zhActivity, ...zhPersonal, ...zhQuick, ...zhGallery,
+  ...zhActivity, ...zhPersonal, ...zhQuick, ...zhGallery, ...zhPlanner,
   'workbench.loading': '正在加载桌面配置…',
   'workbench.readOnly': '桌面配置当前为只读，已停用所有编辑操作。原始数据会保留。',
   'workbench.writeError': '桌面配置未能保存；编辑仍保留，请重试保存。',
@@ -206,7 +207,7 @@ export type HomeLocaleKey = keyof typeof zh
 
 /** 英文文案（键集必须与 {@link zh} 完全相同）。 */
 export const en: Record<HomeLocaleKey, string> = {
-  ...enActivity, ...enPersonal, ...enQuick, ...enGallery,
+  ...enActivity, ...enPersonal, ...enQuick, ...enGallery, ...enPlanner,
   'workbench.loading': 'Loading workspace configuration…',
   'workbench.readOnly': 'Workspace configuration is read-only. All editing is disabled; original data is preserved.',
   'workbench.writeError': 'Could not save workspace configuration. Your edits are retained; retry saving.',

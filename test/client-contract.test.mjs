@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { setImmediate } from 'node:timers/promises'
 import { zh, en } from '../src/client/locales.ts'
-import { API_PATH, emptyLayout, emptyPrefs, fetchLayout, saveLayout } from '../src/client/api.ts'
+import { CONNECTION_PATH, emptyLayout, emptyPrefs, fetchLayout, saveLayout } from '../src/client/api.ts'
 import { HomeStore } from '../src/client/store.ts'
 import { initialInstances } from '../src/widget-state.mjs'
 
@@ -70,7 +70,7 @@ async function withStore(layout, callback) {
     assert.equal(store.getSnapshot().error, null)
     assert.deepEqual(calls.map(call => call.body.op), ['snapshot', 'workbench.get', 'prefs.get'])
     for (const { url, init } of calls) {
-      assert.equal(url, API_PATH)
+      assert.equal(url, CONNECTION_PATH)
       assert.equal(init.method, 'POST')
       assert.equal(init.credentials, 'same-origin')
       assert.equal(init.headers['content-type'], 'application/json')

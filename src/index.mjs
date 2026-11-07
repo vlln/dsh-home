@@ -21,8 +21,10 @@
 
 import { isSameOrigin } from './trust.mjs'
 import { buildActivity, validateActivityQuery } from './activity.mjs'
+import { applyFocusOp, emptyFocus } from './focus.mjs'
 import { buildSnapshot, foldSession, FOLD_VERSION } from './ledger.mjs'
-import { loadLedger, loadState, normalizeLayout, normalizePrefs, readOnlyState, saveLedger, saveState, stateStorage } from './state.mjs'
+import { applyPlannerOp, emptyPlanner } from './planner.mjs'
+import { loadFocus, loadLedger, loadPlanner, loadState, normalizeLayout, normalizePrefs, readOnlyState, saveFocus, saveLedger, savePlanner, saveState, stateStorage } from './state.mjs'
 import { BUILTIN_WIDGET_IDS, layoutInstanceIds, validateWorkbench, widgetStateError } from './widget-state.mjs'
 
 /** bundle 条目 id（= cordis.patch.yml 的 insert id）。 */
@@ -97,6 +99,17 @@ export function createHomeService(ctx, { log = () => {}, load = loadState, save 
     ledger.foldVersion = FOLD_VERSION
     ledger.scannedAt = null
   }
+  // 计划与计时是两份独立文档：损坏时保留原文件、页面显示不可用，绝不覆盖成空文档。
+  const loadedPlanner = loadPlanner()
+  let planner = loadedPlanner.doc ?? emptyPlanner()
+  let plannerStatus = loadedPlanner.doc === null
+    ? { writable: false, status: 'read-only', error: { code: loadedPlanner.error, message: 'Saved plan data cannot be read; original file retained' } }
+    : { writable: true, status: 'ready', error: null }
+  const loadedFocus = loadFocus()
+  let focus = loadedFocus.doc ?? emptyFocus()
+  let focusStatus = loadedFocus.doc === null
+    ? { writable: false, status: 'read-only', error: { code: loadedFocus.error, message: 'Saved timer data cannot be read; original file retained' } }
+    : { writable: true, status: 'ready', error: null }
   /** @type {object | undefined} */
   let persistence
   let scanning = false
@@ -131,6 +144,57 @@ export function createHomeService(ctx, { log = () => {}, load = loadState, save 
     } catch (error) {
       log(`ledger write failed: ${error?.message ?? error}`)
     }
+  }
+
+  const commitPlanner = (next) => {
+    if (!plannerStatus.writable) throw widgetStateError(plannerStatus.error.message, plannerStatus.error.code)
+    try {
+      savePlanner(next)
+    } catch (error) {
+      plannerStatus = { writable: false, status: 'write-error', error: { code: 'planner-write-error', message: 'Cannot save plan data; previous file retained' } }
+      log(`planner write failed: ${error?.message ?? error}`)
+      throw widgetStateError(plannerStatus.error.message, 'planner-write-error')
+    }
+    planner = next
+    plannerStatus = { writable: true, status: 'ready', error: null }
+  }
+
+  /**
+   * 以磁盘为准刷新计划（文件很小，每次读取都重读）：
+   * 外部改坏 → 立刻进入只读并保留原文件；修好 → 无需重启即恢复。
+   */
+  const refreshPlanner = () => {
+    const loaded = loadPlanner()
+    if (loaded.doc === null) {
+      plannerStatus = { writable: false, status: 'read-only', error: { code: loaded.error, message: 'Saved plan data cannot be read; original file retained' } }
+      return
+    }
+    planner = loaded.doc
+    plannerStatus = { writable: true, status: 'ready', error: null }
+  }
+
+  const commitFocus = (next) => {
+    if (!focusStatus.writable) throw widgetStateError(focusStatus.error.message, focusStatus.error.code)
+    try {
+      saveFocus(next)
+    } catch (error) {
+      focusStatus = { writable: false, status: 'write-error', error: { code: 'focus-write-error', message: 'Cannot save timer data; previous file retained' } }
+      log(`focus write failed: ${error?.message ?? error}`)
+      throw widgetStateError(focusStatus.error.message, 'focus-write-error')
+    }
+    focus = next
+    focusStatus = { writable: true, status: 'ready', error: null }
+  }
+
+  /** 以磁盘为准刷新计时文档；语义同 {@link refreshPlanner}。 */
+  const refreshFocus = () => {
+    const loaded = loadFocus()
+    if (loaded.doc === null) {
+      focusStatus = { writable: false, status: 'read-only', error: { code: loaded.error, message: 'Saved timer data cannot be read; original file retained' } }
+      return
+    }
+    focus = loaded.doc
+    focusStatus = { writable: true, status: 'ready', error: null }
   }
 
   const foldOne = async (snapshot) => {
@@ -231,6 +295,7 @@ export function createHomeService(ctx, { log = () => {}, load = loadState, save 
     setWorkbench(workbench) {
       const validated = validateWorkbench(workbench, normalizeLayout)
       persistState({ ...state, ...validated })
+      this.pruneFocus(validated.instances.map(instance => instance.instanceId))
       return this.getWorkbench()
     },
     setLayout(raw) {
@@ -257,6 +322,40 @@ export function createHomeService(ctx, { log = () => {}, load = loadState, save 
     },
     getPrefs() {
       return clone(state.prefs)
+    },
+    /** 计划文档 + 可写状态；只读时先重试读盘，文件修好即恢复。 */
+    getPlanner() {
+      refreshPlanner()
+      return clone({ planner, storage: plannerStatus })
+    },
+    applyPlanner(operation) {
+      refreshPlanner()
+      if (!plannerStatus.writable) throw widgetStateError(plannerStatus.error.message, plannerStatus.error.code)
+      const { doc } = applyPlannerOp(planner, operation)
+      if (doc !== planner) commitPlanner(doc)
+      return clone({ planner, storage: plannerStatus })
+    },
+    /** 计时文档 + 可写状态。 */
+    getFocus() {
+      refreshFocus()
+      return clone({ focus, storage: focusStatus })
+    },
+    applyFocus(operation) {
+      refreshFocus()
+      if (!focusStatus.writable) throw widgetStateError(focusStatus.error.message, focusStatus.error.code)
+      const { doc } = applyFocusOp(focus, operation)
+      if (doc !== focus) commitFocus(doc)
+      return clone({ focus, storage: focusStatus })
+    },
+    /** 实例删掉后清理它的计时槽；失败不影响布局保存。 */
+    pruneFocus(instanceIds) {
+      if (!focusStatus.writable) return
+      try {
+        const { doc } = applyFocusOp(focus, { op: 'focus.gc', instanceIds })
+        if (doc !== focus) commitFocus(doc)
+      } catch (error) {
+        log(`focus gc failed: ${error?.message ?? error}`)
+      }
     },
   }
 }
@@ -289,6 +388,9 @@ export function apply(ctx) {
   const webServer = ctx.get('webServer')
   if (webServer === undefined) return
 
+  // 两个入口共用一套 op 分发：老路径给已安装的旧客户端，/api 围栏给新客户端。
+  const runOp = body => dispatch(service, body)
+
   ctx.effect(() => webServer.register({
     kind: 'exact',
     path: API_PATH,
@@ -308,57 +410,99 @@ export function apply(ctx) {
         send(res, 400, { ok: false, error: { code: error.code ?? 'bad-request', message: error.message } })
         return
       }
-      const op = body?.op
-      try {
-        if (op === 'snapshot') {
-          send(res, 200, { ok: true, value: service.snapshot() })
-          return
-        }
-        if (op === 'activity') {
-          send(res, 200, { ok: true, value: service.activity({ timeZone: body.timeZone, cwd: body.cwd, date: body.date }) })
-          return
-        }
-        if (op === 'workbench.get') {
-          send(res, 200, { ok: true, value: service.getWorkbench() })
-          return
-        }
-        if (op === 'workbench.set') {
-          send(res, 200, { ok: true, value: service.setWorkbench({ layout: body.layout, instances: body.instances }) })
-          return
-        }
-        if (op === 'layout.get') {
-          send(res, 200, { ok: true, value: { layout: service.getLayout(), storage: service.getStorage() } })
-          return
-        }
-        if (op === 'layout.set') {
-          const layout = normalizeLayout(body.layout)
-          if (layout === null) {
-            send(res, 400, { ok: false, error: { code: 'bad-layout', message: 'layout must be { order, size, hidden }' } })
-            return
-          }
-          send(res, 200, { ok: true, value: { layout: service.setLayout(layout) } })
-          return
-        }
-        if (op === 'prefs.get') {
-          send(res, 200, { ok: true, value: { prefs: service.getPrefs(), storage: service.getStorage() } })
-          return
-        }
-        if (op === 'prefs.set') {
-          send(res, 200, { ok: true, value: { prefs: service.setPrefs(normalizePrefs(body.prefs)) } })
-          return
-        }
-        if (op === 'rescan') {
-          void service.scan()
-          send(res, 200, { ok: true, value: { started: true } })
-          return
-        }
-        send(res, 400, { ok: false, error: { code: 'unknown-op', message: `unknown op: ${String(op)}` } })
-      } catch (error) {
-        const code = error?.code
-        const status = code === 'bad-workbench' || code === 'bad-layout' || code === 'bad-activity-query' ? 400 : code === 'state-read-only' ? 409 : 500
-        const safeCode = ['bad-workbench', 'bad-layout', 'bad-activity-query', 'state-read-only', 'state-write-error'].includes(code) ? code : 'internal'
-        send(res, status, { ok: false, error: { code: safeCode, message: safeCode === 'internal' ? 'Workbench operation failed' : error.message }, storage: service.getStorage() })
-      }
+      const reply = await runOp(body)
+      send(res, reply.status, reply.payload)
     },
   }), 'dsh-home: api route')
+
+  // 官方 connection 的 `/api` 围栏：只认 owner 对端，Host/Origin 同源检查由宿主完成。
+  ctx.inject(['connection'], (scoped) => {
+    const connection = scoped.get('connection')
+    const register = connection?.fetch?.register
+    if (typeof register !== 'function') return
+    scoped.effect(() => register.call(connection.fetch, {
+      path: CONNECTION_PATH,
+      methods: ['POST'],
+      requestBody: 'buffered',
+      fetch: async request => {
+        let body
+        try {
+          body = await request.json()
+        } catch {
+          return Response.json({ ok: false, error: { code: 'bad-request', message: 'body is not JSON' } }, { status: 400 })
+        }
+        const reply = await runOp(body)
+        return Response.json(reply.payload, { status: reply.status, headers: { 'cache-control': 'no-store' } })
+      },
+    }), 'dsh-home: connection api route')
+  })
+}
+
+/** `/api` 围栏后的新入口。 */
+export const CONNECTION_PATH = '/api/dsh-home/rpc'
+
+/** 客户端输入类错误的码值：它们原样回给前端，其余一律归为 internal。 */
+const CLIENT_ERROR_CODES = new Set([
+  'bad-workbench', 'bad-layout', 'bad-activity-query', 'state-read-only',
+  'bad-op', 'bad-item', 'bad-title', 'bad-note', 'bad-day', 'bad-time', 'bad-kind', 'bad-priority',
+  'bad-weekdays', 'bad-marks', 'bad-habit', 'bad-id', 'unknown-op', 'too-many-items', 'too-many-habits',
+  'missing-item', 'missing-habit', 'bad-slot', 'bad-timer', 'bad-pomodoro', 'bad-gc',
+  'missing-timer', 'missing-pomodoro', 'too-many-slots', 'bad-planner', 'bad-focus',
+  'focus-read-only', 'planner-read-only',
+  'planner-corrupt', 'focus-corrupt', 'planner-unreadable', 'focus-unreadable',
+  'planner-too-large', 'focus-too-large',
+])
+
+/** 是否是可原样回给前端的码值（其余一律归为 internal）。 */
+function knownCode(code) {
+  return CLIENT_ERROR_CODES.has(code) || /-(?:write-error|corrupt|unreadable|too-large)$/u.test(code)
+}
+
+/** 码值 → HTTP 状态。 */
+function statusOf(code) {
+  if (/-too-large$/u.test(code)) return 413
+  if (code === 'state-read-only' || /-(?:read-only)$/u.test(code)) return 409
+  if (/-(?:corrupt|unreadable)$/u.test(code)) return 409
+  if (/-write-error$/u.test(code)) return 500
+  if (CLIENT_ERROR_CODES.has(code)) return 400
+  return 500
+}
+
+/**
+ * 一条 op 的分发：两个 HTTP 入口共用，返回状态码与信封。
+ * @param service 首页服务
+ * @param body 已解析的请求体
+ * @returns `{ status, payload }`
+ */
+async function dispatch(service, body) {
+  const op = body?.op
+  try {
+    if (op === 'snapshot') return { status: 200, payload: { ok: true, value: service.snapshot() } }
+    if (op === 'activity') return { status: 200, payload: { ok: true, value: service.activity({ timeZone: body.timeZone, cwd: body.cwd, date: body.date }) } }
+    if (op === 'workbench.get') return { status: 200, payload: { ok: true, value: service.getWorkbench() } }
+    if (op === 'workbench.set') return { status: 200, payload: { ok: true, value: service.setWorkbench({ layout: body.layout, instances: body.instances }) } }
+    if (op === 'layout.get') return { status: 200, payload: { ok: true, value: { layout: service.getLayout(), storage: service.getStorage() } } }
+    if (op === 'layout.set') {
+      const layout = normalizeLayout(body.layout)
+      if (layout === null) return { status: 400, payload: { ok: false, error: { code: 'bad-layout', message: 'layout must be { order, size, hidden }' } } }
+      return { status: 200, payload: { ok: true, value: { layout: service.setLayout(layout) } } }
+    }
+    if (op === 'prefs.get') return { status: 200, payload: { ok: true, value: { prefs: service.getPrefs(), storage: service.getStorage() } } }
+    if (op === 'prefs.set') return { status: 200, payload: { ok: true, value: { prefs: service.setPrefs(normalizePrefs(body.prefs)) } } }
+    if (op === 'rescan') {
+      void service.scan()
+      return { status: 200, payload: { ok: true, value: { started: true } } }
+    }
+    if (op === 'planner.get') return { status: 200, payload: { ok: true, value: service.getPlanner() } }
+    if (op === 'planner.apply') return { status: 200, payload: { ok: true, value: service.applyPlanner(body.operation) } }
+    if (op === 'focus.get') return { status: 200, payload: { ok: true, value: service.getFocus() } }
+    if (op === 'focus.apply') return { status: 200, payload: { ok: true, value: service.applyFocus(body.operation) } }
+    return { status: 400, payload: { ok: false, error: { code: 'unknown-op', message: `unknown op: ${String(op)}` } } }
+  } catch (error) {
+    const code = typeof error?.code === 'string' ? error.code : 'internal'
+    const status = statusOf(code)
+    const safeCode = knownCode(code) ? code : 'internal'
+    const message = safeCode === 'internal' ? 'Workbench operation failed' : error.message
+    return { status, payload: { ok: false, error: { code: safeCode, message }, storage: service.getStorage() } }
+  }
 }

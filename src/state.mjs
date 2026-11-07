@@ -10,6 +10,8 @@
  * @module @vlln/dsh-home/state
  */
 
+import { emptyPlanner, MAX_DOC_BYTES, normalizePlanner } from './planner.mjs'
+import { emptyFocus, normalizeFocus } from './focus.mjs'
 import { constants, copyFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { initialInstances, validBreakpoint, validateWorkbench, validateWorkbenchLayout, widgetStateError } from './widget-state.mjs'
 import { homedir } from 'node:os'
@@ -143,6 +145,68 @@ export function saveState(state) {
     }
   }
   writeJson(stateFile(), next)
+}
+
+/** 计划文档路径（待办 / 日程 / 习惯）。 */
+export function plannerFile() {
+  return path.join(stateDir(), 'planner.json')
+}
+
+/** 计时文档路径（计时器 / 番茄钟）。 */
+export function focusFile() {
+  return path.join(stateDir(), 'focus.json')
+}
+
+/**
+ * 读计划文档。
+ * @returns `{ doc, error }`；文件不存在时给空文档，损坏时 `doc` 为 null 且保留原文件
+ */
+export function loadPlanner() {
+  let text
+  try {
+    text = readFileSync(plannerFile(), 'utf8')
+  } catch (error) {
+    if (error.code === 'ENOENT') return { doc: emptyPlanner(), error: null }
+    return { doc: null, error: 'planner-unreadable' }
+  }
+  try {
+    if (Buffer.byteLength(text) > MAX_DOC_BYTES) return { doc: null, error: 'planner-too-large' }
+    const doc = normalizePlanner(JSON.parse(text))
+    return doc === null ? { doc: null, error: 'planner-corrupt' } : { doc, error: null }
+  } catch {
+    return { doc: null, error: 'planner-corrupt' }
+  }
+}
+
+/** 原子写计划文档。 */
+export function savePlanner(doc) {
+  writeJson(plannerFile(), doc)
+}
+
+/**
+ * 读计时文档。
+ * @returns `{ doc, error }`；文件不存在时给空文档，损坏时 `doc` 为 null 且保留原文件
+ */
+export function loadFocus() {
+  let text
+  try {
+    text = readFileSync(focusFile(), 'utf8')
+  } catch (error) {
+    if (error.code === 'ENOENT') return { doc: emptyFocus(), error: null }
+    return { doc: null, error: 'focus-unreadable' }
+  }
+  try {
+    if (Buffer.byteLength(text) > 512 * 1024) return { doc: null, error: 'focus-too-large' }
+    const doc = normalizeFocus(JSON.parse(text))
+    return doc === null ? { doc: null, error: 'focus-corrupt' } : { doc, error: null }
+  } catch {
+    return { doc: null, error: 'focus-corrupt' }
+  }
+}
+
+/** 原子写计时文档。 */
+export function saveFocus(doc) {
+  writeJson(focusFile(), doc)
 }
 
 /** 空账本。 */
