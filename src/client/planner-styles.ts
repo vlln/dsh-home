@@ -9,6 +9,10 @@
  */
 export const plannerStyles = `
 /* ---------- 共用 ---------- */
+/* 图表用的额外色相：宿主 token 只有蓝/绿/琥珀/红，参考图需要更丰富的配色。
+   这些是固定的中饱和色，深浅背景下都可读；UI 骨架仍只用宿主的语义 token。 */
+.dsh-home, .dsh-w { --dsh-hue-blue:#4176e6; --dsh-hue-teal:#0d9488; --dsh-hue-green:#22c55e; --dsh-hue-amber:#f59e0b; --dsh-hue-violet:#8b5cf6; --dsh-hue-pink:#ec4899; }
+
 .dsh-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:11px; line-height:16px; font-weight:600; white-space:nowrap;
   background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-secondary); }
 .dsh-chip b { color:inherit; font-weight:600; font-variant-numeric:tabular-nums; }
@@ -194,7 +198,7 @@ export const plannerStyles = `
 .dsh-picture-empty-glyph { color:var(--dsw-alias-label-caption); font-size:22px; line-height:1; }
 .dsh-picture-path { max-width:100%; color:var(--dsw-alias-label-caption); font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:start; }
 .dsh-quote { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:6px; justify-content:center; padding:2px 4px; }
-.dsh-quote-mark { color:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 70%, transparent); font-size:34px; line-height:.8; font-weight:600; }
+.dsh-quote-mark { color:var(--dsh-hue-violet); font-size:34px; line-height:.8; font-weight:600; }
 .dsh-quote-text { margin:0; color:var(--dsw-alias-label-primary); font-size:13px; line-height:1.6; overflow:auto; scrollbar-width:thin; }
 .dsh-quote-hint { color:var(--dsw-alias-label-caption); font-size:10px; }
 
@@ -219,4 +223,39 @@ export const plannerStyles = `
 .dsh-item-save:hover { background:color-mix(in srgb, var(--dsw-alias-state-business-primary) 86%, #000); }
 .dsh-item-save:disabled { opacity:.45; cursor:default; }
 .dsh-item-delete { margin-inline-end:auto; color:var(--dsw-alias-state-error-primary); border-color:transparent; background:transparent; }
+
+/* 优先级：重要=琥珀，紧急=红，普通不显示。 */
+.dsh-priority { flex:none; width:6px; height:6px; margin-top:7px; clip-path:circle(50%); border-radius:50%; background:var(--dsh-hue-amber); }
+.dsh-priority[data-priority="2"] { background:var(--dsw-alias-state-error-primary); }
+.dsh-item-priority { display:flex; gap:4px; }
+.dsh-item-priority-pill { padding:2px 9px; border:0; border-radius:999px; background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-tertiary); font-size:11px; line-height:16px; cursor:pointer; }
+.dsh-item-priority-pill[data-level="1"][aria-pressed="true"] { background:var(--dsw-alias-state-warn-tertiary); color:var(--dsw-alias-state-warn-primary); }
+.dsh-item-priority-pill[data-level="2"][aria-pressed="true"] { background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent); color:var(--dsw-alias-state-error-primary); }
+.dsh-item-priority-pill[data-level="0"][aria-pressed="true"] { background:var(--dsw-alias-state-business-tertiary); color:var(--dsw-alias-state-business-primary); }
+
+/* 打卡：每个习惯一个固定色相。 */
+.dsh-habit-row { --habit-hue: var(--dsh-hue-blue); }
+.dsh-habit-row[data-hue="0"] { --habit-hue: var(--dsh-hue-blue); }
+.dsh-habit-row[data-hue="1"] { --habit-hue: var(--dsh-hue-teal); }
+.dsh-habit-row[data-hue="2"] { --habit-hue: var(--dsh-hue-green); }
+.dsh-habit-row[data-hue="3"] { --habit-hue: var(--dsh-hue-amber); }
+.dsh-habit-row[data-hue="4"] { --habit-hue: var(--dsh-hue-violet); }
+.dsh-habit-row[data-hue="5"] { --habit-hue: var(--dsh-hue-pink); }
+.dsh-habit-mark { border-color:color-mix(in srgb, var(--habit-hue) 45%, transparent); color:var(--dsw-alias-label-primary-foreground); }
+.dsh-habit-mark:hover { border-color:var(--habit-hue); }
+.dsh-habit-mark[aria-checked="true"] { border-color:var(--habit-hue); background:var(--habit-hue); }
+.dsh-habit-streak[data-zero="false"] { background:color-mix(in srgb, var(--habit-hue) 14%, transparent); color:var(--habit-hue); }
+
+/* 日历圆点：当天未完成越多，颜色越重。 */
+.dsh-calendar-dot { background:var(--dsh-hue-blue); }
+.dsh-calendar-dot[data-density="2"] { background:var(--dsh-hue-amber); }
+.dsh-calendar-dot[data-density="3"] { background:var(--dsh-hue-pink); }
+
+/* 柱状：一周用青色，今天用主蓝。 */
+.dsh-usage-bar { background:var(--dsh-hue-teal); }
+.dsh-usage-col:last-child .dsh-usage-bar { background:var(--dsh-hue-blue); }
+
+/* 余额：有数字时用绿色，占位符用淡色。 */
+.dsh-balance-amount[data-known="true"] { color:var(--dsh-hue-green); }
+
 `

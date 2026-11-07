@@ -50,6 +50,13 @@
 - 计时数据另存 `focus.json`，只记 `startedAt + accumulatedMs`，剩多久由前端按墙钟算；番茄钟按「一轮一个阶段」结算，关页面到点只结算一轮并停在下一阶段起点，不追补。倒计时按「目标日 0 点」结束，不足一天时显示时分。
 - 所有计划/计时组件在 `preview` 分支只读合成数据，不发请求、不订阅、不起计时（`scripts/verify-planner.mjs` 用请求计数断言）。
 
+## 视觉约定（0.39.0 起）
+
+- 图表用「粗、实心、高饱和」：番茄钟环 14/120、Token 甜甜圈环宽 14px、柱状纯色无渐变、勾选/打点/选中日都是实心色块 + 白字。
+- 宿主 token 只有蓝/绿/琥珀/红四个色相，参考图需要更丰富的配色，因此在 `.dsh-home` 作用域里补了 `--dsh-hue-{blue,teal,green,amber,violet,pink}`（固定中饱和色，深浅背景都可读）。**UI 骨架仍只用宿主语义 token**，额外色相只用于图表与分类。
+- 分类色：习惯按 id 哈希固定色相；日历圆点按当天未完成数量取蓝/琥珀/粉；条目优先级 → 琥珀/红圆点；Token 甜甜圈按 input/cacheRead/output/cacheWrite 取蓝/绿/琥珀/紫。
+- 这套主题里 `--dsw-alias-bg-layer-2/3` 都是纯白、`--dsw-alias-label-quaternary` 不存在，浅面用 `bg-skeleton` / `interactive-bg-hover`，淡字用 `label-caption`，饱和底上的字用 `label-primary-foreground`。
+
 ## Token 与余额（0.34.0 / 0.36.0 起）
 
 - 账本在折叠事件时按天累计 token：`assistant/message` 的 `data.usage`，重试走 `assistant/attempt` 流里最后一个 usage chunk（与宿主 `token-meter` 的 `usageOf` 同口径）；同一 turn/step 的新样本替换旧样本，`llm/retry-started` 撤销上一份，避免重复计数。`FOLD_VERSION` 也随之升到 4，旧账本自动整份重折。

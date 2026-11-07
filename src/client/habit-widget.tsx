@@ -32,6 +32,13 @@ function validateHabitConfig(value: unknown): value is HabitConfig {
 
 export interface HabitPreviewData { day: string; habits: PlannerHabit[] }
 
+/** 稳定的色相槽：同一个习惯总是同一个颜色。 */
+export function habitHue(id: string): number {
+  let hash = 0
+  for (const char of id) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0
+  return hash % 6
+}
+
 function weekdayLabel(habit: PlannerHabit, t: Translate): string {
   if (habit.weekdays === null) return t('habit.everyday')
   return t('habit.weekdays', { days: habit.weekdays.map(day => t(`calendar.weekday.${day}`)).join(' ') })
@@ -65,7 +72,8 @@ function HabitBody({ habits, today, t, readOnly, showAll, onMark, onDelete, onCr
           const marked = habitMarked(habit, today)
           const streak = habitStreak(habit, today)
           const isDue = habitDue(habit, today)
-          return <li key={habit.id} className="dsh-habit-row" data-marked={marked ? 'true' : 'false'} data-due={isDue ? 'true' : 'false'}>
+          return <li key={habit.id} className="dsh-habit-row" data-marked={marked ? 'true' : 'false'}
+            data-due={isDue ? 'true' : 'false'} data-hue={habitHue(habit.id)}>
             <button type="button" className="dsh-habit-mark" role="checkbox" aria-checked={marked}
               aria-label={habit.title} disabled={readOnly} onClick={() => onMark?.(habit, !marked)}>
               <span className="dsh-todo-tick" aria-hidden="true" />

@@ -18,11 +18,12 @@ export interface ItemDraft {
   start: string | null
   end: string | null
   note: string
+  priority: 0 | 1 | 2
 }
 
 /** 空草稿；新建时把日期预填成「今天」或点中的那天。 */
 export function emptyDraft(day: string | null = null): ItemDraft {
-  return { title: '', day, start: null, end: null, note: '' }
+  return { title: '', day, start: null, end: null, note: '', priority: 0 }
 }
 
 /** 本地校验；返回错误键或 null。 */
@@ -41,6 +42,7 @@ export interface ItemFields {
   start: string | null
   end: string | null
   note: string
+  priority: 0 | 1 | 2
 }
 
 export interface ItemEditorProps {
@@ -73,6 +75,7 @@ export function ItemEditor({ initial, t, onSave, onCancel, onDelete, autoFocus =
       start: draft.start,
       end: draft.end,
       note: draft.note,
+      priority: draft.priority,
     })
   }
 
@@ -103,6 +106,13 @@ export function ItemEditor({ initial, t, onSave, onCancel, onDelete, autoFocus =
         <input id={`${id}-end`} type="time" value={draft.end ?? ''}
           onChange={event => setDraft({ ...draft, end: event.target.value === '' ? null : event.target.value })} />
       </label>
+    </div>
+    <div className="dsh-item-priority" role="group" aria-label={t('planner.field.priority')}>
+      {([0, 1, 2] as const).map(level => <button key={level} type="button" className="dsh-item-priority-pill"
+        data-level={level} aria-pressed={draft.priority === level}
+        onClick={() => setDraft({ ...draft, priority: level })}>
+        {t(`planner.priority.${level}`)}
+      </button>)}
     </div>
     {!compact && <label className="dsh-item-field" htmlFor={`${id}-note`}>
       <span className="dsh-item-label">{t('planner.field.note')}</span>

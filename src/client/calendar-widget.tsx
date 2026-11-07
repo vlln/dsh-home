@@ -12,7 +12,7 @@ import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { useHomeData, todayKey } from './home-data.ts'
 import { ItemEditor, emptyDraft, type ItemFields } from './item-editor.tsx'
-import { hasOpenWork, inMonth, itemsOnDay, monthGrid, shiftMonth } from './planner-model.ts'
+import { inMonth, itemsOnDay, monthGrid, shiftMonth } from './planner-model.ts'
 import { PlannerRow } from './planner-rows.tsx'
 import { plannerPreview } from './planner-preview.ts'
 import type { Translate } from './format.ts'
@@ -75,14 +75,14 @@ function CalendarBody({ data, today, t, readOnly, onToggle, onUpdate, onDelete, 
       {weeks.map((week, row) => week.map(day => {
         const date = Number(day.slice(8))
         const outside = !inMonth(day, anchor)
-        const open = hasOpenWork(data.items, day)
+        const open = data.items.filter(item => item.day === day && !item.done).length
         return <button key={`${row}-${day}`} type="button" role="gridcell"
           className="dsh-calendar-cell" data-outside={outside ? 'true' : 'false'}
           data-today={day === today ? 'true' : 'false'} data-selected={day === selected ? 'true' : 'false'}
           aria-pressed={day === selected} aria-label={day}
           onClick={() => { setSelected(day); if (outside) setAnchor(`${day.slice(0, 7)}-01`) }}>
           <span className="dsh-calendar-date">{date}</span>
-          {open && <span className="dsh-calendar-dot" aria-hidden="true" />}
+          {open > 0 && <span className="dsh-calendar-dot" data-density={Math.min(3, open)} aria-hidden="true" />}
         </button>
       }))}
     </div>

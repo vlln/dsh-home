@@ -38,7 +38,7 @@ function donutGradient(buckets: TokenBuckets): string {
     { value: buckets.input, color: 'var(--dsw-alias-state-business-primary)' },
     { value: buckets.cacheRead, color: 'var(--dsw-alias-state-success-primary)' },
     { value: buckets.output, color: 'var(--dsw-alias-state-warn-primary)' },
-    { value: buckets.cacheWrite, color: 'var(--dsw-alias-state-idle-primary)' },
+    { value: buckets.cacheWrite, color: 'var(--dsh-hue-violet)' },
   ].filter(part => part.value > 0)
   const sum = parts.reduce((total, part) => total + part.value, 0)
   if (sum === 0) return 'conic-gradient(color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent) 0 100%)'
@@ -58,16 +58,19 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
   const hit = cacheHitRate(today)
   const days = week ? data.days.slice(-7) : []
   const peak = Math.max(1, ...days.map(day => totalTokens(bucketsOf(day))))
+  // 甜甜圈画的是「窗口构成」：默认最近七天（今天可能有 0 用量，七天则有真实数据）。
+  const windowBuckets = week ? sumDays(days) : today
+  const windowHit = cacheHitRate(windowBuckets)
   return <div className="dsh-usage" data-compact={compact ? 'true' : 'false'}>
     <div className="dsh-usage-hero">
       <div className="dsh-usage-figure">
         <span className="dsh-usage-total" aria-label={t('usage.today')}>{compactCount(total)}</span>
         <span className="dsh-usage-unit">{t('usage.today')} · {t('usage.unit')}</span>
       </div>
-      <div className="dsh-usage-donut" style={{ background: donutGradient(today) }} role="img" aria-label={t('usage.split')}>
+      <div className="dsh-usage-donut" style={{ background: donutGradient(windowBuckets) }} role="img" aria-label={t('usage.split')}>
         <span className="dsh-usage-donut-hole">
-          <b>{hit === null ? '—' : percent(hit)}</b>
-          <i>{t('usage.hit')}</i>
+          <b>{windowHit === null ? '—' : percent(windowHit)}</b>
+          <i>{t(week ? 'usage.sevenDays' : 'usage.hit')}</i>
         </span>
       </div>
     </div>

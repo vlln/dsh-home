@@ -34,6 +34,8 @@ try {
   await page.goto(url.href)
   await page.getByRole('button', { name: /^(Home|首页)$/ }).first().click()
   await widget('balance-demo').locator('.dsh-balance').waitFor({ timeout: 10000 })
+  await page.waitForFunction(() => /(未配置 API key|No API key configured)/u.test(
+    document.querySelector('[data-widget-id="balance-demo"] .dsh-balance')?.textContent ?? ''), undefined, { timeout: 10000 })
   const text = await widget('balance-demo').textContent()
   assert.match(text ?? '', /(未配置 API key|No API key configured)/u, `expected a clear reason, got: ${text}`)
   const flag = await widget('balance-demo').locator('.dsh-balance').getAttribute('data-available')

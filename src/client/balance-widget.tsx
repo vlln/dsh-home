@@ -64,7 +64,7 @@ function BalanceBody({ state, t, loading, onRefresh, readOnly }: {
   const currency = state.currency === 'CNY' ? '¥' : state.currency === 'USD' ? '$' : `${state.currency ?? ''} `
   return <div className="dsh-balance" data-available="true">
     <span className="dsh-balance-label">{t('balance.title')}</span>
-    <span className="dsh-balance-amount">{currency}{(state.total ?? 0).toFixed(2)}</span>
+    <span className="dsh-balance-amount" data-known="true">{currency}{(state.total ?? 0).toFixed(2)}</span>
     <span className="dsh-balance-detail">
       {state.toppedUp !== null && state.toppedUp !== undefined && <span>{t('balance.toppedUp')} {state.toppedUp.toFixed(2)}</span>}
       {state.granted !== null && state.granted !== undefined && state.granted > 0 && <span>{t('balance.granted')} {state.granted.toFixed(2)}</span>}

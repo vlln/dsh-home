@@ -33,7 +33,7 @@ export function PlannerRow({ item, today, t, readOnly, editing, showDay = true, 
   if (editing) {
     return <li className="dsh-todo-item" data-editing="true">
       <ItemEditor t={t} compact autoFocus
-        initial={{ title: item.title, day: item.day, start: item.start, end: item.end, note: item.note }}
+        initial={{ title: item.title, day: item.day, start: item.start, end: item.end, note: item.note, priority: item.priority }}
         onSave={onSave} onDelete={onDelete} onCancel={onCancel} />
     </li>
   }
@@ -46,6 +46,7 @@ export function PlannerRow({ item, today, t, readOnly, editing, showDay = true, 
     </button>
     <button type="button" className="dsh-todo-main" disabled={readOnly} onClick={onEdit}
       title={item.note === '' ? undefined : item.note}>
+      {item.priority > 0 && <span className="dsh-priority" data-priority={item.priority} aria-hidden="true" />}
       <span className="dsh-todo-title">{item.title}</span>
       {(time !== '' || dayLabel !== '') && <span className="dsh-todo-meta">
         {time !== '' && <span className="dsh-todo-time">{time}</span>}
