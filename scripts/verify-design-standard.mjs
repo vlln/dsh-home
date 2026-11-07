@@ -86,6 +86,17 @@ try {
       return bar.width / col.width
     })
     assert(barRatio >= 0.5, `usage bars fill their column instead of leaving a chasm: ${barRatio}`)
+    // Every usage bar and the token ring explain themselves on hover.
+    const usageCol = page.locator('[data-widget-id="std-usage"] .dsh-usage-col').nth(2)
+    await usageCol.hover()
+    const hoverTip = page.locator('.dsh-hover-tip')
+    await hoverTip.waitFor({ timeout: 3000 })
+    assert.match(await hoverTip.innerText(), /\d{2}-\d{2}/u, 'a usage bar names its day')
+    // The ring is keyboard reachable too: focus lists every part.
+    await page.locator('[data-widget-id="std-usage"] .dsh-usage-donut').focus()
+    await page.waitForTimeout(200)
+    assert.match(await hoverTip.innerText(), /(输入|缓存|输出|in|cache|out|write)/iu, 'the token ring names the hovered segment')
+    await page.mouse.move(2, 2)
     const pills = await page.locator('.dsh-ws-pill').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).backgroundColor))
     assert(pills.length >= 6, `capsules are present: ${pills.length}`)
     assert.equal(new Set(pills).size, 1, `every capsule shares one fill: ${[...new Set(pills)].join(', ')}`)

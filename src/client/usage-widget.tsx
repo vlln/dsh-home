@@ -7,7 +7,8 @@
  * @module @vlln/dsh-home/client/usage-widget
  */
 
-import type { CSSProperties, ReactNode } from 'react'
+import { useState } from 'react'
+import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
 import type { Translate } from './format.ts'
@@ -15,6 +16,7 @@ import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { DayBucket, LedgerSnapshot } from './api.ts'
 import { IconUsage } from './widget-glyphs.tsx'
+import { useHoverTip } from './hover-tip.tsx'
 
 export type UsageConfig = { week: boolean }
 
@@ -34,23 +36,43 @@ function percent(value: number): string {
   return `${Math.round(value * 100)}%`
 }
 
-function donutGradient(buckets: TokenBuckets): string {
-  // One hue, four weights: the split stays readable without adding a second palette.
-  const parts = [
-    { value: buckets.input, color: 'var(--dsh-ramp-4)' },
-    { value: buckets.cacheRead, color: 'var(--dsh-ramp-2)' },
-    { value: buckets.output, color: 'var(--dsh-ramp-3)' },
-    { value: buckets.cacheWrite, color: 'var(--dsh-ramp-1)' },
+interface SplitPart { key: string; value: number; color: string; label: string }
+
+/** 同一个量的四段：颜色只是同一色相的浓淡，名字与数值由 tooltip 说明。 */
+function splitParts(buckets: TokenBuckets, t: Translate): SplitPart[] {
+  return [
+    { key: 'input', value: buckets.input, color: 'var(--dsh-ramp-4)', label: t('usage.input') },
+    { key: 'cacheRead', value: buckets.cacheRead, color: 'var(--dsh-ramp-2)', label: t('usage.cache') },
+    { key: 'output', value: buckets.output, color: 'var(--dsh-ramp-3)', label: t('usage.output') },
+    { key: 'cacheWrite', value: buckets.cacheWrite, color: 'var(--dsh-ramp-1)', label: t('usage.cacheWrite') },
   ].filter(part => part.value > 0)
-  const sum = parts.reduce((total, part) => total + part.value, 0)
-  if (sum === 0) return 'conic-gradient(var(--dsh-accent-soft) 0 100%)'
+}
+
+function donutGradient(parts: readonly SplitPart[], total: number, hover: string | null): string {
+  if (total === 0) return 'conic-gradient(var(--dsh-accent-soft) 0 100%)'
   let cursor = 0
   const stops = parts.map(part => {
     const from = cursor
-    cursor += (part.value / sum) * 100
-    return `${part.color} ${from.toFixed(2)}% ${cursor.toFixed(2)}%`
+    cursor += (part.value / total) * 100
+    // 悬停的那一段保持原色，其余淡出：一眼看出这一块占多少。
+    const color = hover === null || hover === part.key ? part.color : `color-mix(in srgb, ${part.color} 20%, transparent)`
+    return `${color} ${from.toFixed(2)}% ${cursor.toFixed(2)}%`
   })
   return `conic-gradient(from -90deg, ${stops.join(', ')})`
+}
+
+/** 指针落点在圆环的哪一段：12 点方向为 0，顺时针累加。 */
+function partAt(event: ReactMouseEvent<HTMLElement>, parts: readonly SplitPart[], total: number): SplitPart | null {
+  if (total === 0) return null
+  const rect = event.currentTarget.getBoundingClientRect()
+  const angle = Math.atan2(event.clientY - (rect.top + rect.height / 2), event.clientX - (rect.left + rect.width / 2))
+  const fraction = ((angle + Math.PI / 2) / (Math.PI * 2) % 1 + 1) % 1
+  let cursor = 0
+  for (const part of parts) {
+    cursor += part.value / total
+    if (fraction < cursor) return part
+  }
+  return parts[parts.length - 1] ?? null
 }
 
 function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Translate; compact: boolean; week: boolean }): ReactNode {
@@ -63,32 +85,54 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
   // 甜甜圈画的是「窗口构成」：默认最近七天（今天可能有 0 用量，七天则有真实数据）。
   const windowBuckets = week ? sumDays(days) : today
   const windowHit = cacheHitRate(windowBuckets)
+  const parts = splitParts(windowBuckets, t)
+  const windowTotal = parts.reduce((sum, part) => sum + part.value, 0)
+  const [hover, setHover] = useState<string | null>(null)
+  const tip = useHoverTip()
+  const share = (part: SplitPart): string => windowTotal === 0 ? '0%' : percent(part.value / windowTotal)
   return <div className="dsh-usage" data-compact={compact ? 'true' : 'false'}>
     <div className="dsh-usage-hero">
       <div className="dsh-usage-figure">
         <span className="dsh-usage-total" aria-label={t('usage.today')}>{compactCount(total)}</span>
         <span className="dsh-usage-unit">{t('usage.today')} · {t('usage.unit')}</span>
       </div>
-      <div className="dsh-usage-donut" style={{ background: donutGradient(windowBuckets) }} role="img" aria-label={t('usage.split')}>
+      <div className="dsh-usage-donut" style={{ background: donutGradient(parts, windowTotal, hover) }} role="img"
+        aria-label={t('usage.split')} tabIndex={0}
+        onMouseMove={event => {
+          const part = partAt(event, parts, windowTotal)
+          setHover(part?.key ?? null)
+          if (part) tip.show(event, `${part.label} · ${compactCount(part.value)} ${t('usage.unit')} · ${share(part)}`)
+          else tip.hide()
+        }}
+        onMouseLeave={() => { setHover(null); tip.hide() }}
+        onFocus={event => {
+          const text = parts.map(part => `${part.label} · ${compactCount(part.value)} · ${share(part)}`).join('\n')
+          tip.show({ currentTarget: event.currentTarget, clientX: 0, clientY: 0 }, text || t('usage.split'))
+        }}
+        onBlur={() => { setHover(null); tip.hide() }}>
         <span className="dsh-usage-donut-hole">
-          <b>{windowHit === null ? '—' : percent(windowHit)}</b>
+          <b>{(() => { const hovered = parts.find(part => part.key === hover); return hovered ? share(hovered) : windowHit === null ? '—' : percent(windowHit) })()}</b>
           <i>{t(week ? 'usage.sevenDays' : 'usage.hit')}</i>
         </span>
       </div>
     </div>
     <div className="dsh-usage-chips">
-      <span className="dsh-chip"><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-4)' } as CSSProperties} aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></span>
-      <span className="dsh-chip"><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-2)' } as CSSProperties} aria-hidden="true" />{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></span>
-      <span className="dsh-chip"><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-3)' } as CSSProperties} aria-hidden="true" />{t('usage.output')} <b>{compactCount(today.output)}</b></span>
+      <span className="dsh-chip" {...tip.bind(`${t('usage.input')} · ${today.input.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-4)' } as CSSProperties} aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></span>
+      <span className="dsh-chip" {...tip.bind(`${t('usage.cache')} · ${today.cacheRead.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-2)' } as CSSProperties} aria-hidden="true" />{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></span>
+      <span className="dsh-chip" {...tip.bind(`${t('usage.output')} · ${today.output.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-3)' } as CSSProperties} aria-hidden="true" />{t('usage.output')} <b>{compactCount(today.output)}</b></span>
     </div>
     {week && <div className="dsh-usage-bars" role="img" aria-label={t('usage.week')}>
       {days.map(day => {
-        const value = totalTokens(bucketsOf(day))
-        return <span key={day.key} className="dsh-usage-col" title={`${day.key.slice(5)} · ${compactCount(value)}`}>
+        const buckets = bucketsOf(day)
+        const value = totalTokens(buckets)
+        const label = [`${day.key.slice(5)} · ${compactCount(value)} ${t('usage.unit')}`,
+          `${t('usage.input')} ${compactCount(buckets.input)} · ${t('usage.cache')} ${compactCount(buckets.cacheRead)} · ${t('usage.output')} ${compactCount(buckets.output)}`].join('\n')
+        return <span key={day.key} className="dsh-usage-col" role="img" tabIndex={0} aria-label={label} {...tip.bind(label)}>
           <span className="dsh-usage-bar" style={{ height: `${Math.max(value > 0 ? 6 : 1, (value / peak) * 100)}%` }} />
         </span>
       })}
     </div>}
+    {tip.node}
     <div className="dsh-usage-foot">
       <span className="dsh-muted">{t('usage.rate')} <b>{rate === null ? '—' : rate.toFixed(1)}</b> {t('usage.perSecond')}</span>
       {week && <span className="dsh-muted">{t('usage.weekTotal')} <b>{compactCount(totalTokens(sumDays(days)))}</b></span>}

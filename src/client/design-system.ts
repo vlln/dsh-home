@@ -182,6 +182,7 @@ export const designSystemStyles = `
   color: var(--dsw-alias-label-primary-foreground);
   font: var(--dsw-font-xxxs-11);
   line-height: 16px;
+  white-space: pre-line;
   pointer-events: none;
   box-shadow: var(--dsw-shadow-lv2);
 }

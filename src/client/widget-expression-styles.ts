@@ -7,7 +7,7 @@ export const widgetExpressionStyles = `
 .dsh-home .dsh-home-widget { background:var(--dsw-alias-bg-layer-1); border-color:var(--dsw-alias-border-l2); }
 /* Headings share one left slot: the glyph is a quiet mark, not a tinted tile.
    Cards without a glyph start at the same edge as the ones with one. */
-.dsh-home-widget .dsh-w-head { gap:9px; position:relative; padding-inline-start:20px; }
+.dsh-w-head { gap:9px; position:relative; padding-inline-start:20px; }
 .dsh-widget-symbol { position:absolute; inset-inline-start:0; top:50%; transform:translateY(-50%); display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; color:var(--dsw-alias-label-tertiary); background:transparent; }
 .dsh-widget-symbol svg { width:14px; height:14px; color:inherit; }
 .dsh-home .dsh-widget-symbol .dsh-w-glyph { color:inherit; }

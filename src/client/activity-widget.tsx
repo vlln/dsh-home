@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import type { CSSProperties, ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { post } from './api.ts'
 import { useBuiltin } from './builtin-registration.tsx'
@@ -9,6 +8,7 @@ import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { Translate } from './format.ts'
 import { useVisibleRows } from './fit-rows.ts'
+import { useHoverTip } from './hover-tip.tsx'
 import { IconActivity } from './widget-glyphs.tsx'
 
 function browserZone() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' }
@@ -64,7 +64,7 @@ function ActivityContent(props: WidgetContentProps<ActivityConfig>) {
 function ActivityBody({ config, width, height, preview, saveConfig }: WidgetContentProps<ActivityConfig>) {
   const { t, state, actions } = useBuiltin()
   const [date, setDate] = useState<string>()
-  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null)
+  const tip = useHoverTip()
   const { result, error, loading, detailReady, retry } = useActivity('', date, preview)
   const calendar = useRef<HTMLDivElement>(null)
   // The chart box is measured, not guessed: cell size is derived from the height the
@@ -100,15 +100,10 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
   const active = days.filter(day => day.messages > 0).length
   const messages = days.reduce((n, day) => n + day.messages, 0)
   const dayLabel = (day: {key: string; messages: number; sessions: number}) => t(result.complete ? 'activity.day' : 'activity.partialDay', { date: day.key, messages: day.messages, sessions: day.sessions })
-  const showTip = (event: ReactMouseEvent<HTMLElement>, text: string): void => {
-    setTip({ x: event.clientX, y: event.clientY, text })
-  }
   const cell = (day: (typeof weeks)[number][number], index: number) => day ? <button type="button" className="dsh-activity-cell" key={day.key}
     data-date={day.key} data-level={activityLevel(day.messages)} data-selected={date === day.key} data-unknown={!result.complete && day.messages === 0}
     aria-label={dayLabel(day)} aria-pressed={date === day.key}
-    onMouseEnter={event => { showTip(event, dayLabel(day)) }} onMouseLeave={() => { setTip(null) }}
-    onFocus={event => setTip({ x: event.currentTarget.getBoundingClientRect().left + 8, y: event.currentTarget.getBoundingClientRect().top, text: dayLabel(day) })}
-    onBlur={() => { setTip(null) }}
+    {...tip.bind(dayLabel(day))}
     onClick={() => { if (!preview) setDate(previous => previous === day.key ? undefined : day.key) }} />
     : <span className="dsh-activity-cell dsh-activity-spacer" key={`pad${index}`} />
   const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
@@ -152,8 +147,7 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
         </select>
       </div>
     </div>
-    {tip !== null && createPortal(<div className="dsh-hover-tip" role="tooltip"
-      style={{ left: Math.min(tip.x + 12, window.innerWidth - 250), top: Math.max(8, tip.y - 34) }}>{tip.text}</div>, document.body)}
+    {tip.node}
   </div>
 }
 /** 选中某一天后就地把日历换成当天明细：读数不把卡片撑高，返回即回到热力图。 */

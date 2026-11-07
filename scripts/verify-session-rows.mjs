@@ -170,6 +170,17 @@ try {
   assert.equal(await zeroBar.evaluate(el => getComputedStyle(el).opacity), '0', 'an idle day draws no bar')
   assert.equal(await zeroBar.evaluate(el => getComputedStyle(el.parentElement).backgroundColor), 'rgba(0, 0, 0, 0)', 'an idle day has no column tint')
 
+  // Heading glyphs belong to the tile, not to the panel behind it.
+  const headingIcons = await page.locator('.dsh-directory-item').evaluateAll(tiles => tiles.map(tile => {
+    const icon = tile.querySelector('.dsh-widget-symbol'), box = tile.getBoundingClientRect(), ib = icon?.getBoundingClientRect()
+    return { type: tile.getAttribute('data-widget-type'), present: ib !== undefined, inside: ib ? ib.left >= box.left - 1 && ib.right <= box.right + 1 : false, offset: ib ? ib.left - box.left : null }
+  }))
+  // Third-party tiles may omit their own icon; ours must sit inside the tile, not on the panel edge.
+  for (const icon of headingIcons.filter(entry => entry.present && entry.type?.startsWith('@vlln/dsh-home:'))) {
+    assert(icon.inside, `${icon.type} icon stays inside its tile`)
+    assert(icon.offset !== null && icon.offset < 40, `${icon.type} icon sits at the tile's left edge (${icon.offset})`)
+  }
+
   // 5. Gallery previews are the real card at its real size, not a pinned illustration.
   const previews = await page.locator('.dsh-directory-item').evaluateAll(tiles => tiles.map(tile => {
     const body = tile.querySelector('.dsh-card-preview-body')

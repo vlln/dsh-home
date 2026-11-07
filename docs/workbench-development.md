@@ -344,6 +344,14 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 - 真实鼠标六案（x2y2,x3y2,x4y5,x6y2,x3y7,x5y5）均无瞬时红色、无逐帧 peer 重叠、active / placeholder 漂移 0px、跨轴误差 0px；held / release / Done / reload 一致。
 - 原四组精确轴向撑开浏览器回归继续通过，原始用户布局已独立全量比对未改变。
 
+## 图表悬停与卡片内图标（2026-11-07，0.51.x / dsh 0.2.1-rc.5）
+
+- 抽出 `hover-tip.tsx`：`useHoverTip()` 提供 `bind(text)`（enter/move/leave/focus/blur）与 Portal 气泡；活动热力图先用上，随后 token 柱、圆环、今日时间带复用同一套。
+- token 圆环按指针相对圆心的角度识别分段（12 点为 0、顺时针累计），悬停时其余分段用 `color-mix(… 20%, transparent)` 淡出，洞里的数字换成当前分段占比；键钮 focus 时列出全部构成。
+- token 柱子 hover 给出「日期 · 总量」与输入/缓存/输出明细；`dsh-hover-tip` 支持 `white-space: pre-line` 换行。
+- 组件库图标错位：`.dsh-w-head { position:relative }` 原来只写在 `.dsh-home-widget` 作用域里，组件库的 `article.dsh-w` 不匹配，`.dsh-widget-symbol` 的 `absolute` 就落到了面板左侧。现在规则对所有 `.dsh-w-head` 生效，图标回到卡片内。
+- 验收：`verify-design-standard` 断言柱子 hover 出日期、圆环 focus 列出分段；`verify-session-rows` 断言组件库图标的左偏移在卡片内。
+
 ## 切页重载、预览尺寸（2026-11-07，0.50.x / dsh 0.2.1-rc.5）
 
 - 生命周期 bug：`HomeDataStore.reset()` 原来把 `disposed` 置死，而 `homeData` 是模块级单例；页面切走再回来，`load()` 发出的响应被 `publish()` 丢弃，`planner`/`focus` 永远是 `null`——打卡停在「加载中」、计时器与倒计时没有数据，直到整页刷新。现在 `reset()` 只清空快照与监听、`epoch++` 并在发请求时捕获 epoch，旧响应被丢弃但新一次挂载能正常装载；`mutate*` 也带 epoch 守卫。新增 `test/home-data-lifecycle.test.mjs`（把 store 拆到无 React 的 `home-data-store.ts` 才测得了）。

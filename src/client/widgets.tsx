@@ -18,6 +18,7 @@ import { PinnedBody } from './pinned-widget.tsx'
 import { dayCoverage, localDayWindow } from './widget-visual-model.ts'
 import { WorkspacePill } from './workspace-pill.tsx'
 import { useVisibleRows } from './fit-rows.ts'
+import { useHoverTip } from './hover-tip.tsx'
 import type { SessionStatusMap } from './session-model.ts'
 
 /** 导航动作（由 index.tsx 接到官方 `uiWorkspace` 上）。 */
@@ -145,6 +146,7 @@ function DayDial({ segments, nowFraction, start, end }: { segments: readonly { l
 }
 
 function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
+  const tip = useHoverTip()
   const { start, end } = localDayWindow(now)
   const dayMs = end - start
   const segments: { left: number; width: number; live: boolean; label: string }[] = []
@@ -189,11 +191,12 @@ function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
                 className="dsh-band-seg"
                 data-now={segment.live ? 'true' : 'false'}
                 style={{ left: `${segment.left}%`, width: `${segment.width}%` }}
-                title={segment.label}
+                {...tip.bind(segment.label)}
               />
             ))}
             <span className="dsh-band-now" style={{ left: `${nowFraction}%` }} />
           </div>
+          {tip.node}
           <div className="dsh-band-scale" aria-hidden="true">
             {[0, .25, .5, .75, 1].map(fraction => <span key={fraction}>{dayMsLabel(start, end, fraction)}</span>)}
           </div>
