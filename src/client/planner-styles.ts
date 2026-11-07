@@ -95,4 +95,37 @@ export const plannerStyles = `
 .dsh-habit-delete { flex:none; width:18px; height:18px; padding:0; border:0; border-radius:var(--dsw-radius-sm); background:transparent; color:var(--dsw-alias-label-quaternary); font-size:14px; line-height:1; cursor:pointer; opacity:0; }
 .dsh-habit-row:hover .dsh-habit-delete, .dsh-habit-delete:focus-visible { opacity:1; }
 .dsh-habit-delete:hover { color:var(--dsw-alias-state-error-primary); }
+
+.dsh-timer-wrap, .dsh-countdown-wrap { display:flex; flex-direction:column; height:100%; min-height:0; gap:6px; }
+.dsh-timer { display:flex; flex-direction:column; justify-content:space-between; height:100%; min-height:0; gap:8px; }
+.dsh-timer-face { display:flex; flex-direction:column; gap:2px; }
+.dsh-timer-label { color:var(--dsw-alias-label-secondary); font-size:12px; line-height:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dsh-timer-clock { color:var(--dsw-alias-label-primary); font-size:34px; font-weight:600; line-height:1.1; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+.dsh-timer-clock[data-running="true"] { color:var(--dsw-alias-state-business-primary); }
+.dsh-timer-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.dsh-timer-button { padding:3px 10px; border:.5px solid var(--dsw-alias-border-l2); border-radius:var(--dsw-radius-md); background:var(--dsw-alias-bg-layer-1); color:var(--dsw-alias-label-secondary); font-size:12px; cursor:pointer; }
+.dsh-timer-button:disabled { opacity:.45; cursor:default; }
+.dsh-timer-primary { border-color:var(--dsw-alias-state-business-primary); color:var(--dsw-alias-state-business-primary); }
+.dsh-pomodoro { display:flex; flex-direction:column; gap:6px; height:100%; min-height:0; }
+.dsh-pomodoro-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.dsh-pomodoro-phase { color:var(--dsw-alias-label-secondary); font-size:11px; }
+.dsh-pomodoro-rounds { color:var(--dsw-alias-label-quaternary); font-size:11px; font-variant-numeric:tabular-nums; }
+.dsh-pomodoro-clock { color:var(--dsw-alias-label-primary); font-size:40px; font-weight:600; line-height:1.05; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+.dsh-pomodoro[data-phase="break"] .dsh-pomodoro-clock { color:var(--dsw-alias-label-secondary); }
+.dsh-pomodoro-track { display:block; height:3px; border-radius:2px; background:var(--dsw-alias-border-l2); overflow:hidden; }
+.dsh-pomodoro-fill { display:block; height:100%; background:var(--dsw-alias-state-business-primary); }
+.dsh-pomodoro[data-phase="break"] .dsh-pomodoro-fill { background:var(--dsw-alias-label-tertiary); }
+.dsh-countdown { display:flex; flex-direction:column; gap:2px; }
+.dsh-countdown-title { color:var(--dsw-alias-label-secondary); font-size:12px; line-height:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dsh-countdown-clock { display:flex; align-items:baseline; gap:4px; color:var(--dsw-alias-label-primary); font-variant-numeric:tabular-nums; }
+.dsh-countdown-days { font-size:34px; font-weight:600; line-height:1.05; }
+.dsh-countdown-unit { color:var(--dsw-alias-label-secondary); font-size:12px; }
+.dsh-countdown-rest { color:var(--dsw-alias-label-tertiary); font-size:13px; }
+.dsh-countdown-date { color:var(--dsw-alias-label-quaternary); font-size:11px; font-variant-numeric:tabular-nums; }
+.dsh-countdown-expired { color:var(--dsw-alias-state-warn-primary); font-size:20px; font-weight:600; }
+.dsh-countdown-hint { color:var(--dsw-alias-label-quaternary); font-size:11px; }
+.dsh-countdown-row { display:flex; align-items:flex-end; gap:6px; }
+.dsh-countdown-row .dsh-item-field:first-child { flex:1 1 auto; }
+.dsh-countdown-row .dsh-item-field:nth-child(2) { flex:0 0 130px; }
+
 `

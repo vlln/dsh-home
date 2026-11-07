@@ -1,0 +1,119 @@
+/**
+ * 番茄钟：25 分钟专注 + 5 分钟休息，独立的，不挂任何会话。
+ *
+ * 状态只在宿主 `focus.json` 里（按实例分槽）；到点由本组件发一次 `pomodoro.settle`，
+ * 宿主记一轮并停在下一阶段起点。关着页面到点，下次打开只结算这一轮，不追补、不连跳。
+ *
+ * @module @vlln/dsh-home/client/pomodoro-widget
+ */
+
+import { useEffect, useRef } from 'react'
+import type { ReactNode } from 'react'
+import { useBuiltin } from './builtin-registration.tsx'
+import { useHomeData, todayKey, useNow } from './home-data.ts'
+import { completedToday, formatClock, pomodoroSnapshot } from './focus-model.ts'
+import type { Translate } from './format.ts'
+import type { HomeWidgetRegistry } from './widget-registry.ts'
+import type { WidgetContentProps } from './widget-contract.ts'
+import type { FocusPomodoro } from './api.ts'
+
+export type PomodoroConfig = { rounds: number }
+
+function defaultPomodoroConfig(): PomodoroConfig {
+  return { rounds: 0 }
+}
+
+function validatePomodoroConfig(value: unknown): value is PomodoroConfig {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const config = value as Record<string, unknown>
+  return Object.keys(config).every(key => key === 'rounds') && typeof config.rounds === 'number'
+}
+
+const PREVIEW_POMODORO: FocusPomodoro = {
+  phase: 'focus', startedAt: null, elapsedMs: 7 * 60_000, focusMs: 25 * 60_000, breakMs: 5 * 60_000,
+  completed: { '2026-11-06': 3 },
+}
+
+function PomodoroBody({ pomodoro, today, t, readOnly, onStart, onPause, onSkip, onReset }: {
+  pomodoro: FocusPomodoro
+  today: string
+  t: Translate
+  readOnly: boolean
+  onStart: () => void
+  onPause: () => void
+  onSkip: () => void
+  onReset: () => void
+}): ReactNode {
+  const running = pomodoro.startedAt !== null
+  const now = useNow(1000, running && !readOnly)
+  const snapshot = pomodoroSnapshot(pomodoro, now)
+  const rounds = completedToday(pomodoro, today)
+  const progress = snapshot.durationMs === 0 ? 0 : Math.min(1, (snapshot.durationMs - snapshot.remainingMs) / snapshot.durationMs)
+  return <div className="dsh-pomodoro" data-phase={snapshot.phase}>
+    <div className="dsh-pomodoro-head">
+      <span className="dsh-pomodoro-phase">{snapshot.phase === 'focus' ? t('pomodoro.focus') : t('pomodoro.break')}</span>
+      <span className="dsh-pomodoro-rounds">{t('pomodoro.rounds', { count: rounds })}</span>
+    </div>
+    <span className="dsh-pomodoro-clock" role="timer" data-running={running ? 'true' : 'false'}>{formatClock(snapshot.remainingMs)}</span>
+    <span className="dsh-pomodoro-track" aria-hidden="true"><span className="dsh-pomodoro-fill" style={{ width: `${Math.round(progress * 100)}%` }} /></span>
+    <div className="dsh-timer-actions">
+      <button type="button" className="dsh-timer-button dsh-timer-primary" disabled={readOnly} onClick={running ? onPause : onStart}>
+        {running ? t('timer.pause') : t('pomodoro.start')}
+      </button>
+      <button type="button" className="dsh-timer-button" disabled={readOnly} onClick={onSkip}>{t('pomodoro.skip')}</button>
+      <button type="button" className="dsh-timer-button" disabled={readOnly} onClick={onReset}>{t('timer.reset')}</button>
+    </div>
+  </div>
+}
+
+function ConnectedPomodoro(props: WidgetContentProps<PomodoroConfig>): ReactNode {
+  const { t } = useBuiltin()
+  const data = useHomeData()
+  const instanceId = props.instance.instanceId
+  const pomodoro = data.focus?.pomodoros[instanceId]
+  const today = todayKey()
+  const dueSent = useRef(0)
+  // 到点只结算一次：宿主把阶段翻过去并停住，重复调用是无操作。
+  useEffect(() => {
+    if (pomodoro === undefined || data.focusStorage.writable === false || props.editing) return
+    const snapshot = pomodoroSnapshot(pomodoro, Date.now())
+    if (!snapshot.due || pomodoro.startedAt === null) return
+    if (dueSent.current === pomodoro.startedAt) return
+    dueSent.current = pomodoro.startedAt
+    void data.store.mutateFocus({ op: 'pomodoro.settle', instanceId }).catch(() => {})
+  })
+  if (data.focusError !== null) {
+    return <div className="dsh-planner-fallback" role="status">
+      <p>{t('planner.unavailable')}</p>
+      <button type="button" className="dsh-planner-retry" onClick={() => void data.store.refreshFocus()}>{t('planner.retry')}</button>
+    </div>
+  }
+  if (data.focus === null) return <p className="dsh-planner-loading" role="status">{t('planner.loading')}</p>
+  const readOnly = props.editing || !data.focusStorage.writable
+  const value = pomodoro ?? { phase: 'focus' as const, startedAt: null, elapsedMs: 0, focusMs: 25 * 60_000, breakMs: 5 * 60_000, completed: {} }
+  return <PomodoroBody pomodoro={value} today={today} t={t} readOnly={readOnly}
+    onStart={() => { void data.store.mutateFocus({ op: 'pomodoro.start', instanceId }).catch(() => {}) }}
+    onPause={() => { void data.store.mutateFocus({ op: 'pomodoro.pause', instanceId }).catch(() => {}) }}
+    onSkip={() => { void data.store.mutateFocus({ op: 'pomodoro.skip', instanceId }).catch(() => {}) }}
+    onReset={() => { void data.store.mutateFocus({ op: 'pomodoro.reset', instanceId }).catch(() => {}) }} />
+}
+
+export function PomodoroContent(props: WidgetContentProps<PomodoroConfig>): ReactNode {
+  const { t } = useBuiltin()
+  if (props.preview !== undefined) {
+    return <PomodoroBody pomodoro={PREVIEW_POMODORO} today="2026-11-06" t={t} readOnly
+      onStart={() => {}} onPause={() => {}} onSkip={() => {}} onReset={() => {}} />
+  }
+  return <ConnectedPomodoro {...props} />
+}
+
+export function registerPomodoroWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
+  return registry.register<PomodoroConfig>({
+    typeId: '@vlln/dsh-home:pomodoro', apiVersion: 1,
+    title: () => t('widget.pomodoro.title'), description: () => t('gallery.description.pomodoro'), source: '@vlln/dsh-home',
+    preview: { config: defaultPomodoroConfig },
+    sizing: { default: { w: 4, h: 6 }, supported: [{ w: 4, h: 4 }, { w: 4, h: 6 }] },
+    configVersion: 1, defaultConfig: defaultPomodoroConfig, validateConfig: (config): config is PomodoroConfig => validatePomodoroConfig(config),
+    Content: PomodoroContent,
+  })
+}

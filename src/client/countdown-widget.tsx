@@ -1,0 +1,141 @@
+/**
+ * 倒计时：多个目标日期，显示最近的一个还剩多久。
+ *
+ * 数据只在组件配置里（目标不超过 8 个），到点显示「已到期」但不自动删除、不弹窗。
+ * 不联网、不请求；时间由 `useNow` 每分钟重算。
+ *
+ * @module @vlln/dsh-home/client/countdown-widget
+ */
+
+import { useId } from 'react'
+import type { ReactNode } from 'react'
+import { useBuiltin } from './builtin-registration.tsx'
+import { useNow } from './home-data.ts'
+import { countdownLeft, nextTarget, parseDayKey } from './focus-model.ts'
+import type { Translate } from './format.ts'
+import type { HomeWidgetRegistry } from './widget-registry.ts'
+import type { JsonValue, WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
+import { WidgetConfigEditor } from './widget-settings.tsx'
+
+export type CountdownTarget = { id: string; title: string; date: string }
+export type CountdownConfig = { targets: CountdownTarget[] }
+
+const MAX_TARGETS = 8
+const MAX_TITLE = 60
+
+function defaultCountdownConfig(): CountdownConfig {
+  return { targets: [] }
+}
+
+function validTarget(value: unknown): value is CountdownTarget {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const target = value as Record<string, unknown>
+  return Object.keys(target).sort().join(',') === 'date,id,title'
+    && typeof target.id === 'string' && target.id !== '' && target.id.length <= 40
+    && typeof target.title === 'string' && target.title.trim() !== '' && target.title.length <= MAX_TITLE
+    && typeof target.date === 'string' && /^\d{4}-\d{2}-\d{2}$/u.test(target.date) && Number.isFinite(parseDayKey(target.date))
+}
+
+function validateCountdownConfig(value: unknown): value is CountdownConfig {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const config = value as Record<string, unknown>
+  if (!Object.keys(config).every(key => key === 'targets')) return false
+  if (!Array.isArray(config.targets) || config.targets.length > MAX_TARGETS) return false
+  const ids = new Set<string>()
+  for (const target of config.targets) {
+    if (!validTarget(target) || ids.has(target.id)) return false
+    ids.add(target.id)
+  }
+  return true
+}
+
+function createId(seed: number): string {
+  return `t_${seed.toString(36)}${Math.random().toString(36).slice(2, 6)}`
+}
+
+const PREVIEW_CONFIG: CountdownConfig = {
+  targets: [
+    { id: 't_1', title: '发布 1.0', date: '2026-12-01' },
+    { id: 't_2', title: '团队旅行', date: '2027-01-15' },
+  ],
+}
+
+function CountdownSettings({ config, onConfigChange }: WidgetSettingsProps<CountdownConfig>): ReactNode {
+  const { t } = useBuiltin()
+  const id = useId()
+  const update = (targets: CountdownTarget[]): void => onConfigChange({ targets: targets.slice(0, MAX_TARGETS) })
+  return <div className="dsh-personal-settings">
+    {config.targets.map((target, index) => <div key={target.id} className="dsh-countdown-row">
+      <label className="dsh-item-field" htmlFor={`${id}-title-${index}`}>
+        <span className="dsh-item-label">{t('countdown.title')}</span>
+        <input id={`${id}-title-${index}`} type="text" maxLength={MAX_TITLE} value={target.title}
+          onChange={event => update(config.targets.map(entry => entry.id === target.id ? { ...entry, title: event.target.value } : entry))} />
+      </label>
+      <label className="dsh-item-field" htmlFor={`${id}-date-${index}`}>
+        <span className="dsh-item-label">{t('countdown.date')}</span>
+        <input id={`${id}-date-${index}`} type="date" value={target.date}
+          onChange={event => update(config.targets.map(entry => entry.id === target.id ? { ...entry, date: event.target.value } : entry))} />
+      </label>
+      <button type="button" className="dsh-item-button" aria-label={t('countdown.remove')}
+        onClick={() => update(config.targets.filter(entry => entry.id !== target.id))}>×</button>
+    </div>)}
+    <button type="button" className="dsh-item-button" disabled={config.targets.length >= MAX_TARGETS}
+      onClick={() => update([...config.targets, { id: createId(Date.now()), title: '', date: new Date().toISOString().slice(0, 10) }])}>
+      + {t('countdown.add')}
+    </button>
+    <p className="dsh-personal-hint">{t('countdown.hint', { max: MAX_TARGETS })}</p>
+  </div>
+}
+
+function CountdownBody({ config, now, t, readOnly }: { config: CountdownConfig; now: number; t: Translate; readOnly: boolean }): ReactNode {
+  const target = nextTarget(config.targets.filter(validTarget), now)
+  if (target === null) return <p className="dsh-todo-empty">{t(config.targets.length === 0 ? 'countdown.empty' : 'countdown.pickOne')}</p>
+  const left = countdownLeft(target.date, now)
+  return <div className="dsh-countdown" data-expired={left.expired ? 'true' : 'false'}>
+    <span className="dsh-countdown-title">{target.title}</span>
+    {left.expired
+      ? <span className="dsh-countdown-expired">{t('countdown.expired')}</span>
+      : left.days > 0
+        ? <span className="dsh-countdown-clock">
+          <span className="dsh-countdown-days">{left.days}</span>
+          <span className="dsh-countdown-unit">{t('countdown.days')}</span>
+          <span className="dsh-countdown-rest">{String(left.hours).padStart(2, '0')}:{String(left.minutes).padStart(2, '0')}</span>
+        </span>
+        : <span className="dsh-countdown-clock">
+          <span className="dsh-countdown-days">{String(left.hours).padStart(2, '0')}:{String(left.minutes).padStart(2, '0')}</span>
+          <span className="dsh-countdown-unit">{t('countdown.hours')}</span>
+        </span>}
+    <span className="dsh-countdown-date">{target.date}</span>
+    {!readOnly && config.targets.length === 0 && <span className="dsh-countdown-hint">{t('countdown.addHint')}</span>}
+  </div>
+}
+
+function ConnectedCountdown(props: WidgetContentProps<CountdownConfig>): ReactNode {
+  const { t } = useBuiltin()
+  const now = useNow(60_000)
+  return <div className="dsh-countdown-wrap">
+    <CountdownBody config={props.config} now={now} t={t} readOnly={props.editing} />
+    <WidgetConfigEditor t={t} widgetProps={props} title={t('widget.countdown.title')} label={t('countdown.settings')}
+      Fields={CountdownSettings} validate={validateCountdownConfig} />
+  </div>
+}
+
+export function CountdownContent(props: WidgetContentProps<CountdownConfig>): ReactNode {
+  const { t } = useBuiltin()
+  if (props.preview !== undefined) {
+    return <CountdownBody config={PREVIEW_CONFIG} now={Date.now()} t={t} readOnly />
+  }
+  return <ConnectedCountdown {...props} />
+}
+
+export function registerCountdownWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
+  return registry.register<CountdownConfig>({
+    typeId: '@vlln/dsh-home:countdown', apiVersion: 1,
+    title: () => t('widget.countdown.title'), description: () => t('gallery.description.countdown'), source: '@vlln/dsh-home',
+    preview: { config: () => PREVIEW_CONFIG },
+    sizing: { default: { w: 4, h: 4 }, supported: [{ w: 4, h: 4 }, { w: 4, h: 6 }] },
+    configVersion: 1, defaultConfig: defaultCountdownConfig,
+    validateConfig: (config): config is CountdownConfig => validateCountdownConfig(config),
+    Content: CountdownContent,
+  })
+}
