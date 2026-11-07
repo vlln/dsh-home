@@ -131,7 +131,13 @@ export const plannerStyles = `
 
 /* ---------- 计时器 ---------- */
 .dsh-timer-wrap, .dsh-countdown-wrap, .dsh-picture-wrap, .dsh-quote-wrap { display:flex; flex-direction:column; height:100%; min-height:0; gap:6px; }
-.dsh-timer { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; height:100%; min-height:0; }
+.dsh-timer { position:relative; flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; height:100%; min-height:0; }
+/* 右侧快捷键：点一下就是 5 / 10 / 15 / 25 / 45 / 60 分钟。 */
+.dsh-timer-presets { position:absolute; right:0; top:50%; transform:translateY(-50%); display:grid; grid-template-columns:repeat(2,auto); gap:3px; }
+.dsh-timer-preset { min-width:32px; height:20px; padding:0 6px; border:0; border-radius:999px; background:var(--dsw-alias-interactive-bg-hover); color:var(--dsw-alias-label-secondary); font:inherit; font-size:10px; font-weight:600; line-height:20px; cursor:pointer; font-variant-numeric:tabular-nums; }
+.dsh-timer-preset:hover:not(:disabled) { background:var(--dsw-alias-interactive-bg-active); color:var(--dsw-alias-label-primary); }
+.dsh-timer-preset:disabled { opacity:.4; cursor:default; }
+.dsh-timer-preset[data-active="true"] { background:var(--dsw-alias-state-business-tertiary); color:var(--dsw-alias-state-business-primary); }
 /* 圆盘就是设置器：拖动圆环设定时长，中间是倒计时数字。 */
 .dsh-timer-dial { position:relative; flex:none; height:min(120px, calc(100% - 40px)); aspect-ratio:1; max-width:100%; border-radius:50%; touch-action:none; user-select:none; }
 .dsh-timer-dial[data-draggable="true"] { cursor:grab; }
@@ -270,6 +276,15 @@ export const plannerStyles = `
 
 /* 余额：有数字时用绿色，占位符用淡色。 */
 .dsh-balance-amount[data-known="true"] { color:var(--dsh-hue-green); }
+
+/* 安静的文本下拉：时钟时区、工作足迹的尺度与工作区。
+   无边框、无底色，只有小字和小箭头；悬停变深一点。 */
+.dsh-quiet-select { box-sizing:border-box; max-width:100%; height:20px; margin:0; padding:0 14px 0 0; border:0; border-radius:0; background:transparent; color:var(--dsw-alias-label-tertiary); font-family:var(--dsw-font-family); font-size:11px; line-height:20px; cursor:pointer; appearance:none; background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%); background-position:calc(100% - 7px) 9px,calc(100% - 3px) 9px; background-size:4px 4px,4px 4px; background-repeat:no-repeat; transition:color 120ms ease-out; text-overflow:ellipsis; }
+.dsh-quiet-select:is(:hover,:focus-visible) { color:var(--dsw-alias-label-secondary); }
+.dsh-quiet-select:focus-visible { outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)); outline-offset:2px; border-radius:var(--dsw-radius-xs); }
+.dsh-quiet-select:disabled { opacity:.7; cursor:default; }
+/* 热力图彩块的悬停信息：一个跟随指针的小气泡，Portal 到 body，不被滚动容器裁掉。 */
+.dsh-hover-tip { position:fixed; z-index:1000; max-width:240px; padding:4px 8px; border-radius:var(--dsw-radius-sm); background:var(--dsw-alias-label-primary); color:var(--dsw-alias-label-primary-foreground); font:var(--dsw-font-xxxs-11); line-height:16px; pointer-events:none; box-shadow:var(--dsw-shadow-lv2); }
 
 /* 会话状态：顶部三个筛选胶囊，计数跟着走；选中态用该状态的语义色实心。 */
 .dsh-session-status { display:flex; flex-direction:column; gap:8px; min-height:0; min-width:0; }

@@ -100,7 +100,25 @@ try {
   await widget('timer-demo').getByRole('button', { name: /^(归零|Reset)$/ }).click()
   await page.waitForFunction(() => document.querySelector('[data-widget-id="timer-demo"] .dsh-dial-value')?.textContent?.trim() === '12:00', undefined, { timeout: 4000 })
   assert.deepEqual(await buttons(), ['Start'], 'reset returns to the idle dial')
-  checks.push('timer: dial drag sets the duration → Start → Pause/Reset → reload keeps the value → Reset')
+
+  // The wheel over the dial (digits included) adds a minute per notch and never scrolls the page.
+  const board = page.locator('.dsh-home')
+  const before = await board.evaluate(el => el.scrollTop)
+  const dialNow = await widget('timer-demo').locator('.dsh-timer-dial').boundingBox()
+  await page.mouse.move(dialNow.x + dialNow.width / 2, dialNow.y + dialNow.height / 2)
+  await page.mouse.wheel(0, -120)
+  await page.waitForFunction(() => document.querySelector('[data-widget-id="timer-demo"] .dsh-timer-dial')?.getAttribute('aria-valuenow') === '13', undefined, { timeout: 4000 })
+  assert.equal(await board.evaluate(el => el.scrollTop), before, 'wheeling over the dial does not scroll the board')
+  await page.waitForTimeout(400)
+  assert.equal((await focusDoc()).timers['timer-demo'].targetMs, 13 * 60_000, 'the wheel duration is persisted')
+
+  // Right-side presets set and persist a duration in one click.
+  await widget('timer-demo').locator('.dsh-timer-preset', { hasText: /^(25m|25 分)$/u }).click()
+  await page.waitForFunction(() => document.querySelector('[data-widget-id="timer-demo"] .dsh-dial-value')?.textContent?.trim() === '25:00', undefined, { timeout: 4000 })
+  for (let attempt = 0; attempt < 60 && (await focusDoc()).timers['timer-demo']?.targetMs !== 25 * 60_000; attempt += 1) await page.waitForTimeout(50)
+  assert.equal((await focusDoc()).timers['timer-demo'].targetMs, 25 * 60_000)
+  assert.match(await widget('timer-demo').locator('.dsh-timer-preset[data-active="true"]').innerText(), /^(25m|25 分)$/u, 'the preset matching the duration is highlighted')
+  checks.push('timer: dial drag, wheel and presets all set and persist the duration')
 
   // Pomodoro: 25:00, starts down, skip flips to the break phase.
   const pomodoro = widget('pomodoro-demo').locator('.dsh-pomodoro')

@@ -25,10 +25,6 @@ export const personalStyles = `
 .dsh-personal-clock-day{font-family:var(--dsw-font-family);font-size:24px;font-weight:600;line-height:1;letter-spacing:-.04em}
 .dsh-personal-clock-month{max-width:100%;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-secondary);text-align:center;overflow-wrap:anywhere}
 .dsh-personal-clock-zone{display:flex;min-width:0}
-.dsh-clock-zone{box-sizing:border-box;max-width:100%;height:20px;margin:0;padding:0 14px 0 0;border:0;border-radius:0;background:transparent;color:var(--dsw-alias-label-tertiary);font-family:var(--dsw-font-family);font-size:11px;line-height:20px;cursor:pointer;appearance:none;background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);background-position:calc(100% - 7px) 9px,calc(100% - 3px) 9px;background-size:4px 4px,4px 4px;background-repeat:no-repeat;transition:color 120ms ease-out}
-.dsh-clock-zone:is(:hover,:focus-visible){color:var(--dsw-alias-label-secondary)}
-.dsh-clock-zone:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px;border-radius:var(--dsw-radius-xs)}
-.dsh-clock-zone:disabled{opacity:.75;cursor:default}
 @container widget (max-width:260px){
   .dsh-personal-clock-display{gap:8px}
   .dsh-personal-clock-time{font-size:clamp(28px,17cqi,44px)}

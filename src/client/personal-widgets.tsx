@@ -93,7 +93,7 @@ export function ClockContent(props: WidgetContentProps<ClockConfig>): ReactNode 
     </div>
     <div className="dsh-personal-clock-zone">
       {/* One option, chosen from a list: no typing, no dialog, no editable heading. */}
-      <select className="dsh-clock-zone" aria-label={t('clock.timeZone')}
+      <select className="dsh-quiet-select dsh-clock-zone" aria-label={t('clock.timeZone')}
         title={config.timeZone === '' ? `${t('clock.followBrowser')} · ${browserZone}` : config.timeZone}
         value={config.timeZone} disabled={!editable}
         onChange={event => { void saveConfig?.({ timeZone: event.target.value }) }}>

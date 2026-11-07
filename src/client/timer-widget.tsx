@@ -24,6 +24,8 @@ import type { FocusTimer } from './api.ts'
 const DEFAULT_TARGET_MS = 5 * 60_000
 /** 一圈最多 60 分钟：1 分钟 = 6°。 */
 export const MAX_TARGET_MINUTES = 60
+/** 圆盘右侧的快捷时长（分钟）。 */
+const PRESETS = [5, 10, 15, 25, 45, 60] as const
 
 export type TimerConfig = Record<string, never>
 
@@ -63,6 +65,40 @@ function TimerDial({ targetMs, fraction, displayMs, reached, editable, t, onPrev
   const minutes = Math.round(targetMs / 60_000)
   const latest = useRef(minutes)
   latest.current = minutes
+  const dial = useRef<HTMLDivElement>(null)
+  const timer = useRef<number | undefined>(undefined)
+  const pending = useRef<number | null>(null)
+  const flush = (): void => {
+    window.clearTimeout(timer.current)
+    if (pending.current === null) return
+    const value = pending.current
+    pending.current = null
+    onCommit(value)
+  }
+  const later = (ms: number): void => {
+    window.clearTimeout(timer.current)
+    pending.current = ms
+    timer.current = window.setTimeout(flush, 260)
+  }
+  useEffect(() => () => flush(), [])
+  // A notch of the wheel is one minute (Shift: five) while the pointer is anywhere on
+  // the dial, digits included. The listener is non-passive so the card does not scroll.
+  useEffect(() => {
+    const node = dial.current
+    if (node === null || !editable) return
+    const wheel = (event: WheelEvent): void => {
+      event.preventDefault()
+      const direction = event.deltaY < 0 ? 1 : -1
+      const step = event.shiftKey ? 5 : 1
+      const next = Math.min(MAX_TARGET_MINUTES, Math.max(1, latest.current + direction * step))
+      if (next === latest.current) return
+      latest.current = next
+      onPreview(next * 60_000)
+      later(next * 60_000)
+    }
+    node.addEventListener('wheel', wheel, { passive: false })
+    return () => { node.removeEventListener('wheel', wheel) }
+  })
   const arc = Math.min(1, Math.max(0, fraction))
   const angle = arc * Math.PI * 2 - Math.PI / 2
   const handleX = 50 + 44 * Math.cos(angle)
@@ -72,7 +108,7 @@ function TimerDial({ targetMs, fraction, displayMs, reached, editable, t, onPrev
     if (next === latest.current) return
     latest.current = next
     onPreview(next * 60_000)
-    onCommit(next * 60_000)
+    later(next * 60_000)
   }
   const drag = (event: ReactPointerEvent<HTMLDivElement>): void => {
     if (!editable || event.button !== 0) return
@@ -101,13 +137,16 @@ function TimerDial({ targetMs, fraction, displayMs, reached, editable, t, onPrev
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', finish)
       window.removeEventListener('pointercancel', finish)
-      if (started) onCommit(value)
+      if (started) {
+        pending.current = value
+        flush()
+      }
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', finish)
     window.addEventListener('pointercancel', finish)
   }
-  return <div className="dsh-timer-dial" role="slider" tabIndex={editable ? 0 : -1}
+  return <div ref={dial} className="dsh-timer-dial" role="slider" tabIndex={editable ? 0 : -1}
     aria-label={t('timer.dial')} aria-valuemin={1} aria-valuemax={MAX_TARGET_MINUTES} aria-valuenow={minutes}
     aria-valuetext={t('timer.minutes', { n: minutes })} aria-disabled={editable ? undefined : true}
     data-draggable={editable ? 'true' : undefined} onPointerDown={drag}
@@ -117,8 +156,8 @@ function TimerDial({ targetMs, fraction, displayMs, reached, editable, t, onPrev
       else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') { event.preventDefault(); nudge(-1) }
       else if (event.key === 'PageUp') { event.preventDefault(); nudge(5) }
       else if (event.key === 'PageDown') { event.preventDefault(); nudge(-5) }
-      else if (event.key === 'Home') { event.preventDefault(); onPreview(60_000); onCommit(60_000) }
-      else if (event.key === 'End') { event.preventDefault(); onPreview(MAX_TARGET_MINUTES * 60_000); onCommit(MAX_TARGET_MINUTES * 60_000) }
+      else if (event.key === 'Home') { event.preventDefault(); onPreview(60_000); later(60_000) }
+      else if (event.key === 'End') { event.preventDefault(); onPreview(MAX_TARGET_MINUTES * 60_000); later(MAX_TARGET_MINUTES * 60_000) }
     }}>
     <svg viewBox="0 0 100 100" aria-hidden="true">
       <circle className="dsh-dial-track" cx="50" cy="50" r="44" />
@@ -153,10 +192,17 @@ function TimerBody({ elapsed, targetMs, running, readOnly, t, onPreview, onCommi
   const display = idle ? target : remaining
   const fraction = idle ? target / (MAX_TARGET_MINUTES * 60_000) : remaining / target
   const primary = reached ? t('timer.restart') : idle ? t('timer.start') : running ? t('timer.pause') : t('timer.resume')
+  const editable = !readOnly && idle
   return <div className="dsh-timer" data-running={running ? 'true' : 'false'} data-reached={reached ? 'true' : 'false'}
     data-idle={idle ? 'true' : 'false'}>
     <TimerDial targetMs={target} fraction={fraction} displayMs={display} reached={reached}
-      editable={!readOnly && idle} t={t} onPreview={onPreview} onCommit={onCommit} />
+      editable={editable} t={t} onPreview={onPreview} onCommit={onCommit} />
+    <div className="dsh-timer-presets" role="group" aria-label={t('timer.presets')}>
+      {PRESETS.map(minutes => <button type="button" key={minutes} className="dsh-timer-preset"
+        disabled={!editable} data-active={Math.round(target / 60_000) === minutes ? 'true' : undefined}
+        aria-pressed={Math.round(target / 60_000) === minutes}
+        onClick={() => { onPreview(minutes * 60_000); onCommit(minutes * 60_000) }}>{t('timer.preset', { n: minutes })}</button>)}
+    </div>
     <div className="dsh-timer-actions">
       {/* Idle: one button. Started: two choices. Reached: start over or clear. */}
       {idle

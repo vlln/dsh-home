@@ -42,6 +42,8 @@ button.dsh-activity-cell { cursor:pointer; transition:box-shadow 120ms ease-out;
 .dsh-activity-cell[data-selected="true"], button.dsh-activity-cell:focus-visible { outline:2px solid var(--dsw-alias-label-primary); outline-offset:1px; }
 button.dsh-activity-cell:is(:hover,:focus-visible) { box-shadow:0 0 0 1px var(--dsw-alias-label-secondary); }
 .dsh-activity-spacer { visibility:hidden; }
+.dsh-activity-filters { display:flex; align-items:center; gap:10px; min-width:0; flex-wrap:wrap; }
+.dsh-activity-filters .dsh-quiet-select { max-width:160px; }
 .dsh-activity-legend { display:flex; align-items:center; justify-content:flex-start; gap:4px; font:var(--dsw-font-xxxs-11); color:var(--dsw-alias-label-tertiary); }
 .dsh-activity-legend .dsh-activity-cell { width:12px; height:12px; }
 .dsh-activity > .dsh-muted { margin:0; overflow-wrap:anywhere; }

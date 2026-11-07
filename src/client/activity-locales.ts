@@ -1,6 +1,6 @@
 export const zhActivity = {
   'activity.title': '工作足迹', 'activity.description': '按浏览器时区查看人工消息记录，通过「筛选范围」选择目录与时间段；不含子代理和自动续轮。',
-  'activity.edit': '筛选范围',
+
   'activity.metric': '人工消息', 'activity.summary': '近 {days} 天 · {active} 天有记录 · {messages} 条消息',
   'activity.activeDays': '天有记录', 'activity.period': '近 {days} 天',
   'activity.block': '{first} 至 {last}',
@@ -16,12 +16,12 @@ export const zhActivity = {
   'activity.dateUnknown': '这一天暂未整理出对应记录；历史尚未完整，不能确认没有活动。',
   'activity.detail': '{date} 的会话', 'activity.detailCount': '最多显示 100 个，共 {count} 个会话',
   'activity.messages': '{count} 条消息', 'activity.cwd': '工作目录', 'activity.all': '全部工作目录',
-  'activity.range': '显示范围', 'activity.auto': '自动（随宽度调整）', 'activity.quarter': '最近 12 周',
-  'activity.year': '最近一年', 'activity.zone': '时区：{zone} · 仅统计顶层会话的人工消息',
+  'activity.range': '显示范围', 'activity.auto': '自动', 'activity.quarter': '12 周',
+  'activity.year': '一年', 'activity.zone': '时区：{zone}', 'activity.zoneHint': '仅统计顶层会话的人工消息',
 } as const
 export const enActivity: Record<keyof typeof zhActivity, string> = {
   'activity.title': 'Work footprints', 'activity.description': 'Human messages by browser time zone; use Filter range to choose a directory and period. Excludes subagents and automatic continuation.',
-  'activity.edit': 'Filter range',
+
   'activity.metric': 'Human messages', 'activity.summary': 'Last {days} days · {active} recorded days · {messages} messages',
   'activity.activeDays': 'recorded days', 'activity.period': 'Last {days} days',
   'activity.block': '{first} to {last}',
@@ -37,6 +37,6 @@ export const enActivity: Record<keyof typeof zhActivity, string> = {
   'activity.dateUnknown': 'No matching records indexed yet. History is incomplete, so inactivity is not confirmed.',
   'activity.detail': 'Sessions on {date}', 'activity.detailCount': 'Showing up to 100 of {count} sessions',
   'activity.messages': '{count} messages', 'activity.cwd': 'Working directory', 'activity.all': 'All working directories',
-  'activity.range': 'Display range', 'activity.auto': 'Automatic (fits width)', 'activity.quarter': 'Last 12 weeks',
-  'activity.year': 'Last year', 'activity.zone': 'Time zone: {zone} · Human messages in top-level sessions only',
+  'activity.range': 'Display range', 'activity.auto': 'Auto', 'activity.quarter': '12 weeks',
+  'activity.year': '1 year', 'activity.zone': 'Time zone: {zone}', 'activity.zoneHint': 'Human messages in top-level sessions only',
 }

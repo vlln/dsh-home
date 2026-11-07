@@ -26,16 +26,15 @@ test('preview cannot receive durable config capability', () => {
   assert.equal(props.preview.data, null)
 })
 test('builtins choose editors themselves and retain forms without shell registration', async () => {
-  for (const name of ['quick-widget.tsx', 'activity-widget.tsx']) {
-    const text = await source(name)
-    assert.match(text, /<WidgetConfigEditor/)
-    assert.doesNotMatch(text, /Settings: (NotesSettings|ClockSettings|QuickSettings|ActivitySettings)/)
-  }
-  // Notes, clock and timer edit inside the card: no dialog, no shell form.
-  for (const name of ['personal-widgets.tsx', 'timer-widget.tsx']) {
+  const quick = await source('quick-widget.tsx')
+  assert.match(quick, /<WidgetConfigEditor/)
+  assert.doesNotMatch(quick, /Settings: QuickSettings/)
+  // Notes, clock, timer and footprints edit inside the card: no dialog, no shell form.
+  for (const name of ['personal-widgets.tsx', 'timer-widget.tsx', 'activity-widget.tsx']) {
     const text = await source(name)
     assert.doesNotMatch(text, /<WidgetConfigEditor|dsh-widget-config-modal/)
   }
+  assert.match(await source('activity-widget.tsx'), /dsh-activity-scale/)
   assert.match(await source('personal-widgets.tsx'), /dsh-clock-zone/)
   assert.match(await source('timer-widget.tsx'), /dsh-timer-dial/)
   const helper = await source('widget-settings.tsx')

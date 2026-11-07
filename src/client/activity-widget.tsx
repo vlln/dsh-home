@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { post } from './api.ts'
 import { useBuiltin } from './builtin-registration.tsx'
 import { activityLevel, activityPreviewSnapshot, activityWeeks, validateActivityConfig, type ActivityConfig, type ActivitySnapshot } from './activity-model.ts'
-import type { JsonValue, WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
+import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { Translate } from './format.ts'
-import { WidgetConfigEditor } from './widget-settings.tsx'
+import { cwdLabels } from './session-model.ts'
 
 function browserZone() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' }
 function useActivity(cwd: string, date?: string, preview?: WidgetContentProps['preview']) {
@@ -57,13 +58,12 @@ function useActivity(cwd: string, date?: string, preview?: WidgetContentProps['p
   return { result, error, loading, detailReady, retry: () => setRetry(n => n + 1) }
 }
 function ActivityContent(props: WidgetContentProps<ActivityConfig>) {
-  const { t } = useBuiltin()
-  return <ActivityBody {...props} editor={<WidgetConfigEditor t={t} widgetProps={props} title={t('activity.title')} label={t('activity.edit')}
-    Fields={ActivitySettings} validate={validateActivityConfig} />} />
+  return <ActivityBody {...props} />
 }
-function ActivityBody({ config, width, height, preview, editor }: WidgetContentProps<ActivityConfig> & { editor?: ReactNode }) {
+function ActivityBody({ config, width, height, preview, saveConfig }: WidgetContentProps<ActivityConfig>) {
   const { t, state, actions } = useBuiltin()
   const [date, setDate] = useState<string>()
+  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null)
   const { result, error, loading, detailReady, retry } = useActivity(config.cwd, date, preview)
   const calendar = useRef<HTMLDivElement>(null)
   const ready = result !== null && result.available
@@ -74,17 +74,25 @@ function ActivityBody({ config, width, height, preview, editor }: WidgetContentP
     const node = calendar.current
     if (ready && node) node.scrollLeft = node.scrollWidth
   }, [ready, config.cwd, config.range, preview])
-  if (!result && error) return <><div className="dsh-empty" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>{editor}</>
-  if (!result) return <><div className="dsh-empty" role="status">{t('activity.loading')}</div>{editor}</>
-  if (!result.available) return <><div className="dsh-empty">{t('activity.unavailable')}</div>{editor}</>
+  if (!result && error) return <div className="dsh-empty" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>
+  if (!result) return <div className="dsh-empty" role="status">{t('activity.loading')}</div>
+  if (!result.available) return <div className="dsh-empty">{t('activity.unavailable')}</div>
   const { weeks, count, first, cellSize, chartWidth, blocks, sidebar } = activityWeeks(result.days, result.today, width, config.range, height)
   const days = result.days.filter(day => day.key >= first && day.key <= result.today)
   const active = days.filter(day => day.messages > 0).length
   const messages = days.reduce((n, day) => n + day.messages, 0)
+  const labels = cwdLabels(result.workspaces)
   const dayLabel = (day: {key: string; messages: number; sessions: number}) => t(result.complete ? 'activity.day' : 'activity.partialDay', { date: day.key, messages: day.messages, sessions: day.sessions })
+  const showTip = (event: ReactMouseEvent<HTMLElement>, text: string): void => {
+    setTip({ x: event.clientX, y: event.clientY, text })
+  }
   const cell = (day: (typeof weeks)[number][number], index: number) => day ? <button type="button" className="dsh-activity-cell" key={day.key}
     data-date={day.key} data-level={activityLevel(day.messages)} data-selected={date === day.key} data-unknown={!result.complete && day.messages === 0}
-    aria-label={dayLabel(day)} aria-pressed={date === day.key} title={dayLabel(day)} onClick={() => { if (!preview) setDate(day.key) }} />
+    aria-label={dayLabel(day)} aria-pressed={date === day.key}
+    onMouseEnter={event => { showTip(event, dayLabel(day)) }} onMouseLeave={() => { setTip(null) }}
+    onFocus={event => setTip({ x: event.currentTarget.getBoundingClientRect().left + 8, y: event.currentTarget.getBoundingClientRect().top, text: dayLabel(day) })}
+    onBlur={() => { setTip(null) }}
+    onClick={() => { if (!preview) setDate(day.key) }} />
     : <span className="dsh-activity-cell dsh-activity-spacer" key={`pad${index}`} />
   const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
   return <div className="dsh-activity" data-activity-complete={result.complete} data-activity-range={config.range} data-activity-layout={blocks.length ? 'blocks' : 'weeks'} data-activity-sidebar={sidebar}
@@ -109,7 +117,27 @@ function ActivityBody({ config, width, height, preview, editor }: WidgetContentP
     <div className="dsh-activity-caption"><span>{first} – {result.today}</span><div className="dsh-activity-legend"><span>{t('activity.less')}</span>{[0,1,2,3,4].map(level => <span key={level} className="dsh-activity-cell" data-level={level} />)}<span>{t('activity.more')}</span></div></div>
     {!result.complete && <p className="dsh-muted" role="status">{t(result.scanning ? 'activity.partial' : 'activity.incomplete', result.progress)}</p>}
     {result.complete && messages === 0 && <p className="dsh-muted">{t('activity.empty')}</p>}
-    <div className="dsh-activity-footer"><span className="dsh-muted">{t('activity.zone', { zone: result.timeZone })}</span>{editor}</div>
+    <div className="dsh-activity-footer">
+      <span className="dsh-muted" title={t('activity.zoneHint')}>{t('activity.zone', { zone: result.timeZone })}</span>
+      {/* Scale and workspace are quiet selects: the same grammar as the clock's zone. */}
+      <div className="dsh-activity-filters">
+        <select className="dsh-quiet-select dsh-activity-scale" aria-label={t('activity.range')} title={t('activity.range')}
+          value={config.range} disabled={saveConfig === undefined}
+          onChange={event => { void saveConfig?.({ ...config, range: event.target.value as ActivityConfig['range'] }) }}>
+          {(['auto', 'quarter', 'year'] as const).map(value => <option key={value} value={value}>{t(`activity.${value}`)}</option>)}
+        </select>
+        <select className="dsh-quiet-select dsh-activity-cwd" aria-label={t('activity.cwd')}
+          title={config.cwd === '' ? t('activity.all') : config.cwd}
+          value={config.cwd} disabled={saveConfig === undefined}
+          onChange={event => { void saveConfig?.({ ...config, cwd: event.target.value }) }}>
+          <option value="">{t('activity.all')}</option>
+          {config.cwd !== '' && !result.workspaces.includes(config.cwd) && <option value={config.cwd}>{labels.get(config.cwd) ?? config.cwd}</option>}
+          {result.workspaces.map(cwd => <option key={cwd} value={cwd}>{labels.get(cwd) ?? cwd}</option>)}
+        </select>
+      </div>
+    </div>
+    {tip !== null && createPortal(<div className="dsh-hover-tip" role="tooltip"
+      style={{ left: Math.min(tip.x + 12, window.innerWidth - 250), top: Math.max(8, tip.y - 34) }}>{tip.text}</div>, document.body)}
     {date && <section className="dsh-activity-detail" aria-label={t('activity.detail', { date })} aria-busy={loading || (!detailReady && !error)}>
       <strong>{t('activity.detail', { date })}</strong>
       {!detailReady ? <p className="dsh-muted" role="status">{t(error ? 'activity.error' : 'activity.loading')}</p>
@@ -121,21 +149,6 @@ function ActivityBody({ config, width, height, preview, editor }: WidgetContentP
       {detailReady && result.matchedSessions > 100 && <span className="dsh-muted">{t('activity.detailCount', { count: result.matchedSessions })}</span>}
     </section>}
   </div>
-}
-function ActivitySettings({ config, onConfigChange }: WidgetSettingsProps<ActivityConfig>) {
-  const { t } = useBuiltin()
-  const { result, error, retry } = useActivity('')
-  return <>
-    {error && <div className="dsh-muted" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>}
-    <label className="dsh-settings-field">{t('activity.cwd')}<select value={config.cwd} onChange={event => onConfigChange({ ...config, cwd: event.target.value })}>
-      <option value="">{t('activity.all')}</option>
-      {config.cwd && !result?.workspaces.includes(config.cwd) && <option value={config.cwd}>{config.cwd}</option>}
-      {result?.workspaces.map(cwd => <option value={cwd} key={cwd}>{cwd}</option>)}
-    </select></label>
-    <label className="dsh-settings-field">{t('activity.range')}<select value={config.range} onChange={event => onConfigChange({ ...config, range: event.target.value as ActivityConfig['range'] })}>
-      {(['auto', 'quarter', 'year'] as const).map(value => <option value={value} key={value}>{t(`activity.${value}`)}</option>)}
-    </select></label>
-  </>
 }
 export function registerActivityWidget(registry: HomeWidgetRegistry, t: Translate) {
   return registry.register<ActivityConfig>({ typeId: '@vlln/dsh-home:activity', apiVersion: 1,
