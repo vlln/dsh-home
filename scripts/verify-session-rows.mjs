@@ -102,9 +102,12 @@ try {
     // session name stays plain card text — no extra plate or new hue.
     assert.notEqual(row.badge, 'rgba(0, 0, 0, 0)', `the directory mark is tinted (${row.badge})`)
     assert.equal(row.title, 'rgba(0, 0, 0, 0)', 'the session name is plain text')
-    assert.match(row.trailing, /^(now|now ago|\d+(min|h|d|mo|y)|\d+(分钟|小时|天|个月|年)|Approval|Plan review|Answer|待审批|计划待审|待回答)$/u, `compact native trailing: ${row.trailing}`)
+    assert.match(row.trailing, /^(now|\d+(min|h|d|mo|y)|\d+(分钟|小时|天|个月|年)|Activity time unknown|活动时间未知)$/u, `the trailing column is always the time: ${row.trailing}`)
   }
-  assert(palette.some(row => row.status === 'approval'), 'the sample includes a pending interaction')
+  const pendingRow = palette.find(row => row.status === 'approval')
+  assert(pendingRow !== undefined, 'the sample includes a pending interaction')
+  assert.doesNotMatch(pendingRow.trailing, /Approval|Plan review|Answer|待审批|计划待审|待回答/u, 'a pending row shows its time, not the status word')
+  assert.match(pendingRow.trailing, /^(now|\d+(min|h|d|mo|y))/u, 'the pending row still dates itself')
   checks.push('会话行：沿用目录色块与纯文字（旧配色），原生状态点，原生紧凑时间，不再显示 ID/路径')
   await recent.screenshot({ path: new URL('recent-rows.png', out).pathname, animations: 'disabled' })
   assert.deepEqual(errors, [])

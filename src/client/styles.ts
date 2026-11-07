@@ -578,9 +578,6 @@ export const CSS = `
 .dsh-session-title { flex: 1 1 auto; min-width: 0; color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dsh-session-status { flex: none; display: inline-flex; align-items: center; }
 .dsh-session-trailing { flex: none; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
-.dsh-session-row[data-status="approval"] .dsh-session-trailing,
-.dsh-session-row[data-status="plan"] .dsh-session-trailing,
-.dsh-session-row[data-status="question"] .dsh-session-trailing { color: var(--dsw-alias-state-warn-primary); }
 .dsh-recent-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
 .dsh-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .dsh-task-options { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -18,8 +18,6 @@ const DOT: Record<RecentStatus, StateDotState> = {
   running: 'ongoing', unread: 'done', idle: 'idle', unknown: 'idle',
 }
 
-const PENDING = new Set<RecentStatus>(['approval', 'plan', 'question'])
-
 export interface SessionRowProps {
   session: Pick<RecentSession, 'id' | 'lastAt'>
   title: string
@@ -33,10 +31,9 @@ export interface SessionRowProps {
 }
 
 export function SessionRow({ session, title, workspace, workspaceTitle, status, now, t, onOpen }: SessionRowProps): ReactNode {
-  // Native precedence: a pending interaction replaces the timestamp with its compact
-  // label; everything else keeps the relative time.
-  const trailing = PENDING.has(status) ? t(`recent.compact.${status}`)
-    : session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
+  // The trailing column is always the relative time: the state dot already carries the
+  // status, and repeating it as a word pushed the time out of the row.
+  const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
   const statusLabel = t(`recent.status.${status}`)
   return <button
     type="button"
