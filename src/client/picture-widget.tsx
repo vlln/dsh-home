@@ -16,6 +16,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
 import { WidgetConfigEditor } from './widget-settings.tsx'
+import { IconPicture } from './widget-glyphs.tsx'
 
 /** 预览用内联图：不联网、不读盘。 */
 const PREVIEW_SRC = 'data:image/svg+xml;utf8,' + encodeURIComponent(
@@ -87,7 +88,7 @@ export function PictureContent(props: WidgetContentProps<PictureConfig>): ReactN
 export function registerPictureWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
   return registry.register<PictureConfig>({
     typeId: '@vlln/dsh-home:picture', apiVersion: 1,
-    title: () => t('widget.picture.title'), description: () => t('gallery.description.picture'), source: '@vlln/dsh-home',
+    title: () => t('widget.picture.title'), description: () => t('gallery.description.picture'), source: '@vlln/dsh-home', icon: IconPicture,
     preview: { config: () => ({ src: '', title: '', fit: 'cover' as const }) },
     sizing: { default: { w: 4, h: 4 }, supported: [{ w: 4, h: 4 }, { w: 8, h: 4 }, { w: 8, h: 6 }] },
     configVersion: 1, defaultConfig: () => ({ src: '', title: '', fit: 'cover' as const }),

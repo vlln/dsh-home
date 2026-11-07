@@ -221,9 +221,8 @@ export function createHomeService(ctx, { log = () => {}, load = loadState, save 
   const scan = async () => {
     if (persistence === undefined) return
     if (inflight !== null) return inflight
-    scanning = true
-    invalidateActivity()
     scanError = false
+    let dirty = false
     inflight = (async () => {
       try {
         const snapshots = await persistence.list()
@@ -232,6 +231,16 @@ export function createHomeService(ctx, { log = () => {}, load = loadState, save 
           .filter(snapshot => ledger.sessions[snapshot.header.id]?.revision !== String(snapshot.revision))
           .sort((left, right) => right.header.createdAt - left.header.createdAt)
         progress = { done: 0, total: pending.length }
+        // 定时重扫大多没有变化。只有真的要折叠会话时才进入「整理中」，否则每分钟
+        // 一次的空扫描会让卡片反复闪出进度文案（真实机器上首扫要几十秒）。
+        if (pending.length === 0) {
+          ledger.scannedAt = Date.now()
+          ledger.foldVersion = FOLD_VERSION
+          return
+        }
+        dirty = true
+        scanning = true
+        invalidateActivity()
         let lastPersist = Date.now()
         for (let index = 0; index < pending.length; index += SCAN_CONCURRENCY) {
           const batch = pending.slice(index, index + SCAN_CONCURRENCY)
@@ -247,18 +256,21 @@ export function createHomeService(ctx, { log = () => {}, load = loadState, save 
         }
         const live = new Set(snapshots.map(snapshot => snapshot.header.id))
         for (const id of Object.keys(ledger.sessions)) {
-          if (!live.has(id)) delete ledger.sessions[id]
+          if (!live.has(id)) { delete ledger.sessions[id]; dirty = true }
         }
         ledger.scannedAt = Date.now()
         ledger.foldVersion = FOLD_VERSION
       } catch (error) {
         scanError = true
+        // 失败也推进 TTL：否则 store 每 3 秒重试一次，卡片会一直闪「整理中」。
+        ledger.scannedAt = Date.now()
         log(`scan failed: ${error?.message ?? error}`)
       } finally {
         scanning = false
         invalidateActivity()
         inflight = null
-        persistLedger()
+        // 空扫描（TTL 到期但没有任何会话变化）不再每分钟重写 1.8MB 的账本。
+        if (dirty) persistLedger()
       }
     })()
     return inflight
@@ -280,11 +292,14 @@ export function createHomeService(ctx, { log = () => {}, load = loadState, save 
     snapshot,
     activity(raw) {
       const query = validateActivityQuery(raw)
+      // 读一次快照会顺手触发重扫；这次响应报告的是「调用前」是否在扫，
+      // 不然每次 TTL 到期的请求都会把自己触发的那次扫描当成正在整理。
+      const scanningBefore = scanning
       snapshot() // Reuse the existing bounded scanner and refresh TTL.
       const key = JSON.stringify(query)
       const cached = activityCache.get(key)
       if (cached && Date.now() - cached.at < 30_000) return clone(cached.value)
-      const value = buildActivity({ ...ledger, scanning, progress }, query, { available: persistence !== undefined, scanError })
+      const value = buildActivity({ ...ledger, scanning: scanningBefore, progress }, query, { available: persistence !== undefined, scanError })
       if (activityCache.size >= 24) activityCache.delete(activityCache.keys().next().value)
       activityCache.set(key, { at: Date.now(), value })
       return clone(value)

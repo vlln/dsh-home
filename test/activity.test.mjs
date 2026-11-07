@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildActivity, validateActivityQuery } from '../src/activity.mjs'
 import { foldSession } from '../src/ledger.mjs'
-import { activityChartHeight, activityWeeks, activityYearWidth, activityLevel, shiftCalendarDay, validateActivityConfig, ACTIVITY_NATURAL_CELL, ACTIVITY_MIN_CELL, ACTIVITY_MAX_CELL, ACTIVITY_COMPACT_CELL } from '../src/client/activity-model.ts'
+import { activityChartHeight, activityWeeks, activityYearWidth, activityLevel, migrateActivityConfig, shiftCalendarDay, validateActivityConfig, ACTIVITY_NATURAL_CELL, ACTIVITY_MIN_CELL, ACTIVITY_MAX_CELL, ACTIVITY_COMPACT_CELL } from '../src/client/activity-model.ts'
 const now = Date.parse('2026-11-04T18:00:00Z')
 const user = time => ({ type: 'user/message', time: Date.parse(time), data: { source: { kind: 'user' }, content: [{ type: 'text', text: 'hello' }] } })
 function session(id, events, extra = {}) { return foldSession({ id, createdAt: now - 86400000, cwd: '/project', ...extra }, events, now) }
@@ -143,6 +143,8 @@ test('calendar retains leap days, exact explicit ranges and values without mutat
     assert.ok(grid.count > 0 && Number.isFinite(grid.chartWidth))
   }
   assert.deepEqual([0,1,2,3,5,6,10,11].map(activityLevel), [0,1,1,2,2,3,3,4])
-  assert.equal(validateActivityConfig({ cwd: '', range: 'auto' }), true)
-  assert.equal(validateActivityConfig({ cwd: '', range: 'bogus' }), false)
+  assert.equal(validateActivityConfig({ range: 'auto' }), true)
+  assert.equal(validateActivityConfig({ range: 'bogus' }), false)
+  assert.equal(validateActivityConfig({ cwd: '', range: 'auto' }), false, 'the retired directory filter is not a stored field')
+  assert.deepEqual(migrateActivityConfig({ cwd: '/x', range: 'year' }, 1), { range: 'year' })
 })

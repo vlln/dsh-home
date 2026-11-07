@@ -17,7 +17,7 @@ const today = new Date().toISOString().slice(0, 10)
 const activity = { generatedAt: Date.now(), timeZone: 'America/Los_Angeles', today, available: true, complete: true, failed: 0, scanError: false, scanning: false, progress: { done: 3, total: 3 }, sessions: [], matchedSessions: 0, workspaces: [], days: Array.from({ length: 365 }, (_, n) => ({ key: new Date(Date.parse(today) - (364 - n) * 86400000).toISOString().slice(0, 10), messages: n % 5 === 0 ? 0 : (n * 7) % 19, sessions: n % 4 })) }
 const specs = [
   ['recent', {}, 0, 0, 8, 6], ['clock', { timeZone: '' }, 8, 0, 4, 4],
-  ['activity', { cwd: '', range: 'quarter' }, 0, 6, 8, 6], ['notes', { text: 'Pick up from here\n\nKeep the interface calm and useful. Finish the release regressions, then review the compact widget hierarchy.' }, 8, 6, 4, 6],
+  ['activity', { range: 'quarter' }, 0, 6, 8, 6], ['notes', { text: 'Pick up from here\n\nKeep the interface calm and useful. Finish the release regressions, then review the compact widget hierarchy.' }, 8, 6, 4, 6],
   ['quick', { links: [{ kind: 'url', label: 'Design references', target: 'https://www.boardui.com/zh-hans' }, { kind: 'session', label: 'Review changes', target: 'sample-1' }] }, 0, 12, 4, 5],
   ['running', {}, 4, 12, 4, 6], ['areas', {}, 8, 12, 4, 5],
   ['todo', {}, 0, 17, 4, 8], ['plan', {}, 4, 17, 4, 8], ['calendar', {}, 8, 17, 4, 8],

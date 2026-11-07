@@ -293,9 +293,9 @@ function dayTotals(sessions, key) {
 /**
  * 生成下发给浏览器的快照。
  * @param state 持久化状态（sessions 映射）
- * @param options now（测试注入）/ dayCount（天窗长度）/ recentLimit（会话条数）
+ * @param options now（测试注入）/ dayCount（天窗长度，默认覆盖 30 天窗口）/ recentLimit（会话条数）
  */
-export function buildSnapshot(state, { now = Date.now(), dayCount = 14, recentLimit = 40 } = {}) {
+export function buildSnapshot(state, { now = Date.now(), dayCount = 30, recentLimit = 40 } = {}) {
   const sessions = Object.values(state.sessions ?? {})
     .filter(session => typeof session?.lastAt === 'number')
     .sort((left, right) => right.lastAt - left.lastAt)

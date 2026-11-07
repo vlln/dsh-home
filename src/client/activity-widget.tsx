@@ -4,12 +4,12 @@ import { createPortal } from 'react-dom'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { post } from './api.ts'
 import { useBuiltin } from './builtin-registration.tsx'
-import { activityLevel, activityPreviewSnapshot, activityWeeks, validateActivityConfig, type ActivityConfig, type ActivitySnapshot } from './activity-model.ts'
+import { activityLevel, activityPreviewSnapshot, activityWeeks, migrateActivityConfig, validateActivityConfig, type ActivityConfig, type ActivitySnapshot } from './activity-model.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { Translate } from './format.ts'
-import { cwdLabels } from './session-model.ts'
 import { useVisibleRows } from './fit-rows.ts'
+import { IconActivity } from './widget-glyphs.tsx'
 
 function browserZone() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' }
 function useActivity(cwd: string, date?: string, preview?: WidgetContentProps['preview']) {
@@ -65,7 +65,7 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
   const { t, state, actions } = useBuiltin()
   const [date, setDate] = useState<string>()
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null)
-  const { result, error, loading, detailReady, retry } = useActivity(config.cwd, date, preview)
+  const { result, error, loading, detailReady, retry } = useActivity('', date, preview)
   const calendar = useRef<HTMLDivElement>(null)
   // The chart box is measured, not guessed: cell size is derived from the height the
   // card actually has left, so a wrapped caption can never push the grid out of the card.
@@ -90,7 +90,7 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
     // days rather than hiding all recent activity; ordinary data refreshes keep position.
     const node = calendar.current
     if (ready && node) node.scrollLeft = node.scrollWidth
-  }, [ready, config.cwd, config.range, preview])
+  }, [ready, config.range, preview])
   if (!result && error) return <div className="dsh-empty" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>
   if (!result) return <div className="dsh-empty" role="status">{t('activity.loading')}</div>
   if (!result.available) return <div className="dsh-empty">{t('activity.unavailable')}</div>
@@ -99,7 +99,6 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
   const days = result.days.filter(day => day.key >= first && day.key <= result.today)
   const active = days.filter(day => day.messages > 0).length
   const messages = days.reduce((n, day) => n + day.messages, 0)
-  const labels = cwdLabels(result.workspaces)
   const dayLabel = (day: {key: string; messages: number; sessions: number}) => t(result.complete ? 'activity.day' : 'activity.partialDay', { date: day.key, messages: day.messages, sessions: day.sessions })
   const showTip = (event: ReactMouseEvent<HTMLElement>, text: string): void => {
     setTip({ x: event.clientX, y: event.clientY, text })
@@ -151,14 +150,6 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
           onChange={event => { void saveConfig?.({ ...config, range: event.target.value as ActivityConfig['range'] }) }}>
           {(['auto', 'quarter', 'year'] as const).map(value => <option key={value} value={value}>{t(`activity.${value}`)}</option>)}
         </select>
-        <select className="dsh-quiet-select dsh-activity-cwd" aria-label={t('activity.cwd')}
-          title={config.cwd === '' ? t('activity.all') : config.cwd}
-          value={config.cwd} disabled={saveConfig === undefined}
-          onChange={event => { void saveConfig?.({ ...config, cwd: event.target.value }) }}>
-          <option value="">{t('activity.all')}</option>
-          {config.cwd !== '' && !result.workspaces.includes(config.cwd) && <option value={config.cwd}>{labels.get(config.cwd) ?? config.cwd}</option>}
-          {result.workspaces.map(cwd => <option key={cwd} value={cwd}>{labels.get(cwd) ?? cwd}</option>)}
-        </select>
       </div>
     </div>
     {tip !== null && createPortal(<div className="dsh-hover-tip" role="tooltip"
@@ -192,8 +183,8 @@ function ActivityDayDetail({ date, t, state, actions, sessions, ready, complete,
 }
 export function registerActivityWidget(registry: HomeWidgetRegistry, t: Translate) {
   return registry.register<ActivityConfig>({ typeId: '@vlln/dsh-home:activity', apiVersion: 1,
-    title: () => t('activity.title'), description: () => t('activity.description'), source: '@vlln/dsh-home',
-    preview: { data: activityPreviewSnapshot() as unknown as JsonValue }, sizing: { default: {w:8,h:6}, supported: [{w:4,h:8},{w:8,h:6},{w:8,h:8},{w:12,h:6}] }, configVersion: 1,
-    defaultConfig: () => ({ cwd: '', range: 'auto' }), validateConfig: validateActivityConfig,
+    title: () => t('activity.title'), description: () => t('activity.description'), source: '@vlln/dsh-home', icon: IconActivity,
+    preview: { data: activityPreviewSnapshot() as unknown as JsonValue }, sizing: { default: {w:8,h:6}, supported: [{w:4,h:8},{w:8,h:6},{w:8,h:8},{w:12,h:6}] }, configVersion: 2,
+    defaultConfig: () => ({ range: 'auto' }), validateConfig: validateActivityConfig, migrateConfig: migrateActivityConfig,
     Content: ActivityContent })
 }

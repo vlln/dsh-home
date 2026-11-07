@@ -19,6 +19,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { PlannerItem } from './api.ts'
+import { IconPlan } from './widget-glyphs.tsx'
 
 export type PlanConfig = { showDone: boolean }
 
@@ -144,7 +145,7 @@ export function registerPlanWidget(registry: HomeWidgetRegistry, t: Translate): 
   const preview = plannerPreview()
   return registry.register<PlanConfig>({
     typeId: '@vlln/dsh-home:plan', apiVersion: 1,
-    title: () => t('widget.plan.title'), description: () => t('gallery.description.plan'), source: '@vlln/dsh-home',
+    title: () => t('widget.plan.title'), description: () => t('gallery.description.plan'), source: '@vlln/dsh-home', icon: IconPlan,
     preview: { data: { day: preview.day, now: preview.now, items: preview.items } as unknown as JsonValue },
     sizing: { default: { w: 8, h: 6 }, supported: [{ w: 8, h: 4 }, { w: 8, h: 6 }, { w: 8, h: 8 }, { w: 12, h: 6 }] },
     configVersion: 1, defaultConfig: defaultPlanConfig, validateConfig: (config): config is PlanConfig => validatePlanConfig(config),

@@ -16,6 +16,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
 import { WidgetConfigEditor } from './widget-settings.tsx'
+import { IconCountdown } from './widget-glyphs.tsx'
 
 export type CountdownTarget = { id: string; title: string; date: string }
 export type CountdownConfig = { targets: CountdownTarget[] }
@@ -131,7 +132,7 @@ export function CountdownContent(props: WidgetContentProps<CountdownConfig>): Re
 export function registerCountdownWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
   return registry.register<CountdownConfig>({
     typeId: '@vlln/dsh-home:countdown', apiVersion: 1,
-    title: () => t('widget.countdown.title'), description: () => t('gallery.description.countdown'), source: '@vlln/dsh-home',
+    title: () => t('widget.countdown.title'), description: () => t('gallery.description.countdown'), source: '@vlln/dsh-home', icon: IconCountdown,
     preview: { config: () => PREVIEW_CONFIG },
     sizing: { default: { w: 4, h: 4 }, supported: [{ w: 4, h: 4 }, { w: 4, h: 6 }] },
     configVersion: 1, defaultConfig: defaultCountdownConfig,

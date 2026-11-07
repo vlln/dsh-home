@@ -295,7 +295,8 @@ function AreasBody({ t, data, actions }: WidgetProps) {
 }
 
 function RhythmBody({ t, data }: WidgetProps) {
-  const days = data?.days ?? []
+  // 账本保留 30 天（最近的 30 天窗口要用），这张卡只画最近 14 天。
+  const days = (data?.days ?? []).slice(-14)
   if (days.length === 0) return <Empty>{t('widget.rhythm.empty')}</Empty>
   const peak = Math.max(1, ...days.map(day => day.activeMs))
   const total = days.reduce((sum, day) => sum + day.activeMs, 0)

@@ -16,6 +16,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
 import type { FocusPomodoro } from './api.ts'
+import { IconPomodoro } from './widget-glyphs.tsx'
 
 export type PomodoroConfig = { rounds: number }
 
@@ -121,7 +122,7 @@ export function PomodoroContent(props: WidgetContentProps<PomodoroConfig>): Reac
 export function registerPomodoroWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
   return registry.register<PomodoroConfig>({
     typeId: '@vlln/dsh-home:pomodoro', apiVersion: 1,
-    title: () => t('widget.pomodoro.title'), description: () => t('gallery.description.pomodoro'), source: '@vlln/dsh-home',
+    title: () => t('widget.pomodoro.title'), description: () => t('gallery.description.pomodoro'), source: '@vlln/dsh-home', icon: IconPomodoro,
     preview: { config: defaultPomodoroConfig },
     sizing: { default: { w: 4, h: 6 }, supported: [{ w: 4, h: 4 }, { w: 4, h: 6 }] },
     configVersion: 1, defaultConfig: defaultPomodoroConfig, validateConfig: (config): config is PomodoroConfig => validatePomodoroConfig(config),

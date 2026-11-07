@@ -94,6 +94,7 @@ test('快照按本地日汇总今天与近 7 天，并排除子代理会话的�
   }
   const snapshot = buildSnapshot(state, { now: NOW, dayCount: 14 })
   assert.equal(snapshot.days.length, 14)
+  assert.equal(buildSnapshot(state, { now: NOW }).days.length, 30, 'the default window covers the 30-day activity range')
   assert.equal(snapshot.today.activeMs, 60_000 + 60_000)
   assert.equal(snapshot.today.turns, 2)
   assert.ok(snapshot.week.activeMs >= snapshot.today.activeMs)

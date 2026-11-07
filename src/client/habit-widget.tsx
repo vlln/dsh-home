@@ -17,6 +17,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { PlannerHabit } from './api.ts'
+import { IconHabit } from './widget-glyphs.tsx'
 
 export type HabitConfig = { showAll: boolean }
 
@@ -131,7 +132,7 @@ export function registerHabitWidget(registry: HomeWidgetRegistry, t: Translate):
   const preview = plannerPreview()
   return registry.register<HabitConfig>({
     typeId: '@vlln/dsh-home:habit', apiVersion: 1,
-    title: () => t('widget.habit.title'), description: () => t('gallery.description.habit'), source: '@vlln/dsh-home',
+    title: () => t('widget.habit.title'), description: () => t('gallery.description.habit'), source: '@vlln/dsh-home', icon: IconHabit,
     preview: { data: { day: preview.day, habits: preview.habits } as unknown as JsonValue },
     sizing: { default: { w: 4, h: 6 }, supported: [{ w: 4, h: 4 }, { w: 4, h: 6 }, { w: 4, h: 8 }] },
     configVersion: 1, defaultConfig: defaultHabitConfig,

@@ -15,6 +15,7 @@ import { BALANCE_PATH } from './api.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
+import { IconBalance } from './widget-glyphs.tsx'
 
 export type BalanceConfig = { auto: boolean }
 
@@ -125,7 +126,7 @@ export function BalanceContent(props: WidgetContentProps<BalanceConfig>): ReactN
 export function registerBalanceWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
   return registry.register<BalanceConfig>({
     typeId: '@vlln/dsh-home:balance', apiVersion: 1,
-    title: () => t('widget.balance.title'), description: () => t('gallery.description.balance'), source: '@vlln/dsh-home',
+    title: () => t('widget.balance.title'), description: () => t('gallery.description.balance'), source: '@vlln/dsh-home', icon: IconBalance,
     preview: { config: () => ({ auto: true }) },
     sizing: { default: { w: 4, h: 4 }, supported: [{ w: 4, h: 4 }] },
     configVersion: 1, defaultConfig: defaultBalanceConfig,

@@ -1,5 +1,5 @@
 /** Calendar-only math: never add 24h to a local timestamp across DST. */
-export type ActivityConfig = { cwd: string; range: 'auto' | 'quarter' | 'year' }
+export type ActivityConfig = { range: 'auto' | 'quarter' | 'year' }
 export interface ActivityDay { key: string; messages: number; sessions: number }
 export interface ActivitySnapshot {
   generatedAt: number; timeZone: string; today: string; days: ActivityDay[]; workspaces: string[]
@@ -9,7 +9,13 @@ export interface ActivitySnapshot {
 export function validateActivityConfig(value: unknown): value is ActivityConfig {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const c = value as ActivityConfig
-  return typeof c.cwd === 'string' && c.cwd.length <= 4096 && ['auto', 'quarter', 'year'].includes(c.range)
+  return Object.keys(c).every(key => key === 'range') && ['auto', 'quarter', 'year'].includes(c.range)
+}
+/** v1 存过 cwd；工作足迹现在始终统计全部工作区，迁移时直接丢掉。 */
+export function migrateActivityConfig(config: unknown, fromVersion: number): ActivityConfig {
+  const range = config !== null && typeof config === 'object' && !Array.isArray(config)
+    ? (config as { range?: unknown }).range : undefined
+  return { range: ['auto', 'quarter', 'year'].includes(range as string) ? range as ActivityConfig['range'] : 'auto' }
 }
 export function shiftCalendarDay(key: string, delta: number): string {
   const date = new Date(`${key}T12:00:00Z`)

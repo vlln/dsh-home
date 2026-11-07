@@ -14,6 +14,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { DayBucket, LedgerSnapshot } from './api.ts'
+import { IconUsage } from './widget-glyphs.tsx'
 
 export type UsageConfig = { week: boolean }
 
@@ -100,14 +101,14 @@ function ConnectedUsage(props: WidgetContentProps<UsageConfig>): ReactNode {
   const snapshot = state.ledger as LedgerSnapshot | null
   if (snapshot === null) return <p className="dsh-planner-loading" role="status">{t('usage.loading')}</p>
   const today = snapshot.today
-  return <UsageBody t={t} compact={props.width < 480} week={props.config.week}
+  return <UsageBody t={t} compact={(props.width ?? 999) < 480 || (props.height ?? 999) < 210} week={props.config.week}
     data={{ today: { tokens: today.tokens, runMs: today.runMs }, days: snapshot.days }} />
 }
 
 export function UsageContent(props: WidgetContentProps<UsageConfig>): ReactNode {
   const { t } = useBuiltin()
   const preview = props.preview?.data as unknown as UsagePreviewData | undefined
-  if (preview !== undefined) return <UsageBody data={preview} t={t} compact={props.width < 480} week={props.config.week} />
+  if (preview !== undefined) return <UsageBody data={preview} t={t} compact={(props.width ?? 999) < 480 || (props.height ?? 999) < 210} week={props.config.week} />
   return <ConnectedUsage {...props} />
 }
 
@@ -127,7 +128,7 @@ function previewData(): JsonValue {
 export function registerUsageWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
   return registry.register<UsageConfig>({
     typeId: '@vlln/dsh-home:usage', apiVersion: 1,
-    title: () => t('widget.usage.title'), description: () => t('gallery.description.usage'), source: '@vlln/dsh-home',
+    title: () => t('widget.usage.title'), description: () => t('gallery.description.usage'), source: '@vlln/dsh-home', icon: IconUsage,
     preview: { data: previewData() },
     sizing: { default: { w: 8, h: 4 }, supported: [{ w: 4, h: 4 }, { w: 8, h: 4 }, { w: 8, h: 6 }] },
     configVersion: 1, defaultConfig: defaultUsageConfig, validateConfig: (config): config is UsageConfig => validateUsageConfig(config),

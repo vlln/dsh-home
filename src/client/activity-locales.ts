@@ -1,5 +1,5 @@
 export const zhActivity = {
-  'activity.title': '工作足迹', 'activity.description': '按浏览器时区查看人工消息记录，通过「筛选范围」选择目录与时间段；不含子代理和自动续轮。',
+  'activity.title': '工作足迹', 'activity.description': '按浏览器时区查看人工消息记录，可选「自动 / 12 周 / 一年」；始终统计全部工作区，不含子代理和自动续轮。',
 
   'activity.metric': '人工消息', 'activity.summary': '近 {days} 天 · {active} 天有记录 · {messages} 条消息',
   'activity.activeDays': '天有记录', 'activity.period': '近 {days} 天',
@@ -15,12 +15,11 @@ export const zhActivity = {
   'activity.empty': '这段时间还没有人工消息记录。', 'activity.dateEmpty': '这一天没有对应记录。',
   'activity.dateUnknown': '这一天暂未整理出对应记录；历史尚未完整，不能确认没有活动。',
   'activity.detail': '{date} 的会话', 'activity.detailCount': '最多显示 100 个，共 {count} 个会话',
-  'activity.messages': '{count} 条消息', 'activity.cwd': '工作目录', 'activity.all': '全部工作目录',
-  'activity.range': '显示范围', 'activity.auto': '自动', 'activity.quarter': '12 周',
+  'activity.messages': '{count} 条消息',   'activity.range': '显示范围', 'activity.auto': '自动', 'activity.quarter': '12 周',
   'activity.year': '一年',
 } as const
 export const enActivity: Record<keyof typeof zhActivity, string> = {
-  'activity.title': 'Work footprints', 'activity.description': 'Human messages by browser time zone; use Filter range to choose a directory and period. Excludes subagents and automatic continuation.',
+  'activity.title': 'Work footprints', 'activity.description': 'Human messages by browser time zone; choose Auto / 12 weeks / 1 year. Always all working directories; excludes subagents and automatic continuation.',
 
   'activity.metric': 'Human messages', 'activity.summary': 'Last {days} days · {active} recorded days · {messages} messages',
   'activity.activeDays': 'recorded days', 'activity.period': 'Last {days} days',
@@ -36,7 +35,6 @@ export const enActivity: Record<keyof typeof zhActivity, string> = {
   'activity.empty': 'No human messages recorded in this period.', 'activity.dateEmpty': 'No matching records for this day.',
   'activity.dateUnknown': 'No matching records indexed yet. History is incomplete, so inactivity is not confirmed.',
   'activity.detail': 'Sessions on {date}', 'activity.detailCount': 'Showing up to 100 of {count} sessions',
-  'activity.messages': '{count} messages', 'activity.cwd': 'Working directory', 'activity.all': 'All working directories',
-  'activity.range': 'Display range', 'activity.auto': 'Auto', 'activity.quarter': '12 weeks',
+  'activity.messages': '{count} messages',   'activity.range': 'Display range', 'activity.auto': 'Auto', 'activity.quarter': '12 weeks',
   'activity.year': '1 year',
 }

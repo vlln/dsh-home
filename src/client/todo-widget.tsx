@@ -19,6 +19,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { PlannerItem } from './api.ts'
+import { IconTodo } from './widget-glyphs.tsx'
 
 export type TodoConfig = { showDone: boolean }
 
@@ -142,7 +143,7 @@ export function registerTodoWidget(registry: HomeWidgetRegistry, t: Translate): 
   const preview = plannerPreview()
   return registry.register<TodoConfig>({
     typeId: '@vlln/dsh-home:todo', apiVersion: 1,
-    title: () => t('widget.todo.title'), description: () => t('gallery.description.todo'), source: '@vlln/dsh-home',
+    title: () => t('widget.todo.title'), description: () => t('gallery.description.todo'), source: '@vlln/dsh-home', icon: IconTodo,
     preview: { data: { day: preview.day, items: preview.items } as unknown as JsonValue },
     sizing: { default: { w: 4, h: 6 }, supported: [{ w: 4, h: 4 }, { w: 4, h: 6 }, { w: 4, h: 8 }, { w: 8, h: 6 }] },
     configVersion: 1, defaultConfig: defaultTodoConfig, validateConfig: (config): config is TodoConfig => validateTodoConfig(config),

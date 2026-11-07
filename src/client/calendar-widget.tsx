@@ -19,6 +19,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { PlannerItem } from './api.ts'
+import { IconCalendar } from './widget-glyphs.tsx'
 
 export type CalendarConfig = { weekStart: 1 | 7 }
 
@@ -146,7 +147,7 @@ export function registerCalendarWidget(registry: HomeWidgetRegistry, t: Translat
   const preview = plannerPreview()
   return registry.register<CalendarConfig>({
     typeId: '@vlln/dsh-home:calendar', apiVersion: 1,
-    title: () => t('widget.calendar.title'), description: () => t('gallery.description.calendar'), source: '@vlln/dsh-home',
+    title: () => t('widget.calendar.title'), description: () => t('gallery.description.calendar'), source: '@vlln/dsh-home', icon: IconCalendar,
     preview: { data: { day: preview.day, items: preview.items } as unknown as JsonValue },
     sizing: { default: { w: 8, h: 8 }, supported: [{ w: 8, h: 6 }, { w: 8, h: 8 }, { w: 12, h: 8 }] },
     configVersion: 1, defaultConfig: defaultCalendarConfig,

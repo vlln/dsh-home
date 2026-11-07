@@ -129,20 +129,40 @@ function storageStatus(value: unknown): StorageStatus | undefined {
   return { writable: item.writable, status: item.status, error: item.error === null ? null : { ...item.error } }
 }
 
-/** 发一条 op；失败抛带 code 的 Error。 */
-export async function post<T>(op: string, extra: Record<string, unknown> = {}, signal?: AbortSignal): Promise<T> {
+/** 首屏文档的读取上限：任何一条读取都不该让卡片永远停在「加载中」。 */
+const DOCUMENT_TIMEOUT_MS = 20_000
+
+function boundedSignal(signal: AbortSignal | undefined, deadlineMs: number | undefined): { signal: AbortSignal | undefined; done: () => void } {
+  if (deadlineMs === undefined) return { signal, done: () => {} }
+  const controller = new AbortController()
+  const timer = setTimeout(() => { controller.abort(new DOMException('Home API timed out', 'TimeoutError')) }, deadlineMs)
+  const relay = (): void => { controller.abort(signal?.reason) }
+  if (signal !== undefined) {
+    if (signal.aborted) relay()
+    else signal.addEventListener('abort', relay, { once: true })
+  }
+  return { signal: controller.signal, done: () => { clearTimeout(timer); signal?.removeEventListener('abort', relay) } }
+}
+
+/** 发一条 op；失败抛带 code 的 Error。`deadlineMs` 只给首屏文档读取用。 */
+export async function post<T>(op: string, extra: Record<string, unknown> = {}, signal?: AbortSignal, deadlineMs?: number): Promise<T> {
+  const bounded = boundedSignal(signal, deadlineMs)
   const attempt = async (target: string): Promise<T> => {
     try {
-      return await postTo<T>(target, op, extra, signal)
+      return await postTo<T>(target, op, extra, bounded.signal)
     } catch (error) {
       const status = error instanceof HomeApiError ? error.status : 0
       if (target !== preferredPath || (status !== 404 && status !== 405)) throw error
       // 宿主没挂 connection 围栏（老版本或旧 profile）：降级到老入口并记住。
       preferredPath = API_PATH
-      return postTo<T>(API_PATH, op, extra, signal)
+      return postTo<T>(API_PATH, op, extra, bounded.signal)
     }
   }
-  return attempt(preferredPath)
+  try {
+    return await attempt(preferredPath)
+  } finally {
+    bounded.done()
+  }
 }
 
 async function postTo<T>(target: string, op: string, extra: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
@@ -339,7 +359,7 @@ function assertFocus(value: unknown): FocusDoc {
 
 /** 取计划文档。 */
 export async function fetchPlanner(): Promise<PlannerDocument> {
-  const value = await post<PlannerDocument>('planner.get')
+  const value = await post<PlannerDocument>('planner.get', {}, undefined, DOCUMENT_TIMEOUT_MS)
   return { planner: assertPlanner(value?.planner), storage: storageStatus(value?.storage) ?? { writable: true, status: 'ready', error: null } }
 }
 
@@ -351,7 +371,7 @@ export async function applyPlanner(operation: PlannerOperation): Promise<Planner
 
 /** 取计时文档。 */
 export async function fetchFocus(): Promise<FocusDocument> {
-  const value = await post<FocusDocument>('focus.get')
+  const value = await post<FocusDocument>('focus.get', {}, undefined, DOCUMENT_TIMEOUT_MS)
   return { focus: assertFocus(value?.focus), storage: storageStatus(value?.storage) ?? { writable: true, status: 'ready', error: null } }
 }
 

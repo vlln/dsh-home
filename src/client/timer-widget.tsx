@@ -19,6 +19,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
 import type { FocusTimer } from './api.ts'
+import { IconTimer } from './widget-glyphs.tsx'
 
 /** 新计时器的默认时长；圆盘可以随时改。 */
 const DEFAULT_TARGET_MS = 5 * 60_000
@@ -318,7 +319,7 @@ export function TimerContent(props: WidgetContentProps<TimerConfig>): ReactNode 
 export function registerTimerWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
   return registry.register<TimerConfig>({
     typeId: '@vlln/dsh-home:timer', apiVersion: 1,
-    title: () => t('widget.timer.title'), description: () => t('gallery.description.timer'), source: '@vlln/dsh-home',
+    title: () => t('widget.timer.title'), description: () => t('gallery.description.timer'), source: '@vlln/dsh-home', icon: IconTimer,
     preview: { config: () => ({}) },
     sizing: { default: { w: 4, h: 4 }, supported: [{ w: 4, h: 4 }, { w: 4, h: 6 }] },
     configVersion: 2, defaultConfig: defaultTimerConfig, validateConfig: (config): config is TimerConfig => validateTimerConfig(config),

@@ -10,7 +10,7 @@ test('activity gallery sample registers within the real registry preview limit',
   const data = activityPreviewSnapshot()
   assert.doesNotThrow(() => registry.register({
     typeId: '@vlln/dsh-home:activity', apiVersion: 1, title: 'Activity', configVersion: 1,
-    defaultConfig: () => ({ cwd: '', range: 'auto' }), validateConfig: () => true,
+    defaultConfig: () => ({ range: 'auto' }), validateConfig: () => true,
     preview: { data }, Content: () => null,
   }))
   assert.equal(data.days.length, 84)

@@ -32,16 +32,16 @@ const activity = { generatedAt: Date.now(), timeZone: 'America/Los_Angeles', tod
 // The sizes the real board uses: a 4-column column of digest cards, plus notes and timer.
 const specs = [
   ['recent', {}, 0, 0, 4, 6], ['pinned', {}, 0, 6, 4, 8], ['running', { status: null }, 0, 14, 4, 6],
-  ['activity', { cwd: '', range: 'auto' }, 4, 0, 4, 6], ['notes', { text: 'Palette standard\n\nOne accent, one capsule.' }, 4, 6, 4, 6],
+  ['activity', { range: 'auto' }, 4, 0, 4, 6], ['notes', { text: 'Palette standard\n\nOne accent, one capsule.' }, 4, 6, 4, 6],
   ['timer', {}, 4, 12, 4, 5], ['clock', { timeZone: '' }, 4, 17, 4, 4],
   ['areas', {}, 8, 0, 4, 5], ['rhythm', {}, 8, 5, 4, 4], ['usage', { week: true }, 8, 9, 4, 6],
-  ['active', { range: '7d' }, 8, 15, 4, 4],
+  ['active', { range: '7d' }, 8, 15, 4, 4], ['today', {}, 0, 19, 8, 4],
 ]
 try {
   await context.request.get(url.href); backup = await api('workbench.get'); prefs = await api('prefs.get')
   await writeFile(new URL('backup.json', out), JSON.stringify({ backup, prefs }, null, 2))
   await api('prefs.set', { prefs: { ...prefs.prefs, canvasWidth: null } })
-  const versions = { active: 3 }
+  const versions = { active: 3, activity: 2 }
   const instances = specs.map(([name, config]) => ({ instanceId: `std-${name}`, typeId: `@vlln/dsh-home:${name}`, configVersion: versions[name] ?? 1, config }))
   const positions = Object.fromEntries(specs.map(([name, , x, y, w, h]) => [`std-${name}`, { x, y, w, h }]))
   await api('workbench.set', { instances: [...backup.instances, ...instances], layout: { ...backup.layout, instanceLayout: true, order: [...backup.layout.order, ...instances.map(i => i.instanceId)], hidden: backup.instances.map(i => i.instanceId), positions: { ...backup.layout.positions, 12: { ...backup.layout.positions?.[12], ...positions } } } })
@@ -73,6 +73,19 @@ try {
     assert.equal(await page.locator('[data-widget-id="std-recent"] .dsh-recent-footer button').count(), 0, 'recent has no pager button')
     const footer = await page.locator('[data-widget-id="std-recent"] .dsh-recent-footer').innerText()
     assert.match(footer, /\d+\s*(\/|of)\s*\d+/u, `recent states the real total: ${footer}`)
+    // Every card carries its glyph: a missing icon made headings look truncated.
+    const cards = await page.locator('.dsh-home-widget').count()
+    assert.equal(await page.locator('.dsh-home-widget .dsh-widget-symbol').count(), cards, 'every card has a heading icon')
+    // The wide day dial and the token ring must be readable, and the bars must not be dots.
+    const dial = await page.locator('[data-widget-id="std-today"] .dsh-day-dial').boundingBox()
+    assert(dial !== null && dial.width >= 80, `the day dial grows with a wide card: ${dial?.width}`)
+    const donut = await page.locator('[data-widget-id="std-usage"] .dsh-usage-donut').boundingBox()
+    assert(donut !== null && donut.width >= 48, `the token ring is readable: ${donut?.width}`)
+    const barRatio = await page.locator('[data-widget-id="std-usage"] .dsh-usage-col').first().evaluate(el => {
+      const bar = el.querySelector('.dsh-usage-bar').getBoundingClientRect(), col = el.getBoundingClientRect()
+      return bar.width / col.width
+    })
+    assert(barRatio >= 0.5, `usage bars fill their column instead of leaving a chasm: ${barRatio}`)
     const pills = await page.locator('.dsh-ws-pill').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).backgroundColor))
     assert(pills.length >= 6, `capsules are present: ${pills.length}`)
     assert.equal(new Set(pills).size, 1, `every capsule shares one fill: ${[...new Set(pills)].join(', ')}`)

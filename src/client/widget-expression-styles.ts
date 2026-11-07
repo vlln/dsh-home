@@ -15,13 +15,13 @@ export const widgetExpressionStyles = `
 .dsh-home-widget :is(.dsh-today-content,.dsh-rhythm-content) { gap:2px; }
 .dsh-today-hero { display:flex; align-items:center; justify-content:space-between; gap:12px; min-width:0; }
 .dsh-today-hero .dsh-metric { align-items:flex-start; flex-direction:column; gap:0; min-width:0; }
-.dsh-day-dial { width:48px; height:48px; flex:none; overflow:visible; }
+.dsh-day-dial { width:clamp(52px, 15cqi, 96px); height:auto; aspect-ratio:1; flex:none; overflow:visible; }
 .dsh-day-dial circle { fill:none; }
 .dsh-day-dial-track { stroke:var(--dsw-alias-border-l2); stroke-width:4; }
 .dsh-day-dial-arc { stroke:var(--dsh-accent); stroke-width:5; stroke-linecap:butt; }
 .dsh-day-dial .dsh-day-dial-now { fill:var(--dsh-warning); }
-.dsh-day-dial text { fill:var(--dsw-alias-label-tertiary); font:10px var(--dsw-font-family); }
-.dsh-home-widget .dsh-band-track { height:8px; margin-top:1px; }
+.dsh-day-dial text { fill:var(--dsw-alias-label-tertiary); font:14px var(--dsw-font-family); }
+.dsh-home-widget .dsh-band-track { height:10px; margin-top:1px; }
 .dsh-home-widget .dsh-band-seg { opacity:.8; min-width:0; border-radius:var(--dsw-radius-xs); }
 .dsh-home-widget .dsh-today-stats { padding-top:4px; margin-top:1px; }
 .dsh-home-widget .dsh-today-stats strong { font:var(--dsw-font-s-strong-14); color:var(--dsw-alias-label-primary); }
@@ -47,7 +47,6 @@ export const widgetExpressionStyles = `
 .dsh-home-widget .dsh-focus-actions { margin-top:auto; }
 .dsh-home-widget .dsh-today-timeline { min-width:0; }
 .dsh-home-widget .dsh-today-content[data-roomy="true"] { gap:8px; justify-content:space-between; }
-.dsh-today-content[data-roomy="true"] .dsh-day-dial { width:72px; height:72px; }
 .dsh-home-widget .dsh-quick-widget { display:flex; flex-direction:column; min-height:100%; }
 .dsh-home-widget .dsh-quick-widget > .dsh-widget-own-editor { margin-top:auto; }
 .dsh-home-widget .dsh-quick-widget > .dsh-muted { margin-top:4px; }
@@ -60,6 +59,6 @@ export const widgetExpressionStyles = `
   .dsh-home-widget .dsh-quick-widget-links { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @container widget (max-width:280px) {
-  .dsh-day-dial { width:48px; height:48px; }
+  .dsh-day-dial { width:48px; }
 }
 `

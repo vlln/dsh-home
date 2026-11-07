@@ -15,6 +15,7 @@ import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
 import type { DayBucket, LedgerSnapshot } from './api.ts'
 import { ACTIVE_DAY_COUNT as DAY_COUNT, ACTIVE_RANGES as RANGES, activePreviewData, migrateActiveConfig, validateActiveConfig, type ActiveConfig } from './active-model.ts'
+import { IconBars } from './widget-glyphs.tsx'
 
 function barLabel(day: DayBucket, t: Translate): string {
   return `${shortDay(day.key)} · ${formatDuration(day.activeMs, t)}`
@@ -66,7 +67,7 @@ function ActiveBody({ config, saveConfig, preview }: WidgetContentProps<ActiveCo
 export function registerActiveWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
   return registry.register<ActiveConfig>({
     typeId: '@vlln/dsh-home:active', apiVersion: 1,
-    title: () => t('widget.active.title'), description: () => t('gallery.description.active'), source: '@vlln/dsh-home',
+    title: () => t('widget.active.title'), description: () => t('gallery.description.active'), source: '@vlln/dsh-home', icon: IconBars,
     preview: { data: activePreviewData() }, sizing: { default: { w: 8, h: 4 }, supported: [{ w: 4, h: 4 }, { w: 8, h: 4 }, { w: 12, h: 6 }] },
     configVersion: 3, defaultConfig: () => ({ range: '7d' }), validateConfig: (config): config is ActiveConfig => validateActiveConfig(config),
     migrateConfig: migrateActiveConfig,

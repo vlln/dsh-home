@@ -15,6 +15,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
 import { WidgetConfigEditor } from './widget-settings.tsx'
+import { IconQuote } from './widget-glyphs.tsx'
 
 function defaultQuoteConfig(): QuoteConfig {
   return { lines: [] }
@@ -62,7 +63,7 @@ export function QuoteContent(props: WidgetContentProps<QuoteConfig>): ReactNode 
 export function registerQuoteWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
   return registry.register<QuoteConfig>({
     typeId: '@vlln/dsh-home:quote', apiVersion: 1,
-    title: () => t('widget.quote.title'), description: () => t('gallery.description.quote'), source: '@vlln/dsh-home',
+    title: () => t('widget.quote.title'), description: () => t('gallery.description.quote'), source: '@vlln/dsh-home', icon: IconQuote,
     preview: { config: () => ({ lines: [] }) },
     sizing: { default: { w: 4, h: 4 }, supported: [{ w: 4, h: 4 }, { w: 4, h: 6 }] },
     configVersion: 1, defaultConfig: defaultQuoteConfig, validateConfig: (config): config is QuoteConfig => validateQuoteConfig(config),
