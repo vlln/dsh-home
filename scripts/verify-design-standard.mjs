@@ -35,7 +35,7 @@ const specs = [
   ['activity', { range: 'auto' }, 4, 0, 4, 6], ['notes', { text: 'Palette standard\n\nOne accent, one capsule.' }, 4, 6, 4, 6],
   ['timer', {}, 4, 12, 4, 5], ['clock', { timeZone: '' }, 4, 17, 4, 4],
   ['areas', {}, 8, 0, 4, 5], ['rhythm', {}, 8, 5, 4, 4], ['usage', { week: true }, 8, 9, 4, 6],
-  ['active', { range: '7d' }, 8, 15, 4, 4], ['today', {}, 0, 19, 8, 4],
+  ['active', { range: '7d' }, 8, 15, 4, 4], ['today', {}, 0, 19, 8, 4], ['habit', { showAll: false }, 8, 19, 4, 4],
 ]
 try {
   await context.request.get(url.href); backup = await api('workbench.get'); prefs = await api('prefs.get')
@@ -126,6 +126,16 @@ try {
   const activeBox = await activeCard.locator('.dsh-home-widget-content').evaluate(el => ({ h: el.clientHeight, sh: el.scrollHeight, w: el.clientWidth, sw: el.scrollWidth }))
   assert(activeBox.sh <= activeBox.h + 1 && activeBox.sw <= activeBox.w + 1, `30 days fit the card: ${JSON.stringify(activeBox)}`)
   checks.push('a year of footprints and 30 days of activity fit without scrollbars')
+  // Leaving the panel and coming back must reload the shared planner/focus documents.
+  await page.getByRole('button', { name: /^(Back to conversation|返回会话)$/ }).click()
+  await page.waitForTimeout(400)
+  await page.getByRole('button', { name: /^(Home|首页)$/ }).first().click()
+  await page.locator('[data-widget-id="std-activity"] .dsh-activity-cell[data-date]').first().waitFor()
+  await page.waitForTimeout(800)
+  const habitText = await page.locator('[data-widget-id="std-habit"]').innerText()
+  assert.doesNotMatch(habitText, /加载中|Loading/u, `the habit card reloads after returning: ${habitText}`)
+  assert.equal(await page.locator('[data-widget-id="std-timer"] .dsh-timer-primary').isDisabled(), false, 'the timer is writable again after returning')
+  checks.push('leaving the panel and returning reloads planner and focus data')
   // Clicking a day keeps the card the same height and returns to the calendar.
   const card = page.locator('[data-widget-id="std-activity"]')
   const before = await card.evaluate(el => el.clientHeight)

@@ -17,7 +17,7 @@ export const galleryStyles = `
 .dsh-gallery-source { padding:0 14px 12px; font:var(--dsw-font-xxxs-11); color:var(--dsw-alias-label-tertiary); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dsh-gallery-empty { display:flex; flex-direction:column; align-items:center; gap:12px; padding:36px 12px; color:var(--dsw-alias-label-secondary); font:var(--dsw-font-xs-13); }
 /* Gallery previews are the real card body at its real pixel size, scaled only visually. */
-.dsh-card-preview { width:100%; min-width:0; }
+.dsh-card-preview { display:flex; justify-content:center; width:100%; min-width:0; }
 .dsh-card-preview-frame { position:relative; overflow:hidden; }
 .dsh-card-preview-body { position:absolute; top:0; left:0; transform-origin:top left; }
 @media(max-width:720px) { .dsh-widget-directory { grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr)); } .dsh-gallery-toolbar { gap:8px; } }

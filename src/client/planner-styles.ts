@@ -179,10 +179,10 @@ export const plannerStyles = `
 .dsh-usage-total { color:var(--dsw-alias-label-primary); }
 .dsh-usage-unit { color:var(--dsw-alias-label-tertiary); font-size:11px; }
 /* 圆盘跟着卡片走：宽卡里放大到 84px，数字与百分比才读得出来。 */
-.dsh-usage-donut { position:relative; width:clamp(56px, 16cqi, 84px); aspect-ratio:1; border-radius:50%; clip-path:circle(50%); flex:none; }
-.dsh-usage-donut-hole { position:absolute; inset:24%; border-radius:50%; clip-path:circle(50%); background:var(--dsw-alias-bg-layer-1); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; }
-.dsh-usage-donut-hole b { color:var(--dsw-alias-label-primary); font-size:clamp(11px, 3.2cqi, 15px); line-height:1.15; font-weight:600; font-variant-numeric:tabular-nums; }
-.dsh-usage-donut-hole i { color:var(--dsw-alias-label-caption); font-size:clamp(8px, 2cqi, 10px); line-height:1.2; letter-spacing:.02em; font-style:normal; }
+.dsh-usage-donut { position:relative; width:76px; aspect-ratio:1; border-radius:50%; clip-path:circle(50%); flex:none; }
+.dsh-usage-donut-hole { position:absolute; inset:20%; border-radius:50%; clip-path:circle(50%); background:var(--dsw-alias-bg-layer-1); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; }
+.dsh-usage-donut-hole b { color:var(--dsw-alias-label-primary); font-size:14px; line-height:1.15; font-weight:600; font-variant-numeric:tabular-nums; }
+.dsh-usage-donut-hole i { color:var(--dsw-alias-label-caption); font-size:9px; line-height:1.2; letter-spacing:.02em; font-style:normal; }
 .dsh-usage-chips { display:flex; flex-wrap:wrap; gap:6px; }
 /* 柱子填满剩余高度、按列宽取 64%：宽卡里不再是一排小方块夹着大缝。 */
 .dsh-usage-bars { display:flex; align-items:flex-end; gap:clamp(4px, 1.2cqi, 10px); flex:1 1 auto; min-height:0; max-height:180px; }
@@ -191,8 +191,10 @@ export const plannerStyles = `
 .dsh-usage-foot { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
 .dsh-usage[data-compact="true"] { gap:6px; }
 .dsh-usage[data-compact="true"] .dsh-usage-total { font-size:24px; }
-.dsh-usage[data-compact="true"] .dsh-usage-donut { width:52px; }
-.dsh-usage[data-compact="true"] .dsh-usage-donut-hole { inset:25%; }
+.dsh-usage[data-compact="true"] .dsh-usage-donut { width:clamp(52px, 9cqi, 64px); }
+.dsh-usage[data-compact="true"] .dsh-usage-donut-hole { inset:20%; }
+.dsh-usage[data-compact="true"] .dsh-usage-donut-hole b { font-size:clamp(10px, 3cqi, 12px); }
+.dsh-usage[data-compact="true"] .dsh-usage-donut-hole i { font-size:8px; }
 .dsh-usage[data-compact="true"] .dsh-usage-chips { gap:4px; }
 /* 图表行可以缩到很矮，但页脚（速率与周总量）永远留在卡片里。 */
 .dsh-usage-foot { flex:none; }

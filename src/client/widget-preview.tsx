@@ -11,7 +11,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { BuiltinPreviewProvider } from './builtin-registration.tsx'
 import type { Translate } from './format.ts'
-import { cardContentSize, cardSizeForShape } from './preview-geometry.ts'
+import { PREVIEW_MAX_HEIGHT, cardContentSize, cardSizeForShape, previewShape } from './preview-geometry.ts'
 import type { RegisteredWidgetDefinition, WidgetSize } from './widget-contract.ts'
 import { createWidgetPreviewProps } from './widget-registry.ts'
 
@@ -41,8 +41,11 @@ export function WidgetContentPreview({ definition, t, language = 'en', width, he
 export function WidgetPreview({ definition, t, language = 'en' }: {
   definition: RegisteredWidgetDefinition; t: Translate; language?: string
 }) {
-  const { width: cardWidth, height: cardHeight } = cardSizeForShape(definition.sizing.default)
-  const { width: contentWidth, height: contentHeight } = cardContentSize(definition.sizing.default.w, definition.sizing.default.h)
+  // The narrow variant is the readable one: an 8-column card in a ~400px column would
+  // render 13px text at 7px. Taller cards are cropped from the bottom, not shrunk.
+  const shape = previewShape(definition.sizing)
+  const { width: cardWidth, height: cardHeight } = cardSizeForShape(shape)
+  const { width: contentWidth, height: contentHeight } = cardContentSize(shape.w, shape.h)
   const host = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   useLayoutEffect(() => {
@@ -61,14 +64,15 @@ export function WidgetPreview({ definition, t, language = 'en' }: {
   const sample = useMemo(() => createWidgetPreviewProps(definition, {
     size: definition.defaults.size, width: 0, height: 0,
   }), [definition])
+  const size = shape.w <= 4 ? 's' as const : shape.w <= 8 ? 'm' as const : 'l' as const
   const Content = definition.Content
   return <div ref={host} className="dsh-card-preview">
-    <div className="dsh-card-preview-frame" style={{ width: contentWidth * scale, height: contentHeight * scale }}>
+    <div className="dsh-card-preview-frame" style={{ width: contentWidth * scale, height: Math.min(contentHeight * scale, PREVIEW_MAX_HEIGHT) }}>
       <BuiltinPreviewProvider t={t} data={sample.preview!.data} language={language}>
         <div className="dsh-w-body dsh-home-widget-content dsh-card-preview-body" inert aria-hidden="true"
           data-widget-content-preview={definition.typeId}
           style={{ width: contentWidth, height: contentHeight, transform: scale === 1 ? undefined : `scale(${scale})` }}>
-          <Content {...sample} size={definition.defaults.size} width={cardWidth} height={cardHeight} />
+          <Content {...sample} size={size} width={cardWidth} height={cardHeight} />
         </div>
       </BuiltinPreviewProvider>
     </div>

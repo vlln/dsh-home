@@ -344,6 +344,13 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 - 真实鼠标六案（x2y2,x3y2,x4y5,x6y2,x3y7,x5y5）均无瞬时红色、无逐帧 peer 重叠、active / placeholder 漂移 0px、跨轴误差 0px；held / release / Done / reload 一致。
 - 原四组精确轴向撑开浏览器回归继续通过，原始用户布局已独立全量比对未改变。
 
+## 切页重载、预览尺寸（2026-11-07，0.50.x / dsh 0.2.1-rc.5）
+
+- 生命周期 bug：`HomeDataStore.reset()` 原来把 `disposed` 置死，而 `homeData` 是模块级单例；页面切走再回来，`load()` 发出的响应被 `publish()` 丢弃，`planner`/`focus` 永远是 `null`——打卡停在「加载中」、计时器与倒计时没有数据，直到整页刷新。现在 `reset()` 只清空快照与监听、`epoch++` 并在发请求时捕获 epoch，旧响应被丢弃但新一次挂载能正常装载；`mutate*` 也带 epoch 守卫。新增 `test/home-data-lifecycle.test.mjs`（把 store 拆到无 React 的 `home-data-store.ts` 才测得了）。
+- 组件库预览：`previewShape()` 取最窄声明尺寸（如 8×8 → 4×8），1:1 渲染，超过 236px 从底部裁切；此前 8 列卡在 400px 列里被缩到 0.55，13px 字变 7px，像是渲染坏了。
+- token 环：正常 76px、宽而矮的卡 64px、窄卡 52px；洞 20%、百分比 10–14px 配套，三档都量过不压字。
+- 浏览器验收：`verify-design-standard` 新增「离开面板 → 再回来」后打卡不再是加载中、计时器可写；预览断言扩展为窄尺寸 1:1。
+
 ## 图标、读数尺寸与空转整理（2026-11-07，0.48.x / dsh 0.2.1-rc.5）
 
 - 新增 `widget-glyphs.tsx`：13 个内置类型补齐 `icon`，标题行统一 20px 图标槽；此前只有 8 个类型有图标，邻居标题会短一截。

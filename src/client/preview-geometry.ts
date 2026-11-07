@@ -26,3 +26,21 @@ export function cardContentSize(columns: number, rows: number): { width: number;
 export function cardSizeForShape(shape: GridShape): { width: number; height: number } {
   return { width: widgetWidthForColumns(shape.w), height: cardHeightForRows(shape.h) }
 }
+
+/** Gallery thumbnails cap their cropped height so a tall card cannot dominate the list. */
+export const PREVIEW_MAX_HEIGHT = 236
+
+/**
+ * The shape a gallery preview is rendered at: the narrowest declared shape.
+ *
+ * An 8-column card scaled into a ~400px column turns 13px text into 7px, which reads as
+ * a broken preview. Rendering the 4-column variant at 1× (cropped from the bottom) keeps
+ * the real card readable and still uses the real `Content`, never a second illustration.
+ */
+export function previewShape(sizing: { default: GridShape; supported?: readonly GridShape[] }): GridShape {
+  const shapes = [sizing.default, ...(sizing.supported ?? [])]
+  return shapes.reduce((best, shape) => {
+    if (shape.w !== best.w) return shape.w < best.w ? shape : best
+    return shape.h < best.h ? shape : best
+  }, sizing.default)
+}
