@@ -37,8 +37,6 @@ export const designSystemStyles = `
   --dsh-warning-soft: color-mix(in srgb, var(--dsh-warning) 12%, transparent);
   --dsh-danger: var(--dsw-alias-state-error-primary);
   --dsh-danger-soft: color-mix(in srgb, var(--dsh-danger) 12%, transparent);
-  --dsh-positive: var(--dsw-alias-state-success-primary);
-  --dsh-positive-soft: color-mix(in srgb, var(--dsh-positive) 12%, transparent);
   /* 数据图形：同一色相的四档。 */
   --dsh-ramp-1: color-mix(in srgb, var(--dsh-accent) 18%, var(--dsw-alias-bg-layer-1));
   --dsh-ramp-2: color-mix(in srgb, var(--dsh-accent) 44%, var(--dsw-alias-bg-layer-1));

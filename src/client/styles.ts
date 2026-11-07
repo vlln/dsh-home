@@ -192,7 +192,7 @@ export const CSS = `
   min-width: 0;
 }
 .dsh-row-meta { font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); }
-.dsh-row-live { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--dsh-positive); }
+.dsh-row-live { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--dsh-accent); }
 
 .dsh-band-track {
   position: relative;
