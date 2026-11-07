@@ -17,7 +17,7 @@ function cardTones(node: HTMLElement): string[] {
   const style = getComputedStyle(node)
   const label = style.color
   const border = style.borderTopColor
-  const accent = style.getPropertyValue('--dsw-alias-state-business-primary').trim()
+  const accent = style.getPropertyValue('--dsh-accent').trim()
   return [label, border !== '' ? border : label, accent !== '' ? accent : label].filter(tone => tone !== '')
 }
 

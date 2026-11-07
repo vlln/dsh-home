@@ -344,6 +344,18 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 - 真实鼠标六案（x2y2,x3y2,x4y5,x6y2,x3y7,x5y5）均无瞬时红色、无逐帧 peer 重叠、active / placeholder 漂移 0px、跨轴误差 0px；held / release / Done / reload 一致。
 - 原四组精确轴向撑开浏览器回归继续通过，原始用户布局已独立全量比对未改变。
 
+## 视觉标准与无滚动摘要卡实跑（2026-11-07，0.45.x / dsh 0.2.1-rc.5）
+
+- 颜色角色收敛到 `src/client/design-system.ts` 一处：宿主 alias 管墨色 / 表面 / 描边；产品只声明 `--dsh-accent`（唯一强调色）、`--dsh-warning` / `--dsh-danger`（真实状态）、`--dsh-ramp-1…4`（同色相数据梯度）、`--dsh-pill-bg` / `--dsh-pill-ink`（唯一胶囊）与主值字号。组件样式不再出现十六进制、`--dsw-alias-state-*` 或按组件分配的色相；`--dsh-hue-*` / `--dsh-pill-*` 彩虹色板删除。
+- 工作区胶囊统一中性色，颜色不再编码目录；会话状态三个视图的选中态统一墨色；主操作按钮（`Start` / 添加 / 保存）统一宿主 `button-primary-fill`，不再与强调色混用。图表（热力图、近两周、工作区条、token 环）全部走同一强调色与四档梯度。
+- 摘要卡不再滚动：`fit-rows.ts` 的 `useVisibleRows` 量容器高度与真实行高，决定放几行；最近活跃取最近 N 行并写「最近 N / M 个会话」，置顶写「显示 N / M 个」，都没有翻页按钮；工作区卡超出时最后一行合并为「其他 N 个工作区」。
+- 工作足迹的高度反馈是这轮的真 bug：旧实现按「卡片高度 − 固定 chrome」猜格子，28 天区块实际占 5 行而预算按 4 行，于是最后一行被挤出卡片；现在 `activityWeeks` 接收**实测的图表区高度**（`ResizeObserver` 量 `.dsh-activity-scroll`），`overflow-y` 恒为 `hidden`。同时删掉 `sidebar` 布局：它的判定用测量宽度，而开启后图表区变窄又会让判定翻转，形成每帧两次布局的振荡（浏览器里表现为热力图元素无法 hover、几何不稳定）。
+- 工作足迹底部只留一行：日期范围、图例、尺度与目录两个安静下拉；删除「时区：…」与「空格不代表已确认无活动」整段说明，整理进度收进摘要里的「整理中 N/M」。点某一天就地换成当天会话明细（带「返回日历」），不再把明细追加在日历下方把卡片撑高。
+- 单测 `test/design-system.test.mjs` 固化标准：除图片占位 SVG 外禁止十六进制；除 `design-system.ts` 外禁止 `--dsw-alias-state-*` 与彩虹色板；共用小部件不得在别处重定义；摘要卡不得 `overflow-y:auto` 或分页；文档必须列出每个 `--dsh-*` token。单测 475 项、typecheck、构建通过。
+- 浏览器验收新增 `scripts/verify-design-standard.mjs`（合成会话 / 活动夹具，4 列真实尺寸，1600 / 1200 / 900px）：所有卡片 `scrollHeight == clientHeight`、胶囊底色唯一、柱状图同一强调色、`Start` 与页首按钮同色、某一天明细就地替换且卡片高度不变。截图与报告在 `.work/dsh-home/evidence/design-*`。
+- 同轮通过：`verify-session-rows`（会话行、胶囊、组件库真实预览、便笺、计时器）、`verify-widget-visuals`、`verify-pinned-widget`、`verify-focus`、`verify-planner`、`verify-decor`、`verify-usage`、`verify-balance`、`verify-library-drag`、`verify-library-position`、`verify-grid-presets`、`verify-extending-canvas`、`verify-canvas-width`、`verify-host`、`verify-drag-delete`、`verify-pointer-regressions`、`verify-widget-lifecycle`。
+- 旧脚本未迁移（不是本轮回归）：`verify-gallery` 仍等已删除的 `.dsh-tray`；`verify-editor` 仍等已删除的 `resume` / `queue` 与 `.dsh-drag`；`verify-layout-controls` 仍等已删除的配置弹窗；`verify-spatial-responsive` / `verify-sweep` / `verify-collision` / `verify-direction` / `verify-multi` / `verify-widget-instances` 在 0.43.0 上同样失败（验证站状态漂移 / 历史断言）。触摸与中文、深色主题矩阵仍未重验。
+
 ## 实际录屏边界回归（2026-11-04，0.9.1 / dsh 0.2.1-rc.5）
 
 - 148 项单测通过，类型检查与构建通过；实际安装 client 指纹匹配。

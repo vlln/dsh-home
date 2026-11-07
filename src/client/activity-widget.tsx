@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -9,6 +9,7 @@ import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { Translate } from './format.ts'
 import { cwdLabels } from './session-model.ts'
+import { useVisibleRows } from './fit-rows.ts'
 
 function browserZone() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' }
 function useActivity(cwd: string, date?: string, preview?: WidgetContentProps['preview']) {
@@ -66,7 +67,23 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null)
   const { result, error, loading, detailReady, retry } = useActivity(config.cwd, date, preview)
   const calendar = useRef<HTMLDivElement>(null)
+  // The chart box is measured, not guessed: cell size is derived from the height the
+  // card actually has left, so a wrapped caption can never push the grid out of the card.
+  const [chart, setChart] = useState<{ w: number; h: number } | null>(null)
   const ready = result !== null && result.available
+  useLayoutEffect(() => {
+    const node = calendar.current
+    if (node === null) return
+    const measure = (): void => {
+      const w = node.clientWidth
+      const h = node.clientHeight
+      setChart(previous => previous !== null && previous.w === w && previous.h === h ? previous : { w, h })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => { observer.disconnect() }
+  }, [result])
   useEffect(() => {
     if (preview) return
     // An explicitly selected year may scroll inside a narrow card. Start at the latest
@@ -77,7 +94,8 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
   if (!result && error) return <div className="dsh-empty" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>
   if (!result) return <div className="dsh-empty" role="status">{t('activity.loading')}</div>
   if (!result.available) return <div className="dsh-empty">{t('activity.unavailable')}</div>
-  const { weeks, count, first, cellSize, chartWidth, blocks, sidebar } = activityWeeks(result.days, result.today, width, config.range, height)
+  const { weeks, count, first, cellSize, chartWidth, blocks } = activityWeeks(result.days, result.today,
+    chart?.w ?? width, config.range, chart?.h ?? Math.max(0, height - 96))
   const days = result.days.filter(day => day.key >= first && day.key <= result.today)
   const active = days.filter(day => day.messages > 0).length
   const messages = days.reduce((n, day) => n + day.messages, 0)
@@ -92,18 +110,26 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
     onMouseEnter={event => { showTip(event, dayLabel(day)) }} onMouseLeave={() => { setTip(null) }}
     onFocus={event => setTip({ x: event.currentTarget.getBoundingClientRect().left + 8, y: event.currentTarget.getBoundingClientRect().top, text: dayLabel(day) })}
     onBlur={() => { setTip(null) }}
-    onClick={() => { if (!preview) setDate(day.key) }} />
+    onClick={() => { if (!preview) setDate(previous => previous === day.key ? undefined : day.key) }} />
     : <span className="dsh-activity-cell dsh-activity-spacer" key={`pad${index}`} />
   const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
-  return <div className="dsh-activity" data-activity-complete={result.complete} data-activity-range={config.range} data-activity-layout={blocks.length ? 'blocks' : 'weeks'} data-activity-sidebar={sidebar}
+  const detail = date !== undefined ? <ActivityDayDetail date={date} t={t} state={state} actions={actions}
+    sessions={result.sessions} ready={detailReady} complete={result.complete} loading={loading} error={error}
+    matched={result.matchedSessions} onBack={() => { setDate(undefined) }} /> : null
+  return <div className="dsh-activity" data-activity-complete={result.complete} data-activity-range={config.range} data-activity-layout={blocks.length ? 'blocks' : 'weeks'}
     style={{ '--dsh-activity-cell-size': `${cellSize}px`, '--dsh-activity-chart-width': `${chartWidth}px` } as CSSProperties}>
     <div className="dsh-activity-summary" aria-label={t('activity.summary', { days: count, active, messages })}>
       <div className="dsh-activity-primary"><strong className="dsh-activity-number">{active}</strong><span>{t('activity.activeDays')}</span></div>
-      <div className="dsh-activity-secondary"><span>{t('activity.period', { days: count })}</span><span>{t('activity.messages', { count: messages })}</span></div>
+      <div className="dsh-activity-secondary">
+        <span>{t('activity.period', { days: count })}</span>
+        <span>{t('activity.messages', { count: messages })}</span>
+        {result.scanning && <span>{t('activity.indexing', result.progress)}</span>}
+      </div>
     </div>
     {error && <div className="dsh-muted" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>}
-    <div ref={calendar} className="dsh-activity-scroll" tabIndex={0} aria-label={t('activity.metric')}>
-      {blocks.length ? <div className="dsh-activity-blocks">{blocks.map(block => <section className="dsh-activity-block" key={block.first} aria-label={t('activity.block', { first: block.first, last: block.last })}>
+    <div ref={calendar} className="dsh-activity-scroll" tabIndex={detail === null ? 0 : -1} aria-label={t('activity.metric')}
+      data-detail={detail === null ? undefined : 'true'}>
+      {detail ?? (blocks.length ? <div className="dsh-activity-blocks">{blocks.map(block => <section className="dsh-activity-block" key={block.first} aria-label={t('activity.block', { first: block.first, last: block.last })}>
         <div className="dsh-activity-block-label" title={`${block.first} – ${block.last}`}>{block.first.slice(5)} – {block.last.slice(5)}</div>
         <div className="dsh-activity-weekdays" aria-hidden="true">{weekdays.map(day => <span key={day}>{t(`activity.${day}`)}</span>)}</div>
         <div className="dsh-activity-block-days">{block.weeks.flat().map(cell)}</div>
@@ -112,14 +138,13 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
           <span className="dsh-activity-month" aria-hidden="true">{week.find(day => day?.key.endsWith('-01'))?.key.slice(5, 7) ?? ''}</span>
           {week.map(cell)}
         </div>)}
-      </div>}
+      </div>)}
     </div>
-    <div className="dsh-activity-caption"><span>{first} – {result.today}</span><div className="dsh-activity-legend"><span>{t('activity.less')}</span>{[0,1,2,3,4].map(level => <span key={level} className="dsh-activity-cell" data-level={level} />)}<span>{t('activity.more')}</span></div></div>
-    {!result.complete && <p className="dsh-muted" role="status">{t(result.scanning ? 'activity.partial' : 'activity.incomplete', result.progress)}</p>}
-    {result.complete && messages === 0 && <p className="dsh-muted">{t('activity.empty')}</p>}
-    <div className="dsh-activity-footer">
-      <span className="dsh-muted" title={t('activity.zoneHint')}>{t('activity.zone', { zone: result.timeZone })}</span>
-      {/* Scale and workspace are quiet selects: the same grammar as the clock's zone. */}
+    {/* One quiet footer row: the exact range, the legend and the two filters. The time
+        zone and the "empty cells are not inactivity" paragraph were noise for the reader. */}
+    <div className="dsh-activity-caption">
+      <span className="dsh-activity-range">{first} – {result.today}</span>
+      <div className="dsh-activity-legend"><span>{t('activity.less')}</span>{[0,1,2,3,4].map(level => <span key={level} className="dsh-activity-cell" data-level={level} />)}<span>{t('activity.more')}</span></div>
       <div className="dsh-activity-filters">
         <select className="dsh-quiet-select dsh-activity-scale" aria-label={t('activity.range')} title={t('activity.range')}
           value={config.range} disabled={saveConfig === undefined}
@@ -138,17 +163,32 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
     </div>
     {tip !== null && createPortal(<div className="dsh-hover-tip" role="tooltip"
       style={{ left: Math.min(tip.x + 12, window.innerWidth - 250), top: Math.max(8, tip.y - 34) }}>{tip.text}</div>, document.body)}
-    {date && <section className="dsh-activity-detail" aria-label={t('activity.detail', { date })} aria-busy={loading || (!detailReady && !error)}>
-      <strong>{t('activity.detail', { date })}</strong>
-      {!detailReady ? <p className="dsh-muted" role="status">{t(error ? 'activity.error' : 'activity.loading')}</p>
-        : result.sessions.length === 0 ? <p className="dsh-muted">{t(result.complete ? 'activity.dateEmpty' : 'activity.dateUnknown')}</p>
-        : result.sessions.map(session => <button type="button" key={session.id} className="dsh-row" onClick={() => actions.openSession(session.id)}>
-          <span className="dsh-row-title">{state.sessions[session.id]?.title?.trim() || session.cwd?.split('/').filter(Boolean).pop() || session.id}</span>
-          <span className="dsh-row-meta">{t('activity.messages', { count: session.messages })}</span>
-        </button>)}
-      {detailReady && result.matchedSessions > 100 && <span className="dsh-muted">{t('activity.detailCount', { count: result.matchedSessions })}</span>}
-    </section>}
   </div>
+}
+/** 选中某一天后就地把日历换成当天明细：读数不把卡片撑高，返回即回到热力图。 */
+function ActivityDayDetail({ date, t, state, actions, sessions, ready, complete, loading, error, matched, onBack }: {
+  date: string; t: Translate; state: ReturnType<typeof useBuiltin>['state']
+  actions: ReturnType<typeof useBuiltin>['actions']
+  sessions: { id: string; cwd?: string; messages: number }[]
+  ready: boolean; complete: boolean; loading: boolean; error: boolean; matched: number
+  onBack: () => void
+}) {
+  const rowsRef = useRef<HTMLDivElement>(null)
+  const capacity = useVisibleRows(rowsRef, '.dsh-row')
+  const shown = capacity === null ? sessions : sessions.slice(0, capacity)
+  return <section className="dsh-activity-detail" aria-label={t('activity.detail', { date })} aria-busy={loading || (!ready && !error)}>
+    <div className="dsh-activity-detail-head">
+      <strong>{t('activity.detail', { date })}</strong>
+      <button type="button" className="dsh-quiet-select dsh-activity-back" onClick={onBack}>{t('activity.back')}</button>
+    </div>
+    {!ready ? <p className="dsh-muted" role="status">{t(error ? 'activity.error' : 'activity.loading')}</p>
+      : sessions.length === 0 ? <p className="dsh-muted">{t(complete ? 'activity.dateEmpty' : 'activity.dateUnknown')}</p>
+      : <div className="dsh-rows dsh-activity-days" ref={rowsRef}>{shown.map(session => <button type="button" key={session.id} className="dsh-row" onClick={() => actions.openSession(session.id)}>
+        <span className="dsh-row-title">{state.sessions[session.id]?.title?.trim() || session.cwd?.split('/').filter(Boolean).pop() || session.id}</span>
+        <span className="dsh-row-meta">{t('activity.messages', { count: session.messages })}</span>
+      </button>)}</div>}
+    {ready && matched > 100 && <span className="dsh-muted">{t('activity.detailCount', { count: matched })}</span>}
+  </section>
 }
 export function registerActivityWidget(registry: HomeWidgetRegistry, t: Translate) {
   return registry.register<ActivityConfig>({ typeId: '@vlln/dsh-home:activity', apiVersion: 1,

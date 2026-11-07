@@ -23,7 +23,8 @@ test('local calendar windows honor both DST boundaries', () => {
   } finally { if (previous === undefined) delete process.env.TZ; else process.env.TZ = previous }
 })
 test('visual expression stays token driven without resize controls or identity coupling', () => {
-  assert.match(widgetExpressionStyles, /--dsw-alias-state-success-primary/)
+  assert.match(widgetExpressionStyles, /--dsh-accent/)
   assert.match(widgetExpressionStyles, /dsh-area-track/)
+  assert.doesNotMatch(widgetExpressionStyles, /:has\(:is\(\.dsh-rhythm-content,|--dsh-widget-accent/)
   assert.doesNotMatch(widgetExpressionStyles, /#[0-9a-fA-F]{3,8}\b|data-ds-dark-theme|data-widget-type|resize-handle|@vlln\/dsh-home:/)
 })

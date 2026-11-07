@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  effectiveGroup, groupCounts, SESSION_STATUS_GROUPS, statusGroupOf, statusSessions, workspaceHue,
+  effectiveGroup, groupCounts, SESSION_STATUS_GROUPS, statusGroupOf, statusSessions,
 } from '../src/client/session-model.ts'
 
 const sessions = [
@@ -59,13 +59,10 @@ test('the chosen view wins while it has rows; an empty choice falls back to the 
   assert.equal(effectiveGroup({ running: 0, waiting: 0, done: 0 }, 'waiting'), 'waiting')
 })
 
-test('workspace hues are deterministic, bounded and spread across the palette', () => {
-  for (const cwd of [undefined, '', '/', 'C:\\Projects\\X', '/项目/工作台', '/.hidden']) {
-    const hue = workspaceHue(cwd)
-    assert.equal(hue, workspaceHue(cwd))
-    assert.ok(Number.isInteger(hue) && hue >= 0 && hue < 6)
-  }
-  assert.equal(workspaceHue('/a/b'), workspaceHue('/a/b'))
-  const hues = new Set(['/a', '/b', '/c', '/d', '/e', '/f', '/g', '/h', '/i', '/j'].map(workspaceHue))
-  assert.ok(hues.size >= 3, 'ten paths should not share one colour')
+test('workspace capsules carry no colour identity: the standard has one capsule fill', async () => {
+  const pill = await (await import('node:fs/promises')).readFile(new URL('../src/client/workspace-pill.tsx', import.meta.url), 'utf8')
+  const standard = await (await import('node:fs/promises')).readFile(new URL('../src/client/design-system.ts', import.meta.url), 'utf8')
+  assert.doesNotMatch(pill, /data-hue/)
+  assert.match(standard, /--dsh-pill-bg:/)
+  assert.match(standard, /\.dsh-ws-pill \{[^}]*background: var\(--dsh-pill-bg\)/s)
 })

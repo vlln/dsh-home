@@ -100,10 +100,10 @@ try {
   const areaPill = areas().locator('.dsh-ws-pill').first()
   assert.equal(await areaPill.count(), 1, 'the workspace is a capsule')
   assert.equal(await page.locator('.dsh-directory-badge').count(), 0, 'the oversized initial badge is gone everywhere')
-  assert.equal(await areas().locator('.dsh-row-title').count(), 0, 'the name is not repeated next to the capsule')
+  assert.equal(await areas().locator('.dsh-row:has(.dsh-ws-pill) .dsh-row-title').count(), 0, 'the name is not repeated next to the capsule')
   const pillLook = await areaPill.evaluate(el => ({ bg: getComputedStyle(el).backgroundColor, color: getComputedStyle(el).color, text: el.textContent }))
   assert.notEqual(pillLook.bg, 'rgba(0, 0, 0, 0)', `the capsule has a fill (${pillLook.bg})`)
-  assert.equal(pillLook.color, 'rgb(255, 255, 255)', 'capsule text is white on the saturated fill')
+  assert.notEqual(pillLook.color, 'rgb(255, 255, 255)', 'the capsule uses the standard neutral ink, not white on a saturated hue')
   const areaBox = await areas().locator('.dsh-home-widget-content').evaluate(el => ({ client: el.clientWidth, scroll: el.scrollWidth }))
   assert(areaBox.scroll <= areaBox.client + 1, `no horizontal overflow in the areas card: ${JSON.stringify(areaBox)} (${areasText})`)
   checks.push('今天按工作区：工作区胶囊，无首字母大字，卡片内无横向滚动条')
@@ -156,11 +156,11 @@ try {
   }))
   for (const row of rowLook) {
     assert.notEqual(row.pillBg, 'rgba(0, 0, 0, 0)', `every workspace capsule has a fill (${row.pillBg})`)
-    assert.equal(row.pillColor, 'rgb(255, 255, 255)', 'capsule text is white')
+    assert.equal(row.pillColor, 'rgb(97, 102, 107)', 'capsule text uses the standard neutral ink')
     assert.equal(row.titleBg, 'rgba(0, 0, 0, 0)', 'the session title stays plain text')
     assert.match(row.trailing, /^(now|\d+(min|h|d|mo|y)|Activity time unknown)/u, `the trailing column is the time: ${row.trailing}`)
   }
-  assert.equal(new Set(rowLook.map(row => row.pillBg)).size >= 2, true, 'different workspaces get different capsule colours')
+  assert.equal(new Set(rowLook.map(row => row.pillBg)).size, 1, 'every workspace shares one capsule fill')
   checks.push('会话行：状态点在最左、工作区胶囊、纯文字标题、时间在右')
   await recent.screenshot({ path: new URL('recent-rows.png', out).pathname, animations: 'disabled' })
 

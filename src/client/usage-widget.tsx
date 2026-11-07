@@ -7,7 +7,7 @@
  * @module @vlln/dsh-home/client/usage-widget
  */
 
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
 import type { Translate } from './format.ts'
@@ -34,14 +34,15 @@ function percent(value: number): string {
 }
 
 function donutGradient(buckets: TokenBuckets): string {
+  // One hue, four weights: the split stays readable without adding a second palette.
   const parts = [
-    { value: buckets.input, color: 'var(--dsw-alias-state-business-primary)' },
-    { value: buckets.cacheRead, color: 'var(--dsw-alias-state-success-primary)' },
-    { value: buckets.output, color: 'var(--dsw-alias-state-warn-primary)' },
-    { value: buckets.cacheWrite, color: 'var(--dsh-hue-violet)' },
+    { value: buckets.input, color: 'var(--dsh-ramp-4)' },
+    { value: buckets.cacheRead, color: 'var(--dsh-ramp-2)' },
+    { value: buckets.output, color: 'var(--dsh-ramp-3)' },
+    { value: buckets.cacheWrite, color: 'var(--dsh-ramp-1)' },
   ].filter(part => part.value > 0)
   const sum = parts.reduce((total, part) => total + part.value, 0)
-  if (sum === 0) return 'conic-gradient(color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent) 0 100%)'
+  if (sum === 0) return 'conic-gradient(var(--dsh-accent-soft) 0 100%)'
   let cursor = 0
   const stops = parts.map(part => {
     const from = cursor
@@ -75,9 +76,9 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
       </div>
     </div>
     <div className="dsh-usage-chips">
-      <span className="dsh-chip" data-tone="business"><i className="dsh-chip-dot" aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></span>
-      <span className="dsh-chip" data-tone="success"><i className="dsh-chip-dot" aria-hidden="true" />{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></span>
-      <span className="dsh-chip" data-tone="warn"><i className="dsh-chip-dot" aria-hidden="true" />{t('usage.output')} <b>{compactCount(today.output)}</b></span>
+      <span className="dsh-chip"><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-4)' } as CSSProperties} aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></span>
+      <span className="dsh-chip"><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-2)' } as CSSProperties} aria-hidden="true" />{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></span>
+      <span className="dsh-chip"><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-3)' } as CSSProperties} aria-hidden="true" />{t('usage.output')} <b>{compactCount(today.output)}</b></span>
     </div>
     {week && <div className="dsh-usage-bars" role="img" aria-label={t('usage.week')}>
       {days.map(day => {

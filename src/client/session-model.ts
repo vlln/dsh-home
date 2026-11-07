@@ -228,9 +228,4 @@ export function effectiveGroup(counts: Record<SessionStatusGroup, number>, chose
  * 工作区胶囊的颜色档：同一路径永远同一档，不同路径尽量分散到六个色相。
  * 只决定装饰色，不携带状态含义。
  */
-export function workspaceHue(cwd: string | undefined): number {
-  const key = cwd ?? ''
-  let hash = 0
-  for (const char of key) hash = (hash * 31 + char.codePointAt(0)!) >>> 0
-  return hash % 6
-}
+

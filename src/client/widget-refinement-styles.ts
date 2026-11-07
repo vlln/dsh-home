@@ -23,7 +23,6 @@ export const widgetRefinementStyles = `
 .dsh-home .dsh-widget-viewport { container-type:inline-size; container-name:widget; }
 .dsh-home-widget :is(.dsh-today-content,.dsh-rhythm-content) { display:flex; flex-direction:column; gap:4px; min-width:0; height:100%; }
 .dsh-home-widget :is(.dsh-today-content,.dsh-rhythm-content) > * { flex-shrink:0; }
-.dsh-home-widget :is(.dsh-today-content,.dsh-rhythm-content) .dsh-number { font-size:28px; line-height:32px; letter-spacing:-.025em; }
 .dsh-home-widget .dsh-band-track { height:12px; margin-top:4px; background:var(--dsw-alias-bg-skeleton); }
 .dsh-home-widget .dsh-band-seg { opacity:.55; }
 .dsh-home-widget .dsh-band-seg[data-now="true"] { opacity:.9; }
@@ -37,11 +36,12 @@ export const widgetRefinementStyles = `
 .dsh-home-widget .dsh-today-longest { margin-top:1px; }
 /* Workspace bars encode the real per-workspace duration, relative to the largest
    row (not a share of wall-clock time; concurrent session clusters may overlap). */
-.dsh-home-widget .dsh-area-rows { gap:2px; }
-.dsh-home-widget .dsh-area-rows .dsh-row { gap:3px; padding-block:5px; }
+.dsh-home-widget .dsh-area-rows { gap:2px; height:100%; min-height:0; overflow:hidden; }
+.dsh-home-widget .dsh-area-rows .dsh-row { gap:2px; padding-block:4px; }
+.dsh-home-widget .dsh-area-rows .dsh-row-top { gap:6px; }
 .dsh-home-widget .dsh-area-duration { margin-inline-start:auto; flex:none; font:var(--dsw-font-xs-strong-13); font-variant-numeric:tabular-nums; }
 .dsh-home-widget .dsh-area-track { display:block; width:100%; height:4px; border-radius:var(--dsw-radius-xs); background:var(--dsw-alias-bg-skeleton); overflow:hidden; }
-.dsh-home-widget .dsh-area-track > span { display:block; height:100%; border-radius:inherit; background:var(--dsw-alias-state-business-primary); opacity:.65; }
+.dsh-home-widget .dsh-area-track > span { display:block; height:100%; border-radius:inherit; background:var(--dsh-accent); opacity:.65; }
 .dsh-home-widget .dsh-area-rows .dsh-row-meta { font:var(--dsw-font-xxxs-11); }
 /* Stable proportions, rounded neutral tracks and a clear current-day accent.
    Taller cards gain useful chart height instead of only empty space. */
@@ -74,21 +74,22 @@ export const widgetRefinementStyles = `
 /* Queue status is present in the data already: a quiet row and a colored dot,
    with the real reason retained as text rather than an invented status. */
 
-/* Recent card: filters and footer stay fixed, the row list owns the scroll. Session row
-   styling lives next to its component in styles.ts under .dsh-session-row. */
+/* Recent card: filters and footer stay fixed, the row list shows exactly the rows that
+   fit (see fit-rows.ts) and never scrolls. Session row styling lives next to its
+   component in styles.ts under .dsh-session-row. */
 .dsh-home-widget .dsh-recent { gap:8px; height:100%; min-height:0; }
 .dsh-home-widget .dsh-recent > :is(.dsh-recent-filters,.dsh-recent-footer) { flex:none; }
-.dsh-home-widget .dsh-recent > .dsh-rows { flex:1 1 auto; min-height:60px; overflow-y:auto; margin-inline:0; scroll-padding-block:3px; padding:2px; }
+.dsh-home-widget .dsh-recent > .dsh-rows { flex:1 1 auto; min-height:0; overflow:hidden; margin-inline:0; padding:2px; }
 .dsh-home-widget .dsh-recent-filters > :is(input,select) { background:var(--dsw-alias-bg-layer-1); }
 .dsh-home-widget .dsh-recent-filters input::placeholder { color:var(--dsw-alias-label-tertiary); opacity:1; }
 .dsh-home-widget .dsh-recent-footer { padding-top:4px; border-top:.5px solid var(--dsw-alias-border-l2); }
 
-/* Native pins: complete ordered list, one local scroll region, no top-N limit. */
+/* Native pins: newest-first, cut to what fits, total count still stated. */
 .dsh-pinned { display:flex; flex-direction:column; height:100%; min-height:0; gap:8px; }
 .dsh-pinned-summary { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; flex:none; font:var(--dsw-font-xxs-12); color:var(--dsw-alias-label-tertiary); }
 .dsh-pinned-summary strong { color:var(--dsw-alias-label-secondary); font-weight:500; }
 .dsh-pinned > .dsh-empty { flex:1 1 auto; }
-.dsh-pinned-rows { flex:1 1 auto; min-height:0; overflow-y:auto; margin:0; padding:2px; scroll-padding-block:3px; }
+.dsh-pinned-rows { flex:1 1 auto; min-height:0; overflow:hidden; margin:0; padding:2px; }
 .dsh-pinned-rows .dsh-row { flex:none; }
 .dsh-pinned-rows .dsh-row + .dsh-row { border-top:.5px solid var(--dsw-alias-border-l1); }
 

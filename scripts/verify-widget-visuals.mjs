@@ -48,11 +48,11 @@ try {
     assert.equal(headerSurface.header, headerSurface.canvas, 'sticky heading must share canvas paint, not a white square')
     const heatmap = await page.locator('[data-widget-id="visual-activity"] .dsh-activity-scroll').evaluate(el => {
       const chart = el.firstElementChild.getBoundingClientRect(); const viewport = el.getBoundingClientRect()
-      return { ratio: chart.width / viewport.width, offset: chart.left - viewport.left, remainder: viewport.right - chart.right, sidebar: el.closest('.dsh-activity').dataset.activitySidebar === 'true' }
+      return { ratio: chart.width / viewport.width, offset: chart.left - viewport.left, remainder: viewport.right - chart.right }
     })
     if (width === 1600 || width === 900) {
       assert(heatmap.ratio >= .6, `quarter chart must use wide cards: ${JSON.stringify(heatmap)}`)
-      assert(heatmap.sidebar || Math.abs(heatmap.offset - heatmap.remainder) <= 8, 'bounded calendar content must be balanced, not left-stranded')
+      assert(Math.abs(heatmap.offset - heatmap.remainder) <= 8, 'bounded calendar content must be balanced, not left-stranded')
     }
     const rowLead = await page.locator('.dsh-session-row').evaluateAll(nodes => nodes.map(node => node.firstElementChild?.className ?? ''))
     assert(rowLead.every(name => name === 'dsh-session-status'), 'every session row leads with its state dot')

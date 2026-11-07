@@ -39,9 +39,9 @@ test('native display title is preferred and service scope replacement unsubscrib
  const listeners=new Set();let off=0;const source={getSnapshot:()=>({pinnedSessionIds:['a'],archivedSessionIds:[],phase:'ready',state:'idle'}),subscribe:fn=>{listeners.add(fn);return()=>{off++;listeners.delete(fn)}}}
  store.attachWorkspaces(source);store.attachWorkspaces(source);assert.equal(off,1);assert.equal(listeners.size,1)
 }))
-test('pinned widget has complete rows, no ledger/recency pagination, isolated sample and fixed size',async()=>{
+test('pinned widget shows as many rows as fit, with no pager, ledger or config writes',async()=>{
  const source=await readFile(new URL('../src/client/pinned-widget.tsx',import.meta.url),'utf8'),builtin=await readFile(new URL('../src/client/builtin-registration.tsx',import.meta.url),'utf8')
- assert.match(source,/rows\.map/);assert.doesNotMatch(source,/slice\(|recentPageSize|state\.ledger|saveConfig|pinSession\(/)
+ assert.match(source,/shown\.map/);assert.match(source,/useVisibleRows\(rowsRef/);assert.doesNotMatch(source,/recentPageSize|state\.ledger|saveConfig|pinSession\(|Show \{count\} more|Button/)
  assert.match(source,/actions\.openSession\(session\.id\)/);assert.match(builtin,/pinned: \{ default: \{ w:4,h:8 \}, supported: \[\{w:4,h:8\},\{w:8,h:8\}\] \}/)
  assert.match(builtin,/nativePins: \{ ids: \['sample-0'/)
 })

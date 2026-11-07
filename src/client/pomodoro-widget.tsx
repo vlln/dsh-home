@@ -51,7 +51,7 @@ function PomodoroBody({ pomodoro, today, t, readOnly, onStart, onPause, onSkip, 
   const progress = snapshot.durationMs === 0 ? 0 : Math.min(1, (snapshot.durationMs - snapshot.remainingMs) / snapshot.durationMs)
   return <div className="dsh-pomodoro" data-phase={snapshot.phase}>
     <div className="dsh-pomodoro-head">
-      <span className="dsh-chip" data-tone={snapshot.phase === 'focus' ? 'business' : 'success'}>
+      <span className="dsh-chip">
         {snapshot.phase === 'focus' ? t('pomodoro.focus') : t('pomodoro.break')}
       </span>
       <span className="dsh-pomodoro-rounds">{t('pomodoro.rounds', { count: rounds })}</span>

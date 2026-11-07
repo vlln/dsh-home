@@ -5,45 +5,39 @@ export const widgetExpressionStyles = `
 .dsh-home .dsh-home-head { background:var(--dsh-home-canvas-fill); }
 .dsh-home .dsh-home-widget-content > .dsh-widget-viewport > .dsh-empty:only-child { min-height:100%; }
 .dsh-home .dsh-home-widget { background:var(--dsw-alias-bg-layer-1); border-color:var(--dsw-alias-border-l2); }
-.dsh-home-widget { --dsh-widget-accent:var(--dsw-alias-state-business-primary); }
-.dsh-home-widget:has(:is(.dsh-rhythm-content,.dsh-area-rows,.dsh-activity)) { --dsh-widget-accent:var(--dsw-alias-state-success-primary); }
-.dsh-home-widget:has(:is(.dsh-pinned,.dsh-note)) { --dsh-widget-accent:var(--dsw-alias-state-warn-primary); }
-.dsh-widget-symbol { display:inline-flex; align-items:center; justify-content:center; flex:none; width:28px; height:28px; border-radius:var(--dsw-radius-sm); color:var(--dsh-widget-accent,var(--dsw-alias-state-business-primary)); background:color-mix(in srgb,var(--dsh-widget-accent,var(--dsw-alias-state-business-primary)) 10%,transparent); }
-.dsh-widget-symbol svg { width:16px; height:16px; color:inherit; }
+/* Headings share one left slot: the glyph is a quiet mark, not a tinted tile.
+   Cards without a glyph start at the same edge as the ones with one. */
+.dsh-home-widget .dsh-w-head { gap:9px; position:relative; padding-inline-start:20px; }
+.dsh-widget-symbol { position:absolute; inset-inline-start:0; top:50%; transform:translateY(-50%); display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; color:var(--dsw-alias-label-tertiary); background:transparent; }
+.dsh-widget-symbol svg { width:14px; height:14px; color:inherit; }
 .dsh-home .dsh-widget-symbol .dsh-w-glyph { color:inherit; }
-.dsh-home-widget .dsh-w-head { gap:9px; }
 .dsh-home-widget .dsh-w-title { letter-spacing:-.015em; }
 .dsh-home-widget :is(.dsh-today-content,.dsh-rhythm-content) { gap:2px; }
 .dsh-today-hero { display:flex; align-items:center; justify-content:space-between; gap:12px; min-width:0; }
 .dsh-today-hero .dsh-metric { align-items:flex-start; flex-direction:column; gap:0; min-width:0; }
-.dsh-home-widget .dsh-today-content .dsh-number { font-size:clamp(26px,8cqi,30px); line-height:1.1; letter-spacing:-.04em; overflow-wrap:anywhere; }
 .dsh-day-dial { width:48px; height:48px; flex:none; overflow:visible; }
 .dsh-day-dial circle { fill:none; }
 .dsh-day-dial-track { stroke:var(--dsw-alias-border-l2); stroke-width:4; }
-.dsh-day-dial-arc { stroke:var(--dsw-alias-state-business-primary); stroke-width:5; stroke-linecap:butt; }
-.dsh-day-dial .dsh-day-dial-now { fill:var(--dsw-alias-state-warn-primary); }
+.dsh-day-dial-arc { stroke:var(--dsh-accent); stroke-width:5; stroke-linecap:butt; }
+.dsh-day-dial .dsh-day-dial-now { fill:var(--dsh-warning); }
 .dsh-day-dial text { fill:var(--dsw-alias-label-tertiary); font:10px var(--dsw-font-family); }
 .dsh-home-widget .dsh-band-track { height:8px; margin-top:1px; }
 .dsh-home-widget .dsh-band-seg { opacity:.8; min-width:0; border-radius:var(--dsw-radius-xs); }
 .dsh-home-widget .dsh-today-stats { padding-top:4px; margin-top:1px; }
-.dsh-home-widget .dsh-today-stats strong { font:var(--dsw-font-s-strong-14); color:var(--dsw-alias-state-business-primary); }
-.dsh-home-widget .dsh-today-stats > span:nth-child(2) strong { color:var(--dsw-alias-state-success-primary); }
-.dsh-home-widget .dsh-today-stats > span:nth-child(3) strong { color:var(--dsw-alias-state-warn-primary); }
+.dsh-home-widget .dsh-today-stats strong { font:var(--dsw-font-s-strong-14); color:var(--dsw-alias-label-primary); }
 .dsh-home-widget .dsh-today-longest { font:var(--dsw-font-xxxs-11); }
 .dsh-home-widget .dsh-rhythm-content .dsh-metric { align-items:flex-start; flex-direction:column; gap:0; }
-.dsh-home-widget .dsh-rhythm-content .dsh-number { font-size:32px; line-height:36px; letter-spacing:-.04em; }
-.dsh-home-widget .dsh-rhythm-col { background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 7%,var(--dsw-alias-bg-module-platform)); }
-.dsh-home-widget .dsh-rhythm-bar { background:var(--dsw-alias-state-success-primary); opacity:.65; }
+.dsh-home-widget .dsh-rhythm-col { background:var(--dsh-track); }
+.dsh-home-widget .dsh-rhythm-bar { background:var(--dsh-accent); opacity:.65; }
 .dsh-home-widget .dsh-rhythm-bar[data-today="true"] { opacity:1; }
 .dsh-home-widget .dsh-area-track { height:7px; }
-.dsh-home-widget .dsh-area-track > span { background:var(--dsw-alias-state-success-primary); opacity:.8; }
-.dsh-home-widget .dsh-area-rows .dsh-row { gap:5px; padding-block:7px; }
+.dsh-home-widget .dsh-area-track > span { background:var(--dsh-accent); opacity:.8; }
 .dsh-area-rows .dsh-ws-pill { max-width:72%; }
 .dsh-home-widget .dsh-pinned-summary { padding-bottom:6px; border-bottom:.5px solid var(--dsw-alias-border-l2); }
 .dsh-home-widget .dsh-pinned-summary strong { color:var(--dsw-alias-label-primary); font:var(--dsw-font-xs-strong-13); }
-.dsh-home-widget .dsh-focus-snippet { border-inline-start:3px solid var(--dsw-alias-state-business-primary); padding-inline-start:12px; margin-block:0; color:var(--dsw-alias-label-secondary); }
-.dsh-home-widget .dsh-focus-primary { background:var(--dsw-alias-button-info-fill); color:var(--dsw-alias-label-primary-foreground); }
-.dsh-home-widget .dsh-focus-primary:is(:hover,:focus-visible) { background:var(--dsw-alias-button-info-hover); }
+.dsh-home-widget .dsh-focus-snippet { border-inline-start:3px solid var(--dsh-accent); padding-inline-start:12px; margin-block:0; color:var(--dsw-alias-label-secondary); }
+.dsh-home-widget .dsh-focus-primary { background:var(--dsw-alias-button-primary-fill); color:var(--dsw-alias-label-primary-foreground); }
+.dsh-home-widget .dsh-focus-primary:is(:hover,:focus-visible) { background:var(--dsw-alias-button-primary-hover); }
 .dsh-home-widget .dsh-quick-widget-links { padding:0; background:transparent; }
 .dsh-home-widget .dsh-quick-widget-link { background:var(--dsw-alias-bg-module-platform); }
 /* Content adapts within saved rectangles; whitespace is not an excuse to

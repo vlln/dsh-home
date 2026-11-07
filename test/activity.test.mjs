@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildActivity, validateActivityQuery } from '../src/activity.mjs'
 import { foldSession } from '../src/ledger.mjs'
-import { activityWeeks, activityYearWidth, activityLevel, shiftCalendarDay, validateActivityConfig, ACTIVITY_NATURAL_CELL, ACTIVITY_MIN_CELL, ACTIVITY_MAX_CELL } from '../src/client/activity-model.ts'
+import { activityChartHeight, activityWeeks, activityYearWidth, activityLevel, shiftCalendarDay, validateActivityConfig, ACTIVITY_NATURAL_CELL, ACTIVITY_MIN_CELL, ACTIVITY_MAX_CELL } from '../src/client/activity-model.ts'
 const now = Date.parse('2026-11-04T18:00:00Z')
 const user = time => ({ type: 'user/message', time: Date.parse(time), data: { source: { kind: 'user' }, content: [{ type: 'text', text: 'hello' }] } })
 function session(id, events, extra = {}) { return foldSession({ id, createdAt: now - 86400000, cwd: '/project', ...extra }, events, now) }
@@ -82,9 +82,8 @@ test('quarter uses three chronological 28-day blocks with exact boundaries and M
     const grid = activityWeeks([], today, 766, 'quarter')
     assert.equal(grid.count, 84)
     assert.equal(grid.blocks.length, 3)
-    assert.equal(grid.sidebar, true)
     assert.ok(grid.cellSize >= 23 && grid.cellSize <= ACTIVITY_MAX_CELL)
-    assert.ok(grid.chartWidth > 0.75 * 766 && grid.chartWidth + 156 + 6 <= 766)
+    assert.ok(grid.chartWidth > 0.75 * 766 && grid.chartWidth + 6 <= 766)
     const keys = []
     for (const block of grid.blocks) {
       const entries = block.weeks.flat().filter(Boolean)
@@ -104,21 +103,21 @@ test('quarter uses three chronological 28-day blocks with exact boundaries and M
     assert.ok(narrow.chartWidth + 6 <= 300)
   }
 })
-test('height bounds keep default cards compact without changing date range or square readability', () => {
+test('chart height bounds keep cells square and the grid inside the measured box', () => {
   for (const range of ['auto', 'quarter', 'year']) for (const width of [300, 540, 766, 1200]) {
     const wide = activityWeeks([], '2026-11-04', width, range)
-    const bounded = activityWeeks([], '2026-11-04', width, range, 254)
-    // Explicit ranges stay exact. Auto may add weeks when the height cap shrinks
-    // cells, so it fills the width instead of leaving a blank tail; never > 365.
-    if (range === 'auto') { assert.ok(bounded.count >= wide.count); assert.ok(bounded.count <= 365) }
-    else assert.equal(bounded.count, wide.count)
-    assert.ok(bounded.cellSize <= wide.cellSize)
-    assert.ok(bounded.cellSize >= ACTIVITY_MIN_CELL)
-    const rows = bounded.blocks.length ? Math.max(...bounded.blocks.map(block => block.weeks.length)) : 7
-    const chrome = bounded.blocks.length ? (bounded.sidebar ? 120 : 160) : 140
-    assert.ok(rows * bounded.cellSize + (rows - 1) * 3 + chrome <= 254)
-    // Auto never overflows horizontally: weeks still fit the available width.
-    if (range === 'auto') assert.ok(bounded.chartWidth <= width - 6 + 0.5, `auto ${width}: ${bounded.chartWidth}`)
+    for (const height of [150, 194, 300, 420]) {
+      const bounded = activityWeeks([], '2026-11-04', width, range, height)
+      // Explicit ranges stay exact. Auto may add weeks when the height cap shrinks
+      // cells, so it fills the width instead of leaving a blank tail; never > 365.
+      if (range === 'auto') { assert.ok(bounded.count >= wide.count); assert.ok(bounded.count <= 365) }
+      else assert.equal(bounded.count, wide.count)
+      assert.ok(bounded.cellSize <= wide.cellSize)
+      assert.ok(bounded.cellSize >= ACTIVITY_MIN_CELL)
+      assert.ok(activityChartHeight(bounded) <= height + 0.5, `${range} ${width}x${height}: ${activityChartHeight(bounded)} fits`)
+      // Auto never overflows horizontally: weeks still fit the available width.
+      if (range === 'auto') assert.ok(bounded.chartWidth <= width - 6 + 0.5, `auto ${width}: ${bounded.chartWidth}`)
+    }
   }
   assert.equal(activityWeeks([], '2026-11-04', 766, 'quarter', 80).cellSize, ACTIVITY_MIN_CELL)
 })

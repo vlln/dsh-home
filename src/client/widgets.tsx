@@ -8,6 +8,7 @@
  * @module @vlln/dsh-home/client/widgets
  */
 
+import { useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { LedgerSession, LedgerSnapshot, WidgetSize } from './api.ts'
 import type { SessionMeta } from './store.ts'
@@ -16,6 +17,7 @@ import { RecentBody } from './recent.tsx'
 import { PinnedBody } from './pinned-widget.tsx'
 import { dayCoverage, localDayWindow } from './widget-visual-model.ts'
 import { WorkspacePill } from './workspace-pill.tsx'
+import { useVisibleRows } from './fit-rows.ts'
 import type { SessionStatusMap } from './session-model.ts'
 
 /** 导航动作（由 index.tsx 接到官方 `uiWorkspace` 上）。 */
@@ -212,6 +214,8 @@ function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
 }
 
 function AreasBody({ t, data, actions }: WidgetProps) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const capacity = useVisibleRows(listRef, '.dsh-row')
   const groups = new Map<string, {
     name: string
     cwd: string
@@ -237,15 +241,17 @@ function AreasBody({ t, data, actions }: WidgetProps) {
     groups.set(key, group)
   }
   const sorted = [...groups.values()].sort((left, right) => right.ms - left.ms)
-  const rows = sorted.slice(0, 5)
-  const rest = sorted.slice(5)
-  if (rows.length === 0) {
+  if (sorted.length === 0) {
     return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.areas.empty')}</Empty>
   }
+  // 按实测高度留下能放下的行，最后一行合并为「其他 N 个工作区」；卡片里不出现滚动条。
+  const limit = capacity ?? sorted.length
+  const rows = sorted.length > limit ? sorted.slice(0, Math.max(0, limit - 1)) : sorted
+  const rest = sorted.slice(rows.length)
   const restMs = rest.reduce((sum, group) => sum + group.ms, 0)
   const restSessions = rest.reduce((sum, group) => sum + group.sessions, 0)
   return (
-    <div className="dsh-rows dsh-area-rows">
+    <div className="dsh-rows dsh-area-rows" ref={listRef}>
       {rows.map(group => {
         const meta = (
           <span className="dsh-row-meta">

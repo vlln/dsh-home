@@ -84,7 +84,7 @@ async function withStore(layout, callback) {
 
 test('zh/en dictionaries have identical keys, nonempty text and matching placeholder names', () => {
   validateLocales(zh, en)
-  for (const key of ['widget.recent.title', 'widget.sessionStatus.title', 'recent.more', 'recent.count', 'sessionStatus.filter']) {
+  for (const key of ['widget.recent.title', 'widget.sessionStatus.title', 'pinned.visible', 'recent.count', 'sessionStatus.filter']) {
     assert.ok(Object.hasOwn(zh, key), `missing ${key}`)
   }
 })
