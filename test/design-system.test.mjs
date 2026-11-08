@@ -8,6 +8,8 @@ const client = new URL('../src/client/', import.meta.url)
 const files = (await readdir(client)).filter(name => name.endsWith('.ts') || name.endsWith('.tsx'))
 const read = (name) => readFile(new URL(name, client), 'utf8')
 const standard = await read('styles.ts')
+const theme = await read('theme.css')
+const page = await read('page.tsx')
 const doc = await readFile(new URL('../docs/design-system.md', import.meta.url), 'utf8')
 const styleModules = files.filter(name => name.includes('styles') && name !== 'styles.ts')
 
@@ -77,4 +79,39 @@ test('the shared widget classes are defined once and documented', () => {
   assert.match(doc, /theme\.css/u)
   assert.match(doc, /滚动条/u)
   assert.match(doc, /胶囊/u)
+})
+
+test('the board surface ladder keeps the card above the canvas, in both themes', () => {
+  // The first version of this board had cards DARKER than the page they sat on (#272727
+  // on #2c2d2f), because the card borrowed a host token while the page borrowed another.
+  // Every card then read as a grey box sunk into grey. The ladder is a design constant —
+  // canvas < card < track, in both themes — and it must be declared in one place.
+  const blocks = (selector) => [...theme.matchAll(new RegExp(`${selector} \\{([^}]*)\\}`, 'g'))]
+    .map(match => match[1])
+    .filter(body => body.includes('--dsh-canvas'))
+  const steps = (body) => Object.fromEntries([...body.matchAll(/(--dsh-(?:canvas|card|sunken)):\s*#([0-9a-f]{6})/g)]
+    .map(match => [match[1], Number.parseInt(match[2], 16)]))
+  const light = blocks(':root')
+  const dark = blocks('body\\[data-ds-dark-theme\\]')
+  assert.equal(light.length, 1, 'exactly one light surface block')
+  assert.equal(dark.length, 1, 'exactly one dark surface block')
+  // Dark lifts the card over a near-black canvas and puts the track above the card;
+  // light does the mirror: the track is a shade *under* a white card, over a grey page.
+  const ladders = {
+    light: { body: light[0], order: ['--dsh-sunken', '--dsh-canvas', '--dsh-card'] },
+    dark: { body: dark[0], order: ['--dsh-canvas', '--dsh-card', '--dsh-sunken'] },
+  }
+  for (const [name, { body, order }] of Object.entries(ladders)) {
+    const ladder = steps(body)
+    for (const step of order) assert.ok(ladder[step] !== undefined, `${name} declares ${step}`)
+    // 6-bit hex space is monotone enough for steps this small.
+    for (let index = 1; index < order.length; index += 1) {
+      assert.ok(ladder[order[index - 1]] < ladder[order[index]], `${name}: ${order[index - 1]} must sit below ${order[index]}`)
+    }
+  }
+  assert.match(theme, /\.dsh-card \{[^}]*border: 0;/s, 'cards are borderless: an outline on a lifted surface reads as a cage')
+  assert.match(theme, /\.dsh-card \{[^}]*border-radius: var\(--dsh-card-radius\)/s)
+  // The page markup must not restate the surface with utilities, or the ladder splits again.
+  assert.match(page, /className="dsh-card dsh-home-widget dsh-enter"/)
+  assert.doesNotMatch(page, /dsh-home-widget[^`"]*\bbg-background-primary-default\b/)
 })

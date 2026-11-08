@@ -242,3 +242,16 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
 真正的债是**模块内部的逐条规则**（尤其 `styles.ts` 有 77/139 被引用，剩下 62 条是历史规则）。
 处理方式要改成：按类逐条清，先删确定无人引用的，每删一批跑 gate + 480 测试 + 整页截图。
 不要整块删模块——会连带删掉仍在用的类。
+
+### 表面与样式的教训（2026-11-08 实测）
+
+| 现象 | 原因 | 以后怎么做 |
+|---|---|---|
+| 卡片比页面还暗 | 卡片借宿主的 `bg-layer-1`，页面借 `bg-base`，宿主这两档本身就是反的 | 首页自己拥有 canvas/card/track 三档，一处定义 |
+| 同一页面出现三种卡片 | `styles.ts`、`widget-expression-styles.ts`、`widget-refinement-styles.ts` 各写一遍卡面 | 补丁层只准写几何；`test/design-system.test.mjs` 会拦 |
+| 标题旁出现蓝色小方块 | BoardUI 的 `ghost` 变体是 accent 着色面，不是透明 | 标题行的图标用 `IconButton` |
+| 快捷卡里出现白色主按钮 | 该卡 import 的是宿主 `Button`，不是 `ui/index.ts` 的 | 组件一律从 `ui/index.ts` 取，宿主只留 `Input`/`Modal` |
+| 柱子像加载骨架 | 没有轨道、方角、数据色用 500 档 | 用 `SparkBars`；数据色 400 档 |
+| 首屏顶部空两行 | 自动排布是"第一个放得下"，尺寸不一时会留洞 | 首装用 `DEFAULT_BOARD` 拼好的 12 列 |
+
+验证站：`bash ~/Projects/DshPlugins/.work/dsh-home/relaunch.sh`（会打印带 token 的 URL）。

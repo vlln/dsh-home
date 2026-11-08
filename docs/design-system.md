@@ -1,49 +1,72 @@
 # 首页视觉标准
 
-> **2026-11-07：配色与字阶层已经下沉到 `src/client/theme.css`（BoardUI 语义 token +
-> 复合字阶），本文件的第 1–3 节（`--dsh-*` 角色色、单色数据梯度、主值字号变量）只在
-> 尚未迁移的卡片上仍然有效。**
->
-> 新卡片的规矩在 [`../decisions/0006-boardui-visual-language.md`](../decisions/0006-boardui-visual-language.md)：
-> 颜色/字号/圆角/间距/动效一律来自 `src/client/ui/`，卡面只填数据与信息设计，
-> `scripts/check-assets.mjs` 会在构建时拦住绕过收口或写死色值的新代码。
-> 第 4–11 节（共用小部件、标题图标、可自解释的图表、卡片里不出现滚动条、新增组件清单）
-> **继续有效**，它们讲的是信息设计，不是皮肤。
+> **2026-11-08：表面层级、卡片解剖与图表原语已经落到代码里，本文件只讲规则。**
+> 配色/字阶在 `src/client/theme.css`（BoardUI 语义 token + 复合字阶）；卡片表面与解剖在
+> `.dsh-card`；图形原语在 `src/client/ui/viz.tsx`。新卡片的完整理由见
+> [`../decisions/0006-boardui-visual-language.md`](../decisions/0006-boardui-visual-language.md)。
 
-> 唯一实现：[`src/client/design-system.ts`](../src/client/design-system.ts)。本文件是规则、词表与
-> 检查清单；两者由 [`test/design-system.test.mjs`](../test/design-system.test.mjs) 绑定，
-> 改动不同步会直接测试失败。
+## 0. 表面阶梯：一条规则，两个主题
+
+```
+深色   canvas #0e0e10  <  card #171719  <  track #26262a
+浅色   track  #ececee  <  canvas #f4f4f5  <  card #ffffff
+```
+
+- 只能有**一处**定义：`theme.css` 的 `:root` 与 `body[data-ds-dark-theme]`。
+  白名单外的任何地方（`*-styles.ts`、组件 className）都不准再写卡片底色、边框、
+  标题字号——上一版就是三个层各写一遍，最后加载的那层说了算，于是同一张页面里
+  有三种卡片。
+- 卡片**没有边框**。抬升靠亮度差，不靠描边；`border: 1px` 在抬升的表面上读起来像牢笼。
+- 依赖宿主 token 会反向：宿主的页面底色比它自己的卡片更亮，借用 `--dsw-alias-bg-base`
+  会让卡片比页面还暗。所以首页自己拥有这三档。
+- 校验：`test/design-system.test.mjs` 的 *surface ladder* 一条会在层级反转时失败。
+
+## 0.1 卡片解剖（`.dsh-card`）
+
+```
+┌ 16px pad ─────────────────────────────┐
+│ glyph 16  label 14/500 secondary      │   ← .dsh-card-head
+│ 24/500 tabular      12/500 tertiary   │   ← .dsh-card-body 的第一行：主值 + 单位
+│ 图表 / 列表 / 空态                     │
+└───────────────────────────────────────┘
+```
+
+- 标题是**次级墨**，主值是**主墨**：一张卡只有一个亮点。
+- 单位必须和主值同一行、同一条基线；单位另起一行会被读成第二个数。
+- 16px 圆角、16px 内边距、12px 行距，四个方向都一样。
+- 空态左对齐、一到两行、动作就放在文字旁边。居中大块 + 按钮是最容易写也最难看的一种：
+  三张空卡并排就是页面上的三个洞。
 
 ## 1. 颜色词表在 `theme.css`，不在这里
 
-2026-11-07 起（[decisions/0006](../decisions/0006-boardui-visual-language.md)），配色、字阶、
-圆角与动效全部由 `src/client/theme.css` 提供：BoardUI 的语义 token（`--color-text-primary`、
-`--color-background-secondary-default`、`--color-border-button-default`、`--color-chart-1…5`、
-`--color-status-*`）加上复合字号阶梯（`text-title-1-medium`、`text-body-medium`…）。
-
 | 层 | 位置 | 谁能用 |
 |---|---|---|
+| 表面阶梯 + 卡片解剖 | `theme.css`（`@layer components`） | 外壳与所有卡片 |
 | 语义 token / 字阶 | `theme.css`（编译成 `ui/generated/theme-css.ts`） | 新卡片与 `ui/` 组件 |
-| 共享小部件的几何 | 本文件 + `src/client/design-system.ts` | 尚未迁移的内置卡 |
-| 旧 `--dsh-*` 颜色角色 | **已删除** | 无 |
+| 共享小部件的几何 | `*‑styles.ts`（只准写 display/grid/间距/溢出） | 尚未迁移的内置卡 |
 
 - 组件样式里不准出现 `#rrggbb`、`rgb(`、`oklch(`；`scripts/check-assets.mjs` 在构建时拦住。
 - 深浅主题由宿主在 `body[data-ds-dark-theme]` 上切换，token 自己翻，组件不判断。
 - 需要新颜色：先在 `theme.css` 里找一个语义 token；找不到说明**语义没想清楚**，不是缺色。
 
-## 2. 数据图形只用一种色相
+## 2. 数据图形
 
-图表、热力格、轨道条都从 `--color-chart-4`（数据色）派生浓淡；`HeatCell` 的
-`level 0…4` 就是这条规则的实现。不同**含义**（成功 / 注意 / 错误）分别走
-`--color-status-lime-text` / `--color-status-yellow-text` / `--color-text-error-primary`，
-只在真实状态里出现，不做装饰。
+- 数据色取 **400 档**（`chart-1…5`）。500 档在深色卡上会掉三分之一彩度，读起来像禁用。
+- 一段序列只用一种色相，浓淡表示强调：`SparkBars` 的 `emphasis`、`HeatCell` 的 `level 0…4`。
+- 柱状图**必须有轨道**：轨道给刻度，填充给读数。只有填充时，矮柱子是悬空的色块，
+  空值那天直接消失。
+- 环形图段与段之间留 2px 断口 + 圆头，才读得出“由几段组成”，而不是一条花纹带。
+- 不同**含义**（成功 / 注意 / 错误）走 `--color-status-lime-text` / `--color-status-yellow-text` /
+  `--color-text-error-primary`，只在真实状态里出现。
 
 ## 3. 排版与几何
 
-- 主值：`text-display-4-semibold`（32/40）+ `tabular-nums`；卡片标题 `text-body-medium`；
-  说明 `text-caption-1-medium` + `text-text-tertiary`。新卡片不要手写 px。
-- 圆角：卡片 `rounded-3xl`，内部表面 `rounded-lg`/`rounded-xl`，胶囊 `rounded-full`（999px）。
-- 间距：4 / 8 / 12 / 16 四档；卡片内边距 `p-4`。
+- 主值：24/500 + `tabular-nums`（`.dsh-metric-value`）；卡片标题 14/500 次级墨
+  （`.dsh-card-title`）；说明 12/500 三级墨。新卡片不要手写 px。
+- 圆角：卡片 16（`--dsh-card-radius`），内部表面 8/12，胶囊 999。
+- 间距：4 / 8 / 12 / 16 四档；卡片内边距 16（`--dsh-card-pad`）。
+- 行：一律用 `Row` / `RowButton` / `RowLink`。一行三段——主标签、可选副标签、右端读数；
+  整行可点，没有边框，hover 才浮出表面。
 
 ## 4. 共用小部件（只在 design-system.ts 定义）
 
@@ -116,10 +139,10 @@
 
 ## 10. 新增一个组件时
 
-1. 颜色只用第 3 节的 token；需要新角色先改 `design-system.ts` 与本文件。
+1. 外壳给 `.dsh-card`，内容只填 `.dsh-card-body`；不要在卡片里再画标题、底色或边框。
 2. 声明 `icon`（16px 视框、描边 1.2、`currentColor`），标题会自动对齐。
-3. 主值用 `--dsh-hero-size`，标题交给外壳；不要在卡片里再画标题。
-4. 图形只用 `--dsh-ramp-*` 与 `--dsh-track`；不要为「好看」引入第二个色相。
+3. 主值用 `.dsh-metric`（24/500 tabular）+ 同行单位；不要自己调字号。
+4. 图形用 `SparkBars` / `Donut` / `Meter` / `HeatCell`；它们已经有轨道、圆角和强调档。
 5. 内容必须装进声明的默认尺寸：先量容器，再决定行数 / 格子大小；不要靠滚动条兜底。
 6. 用户可见文案走 i18n；筛选控件用 `.dsh-quiet-select`，不要做带边框的胶囊。
 7. 跑 `npx tsc --noEmit`、`npm test`、`pnpm run build`，再在验证站看真实卡片。
@@ -141,3 +164,8 @@
 - 2026-11-07（0.53）：摘要卡条目定为两行（14px 标题、胶囊在第二行）；最近会话去掉搜索框
   与目录下拉、固定 5 条、声明成 4 列，旧的 8 列保存矩形按声明收窄；段落列表 `min-height`
   43 / `max-height` 86。
+- 2026-11-08（0.55）：**表面阶梯反转的修正**。卡片原本比宿主页面更暗，三套样式层各自
+  重写卡面，首屏自动排布还留了两行洞。这一版把画布/卡片/轨道收进 `theme.css` 一处，
+  卡片改 16px 无边框，标题 14/500 次级墨、主值 24/500 同行单位；柱状图补轨道与圆角、
+  数据色改 400 档；空态改左对齐；首装布局改成拼好的 12 列（`DEFAULT_BOARD`）。
+  最近会话与会话行改单行（状态点 / 标题 / 工作区 / 时间），不再用 10px 胶囊。
