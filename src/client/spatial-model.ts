@@ -248,9 +248,17 @@ export function buildSpatialLayout(
   // A fresh board therefore starts from a composed 12-column tiling; any card the
   // tiling does not name still falls through to auto-placement below.
   const allBuiltin = metas.length >= 4 && metas.every(meta => DEFAULT_BOARD[meta.id] !== undefined)
-  if (cols === 12 && allBuiltin && Object.keys(saved).length === 0) {
+  if (allBuiltin && Object.keys(saved).length === 0) {
+    // The tiling is authored on a 12-column board, but the canvas width is the user's
+    // choice (12..32 columns). Map the 12-column *boundaries* onto the real column
+    // count instead of scaling widths: an interval mapping keeps every card disjoint,
+    // so a 20-column board gets the same composition without a solver pass.
+    const edge = (value: number): number => Math.round(value * cols / 12)
     for (const [id, rect] of Object.entries(DEFAULT_BOARD)) {
-      if (byId.has(id) && !hidden.has(id)) saved[id] = { ...rect }
+      if (!byId.has(id) || hidden.has(id)) continue
+      const left = edge(rect.x)
+      const right = edge(rect.x + rect.w)
+      saved[id] = { x: left, y: rect.y, w: Math.max(3, right - left), h: rect.h }
     }
   }
   const occupied: SpatialItem[] = []
