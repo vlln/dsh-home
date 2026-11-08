@@ -15,7 +15,7 @@ export const activityStyles = `
    grows; only explicit year (or exceptionally tiny cards) needs local scrolling. */
 /* 卡片装不下时先缩格子：竖向与横向都不出现滚动条（一年用 2px 点阵兜底）。 */
 .dsh-activity-scroll { flex:1 1 auto; min-height:0; overflow:hidden; max-width:100%; padding:${ACTIVITY_SCROLL_PADDING}px; border-radius:var(--dsw-radius-xs); scroll-padding-inline:${ACTIVITY_SCROLL_PADDING}px; }
-.dsh-activity-scroll:focus-visible { outline:2px solid var(--dsh-accent); outline-offset:-2px; }
+.dsh-activity-scroll:focus-visible { outline:2px solid var(--color-chart-4); outline-offset:-2px; }
 .dsh-activity-grid { display:grid; gap:var(--dsh-activity-gap,${ACTIVITY_GAP}px); width:max-content; margin-inline:auto; }
 .dsh-activity-week { display:grid; grid-template-rows:16px repeat(7, var(--dsh-activity-cell-size)); gap:var(--dsh-activity-gap,${ACTIVITY_GAP}px); min-width:0; }
 .dsh-activity-blocks { display:flex; align-items:start; gap:${ACTIVITY_BLOCK_GAP}px; width:max-content; margin-inline:auto; }
@@ -29,10 +29,10 @@ export const activityStyles = `
 .dsh-activity-month { font:var(--dsw-font-xxxs-11); color:var(--dsw-alias-label-tertiary); overflow:visible; }
 .dsh-activity-cell { display:block; flex:none; width:var(--dsh-activity-cell-size); height:var(--dsh-activity-cell-size); aspect-ratio:1; padding:0; border:0; border-radius:var(--dsw-radius-xs); background:var(--dsw-alias-bg-module-platform); }
 button.dsh-activity-cell { cursor:pointer; transition:box-shadow 120ms ease-out; }
-.dsh-activity-cell[data-level="1"] { background:color-mix(in srgb, var(--dsh-accent) 22%, var(--dsw-alias-bg-module-platform)); }
-.dsh-activity-cell[data-level="2"] { background:color-mix(in srgb, var(--dsh-accent) 44%, var(--dsw-alias-bg-module-platform)); }
-.dsh-activity-cell[data-level="3"] { background:color-mix(in srgb, var(--dsh-accent) 70%, var(--dsw-alias-bg-module-platform)); }
-.dsh-activity-cell[data-level="4"] { background:var(--dsh-accent); }
+.dsh-activity-cell[data-level="1"] { background:color-mix(in srgb, var(--color-chart-4) 22%, var(--dsw-alias-bg-module-platform)); }
+.dsh-activity-cell[data-level="2"] { background:color-mix(in srgb, var(--color-chart-4) 44%, var(--dsw-alias-bg-module-platform)); }
+.dsh-activity-cell[data-level="3"] { background:color-mix(in srgb, var(--color-chart-4) 70%, var(--dsw-alias-bg-module-platform)); }
+.dsh-activity-cell[data-level="4"] { background:var(--color-chart-4); }
 .dsh-activity-cell[data-unknown="true"] { background:transparent; outline:1px dashed var(--dsw-alias-border-l3); outline-offset:-1px; }
 .dsh-activity-cell[data-selected="true"], button.dsh-activity-cell:focus-visible { outline:2px solid var(--dsw-alias-label-primary); outline-offset:1px; }
 button.dsh-activity-cell:is(:hover,:focus-visible) { box-shadow:0 0 0 1px var(--dsw-alias-label-secondary); }

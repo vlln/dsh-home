@@ -63,6 +63,6 @@ test('workspace capsules carry no colour identity: the standard has one capsule 
   const pill = await (await import('node:fs/promises')).readFile(new URL('../src/client/workspace-pill.tsx', import.meta.url), 'utf8')
   const standard = await (await import('node:fs/promises')).readFile(new URL('../src/client/design-system.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(pill, /data-hue/)
-  assert.match(standard, /--dsh-pill-bg:/)
-  assert.match(standard, /\.dsh-ws-pill \{[^}]*background: var\(--dsh-pill-bg\)/s)
+  // One capsule fill, and it comes from the semantic token layer (0006).
+  assert.match(standard, /\.dsh-ws-pill \{[^}]*background: var\(--color-background-tertiary-default\)/s)
 })

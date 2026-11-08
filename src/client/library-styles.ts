@@ -16,7 +16,7 @@ export const libraryStyles=`
 .dsh-library-preview { position:relative; width:100%; flex:1 1 auto; min-height:0; overflow:hidden; margin-top:10px; pointer-events:none; }
 .dsh-library-ghost { position:fixed; z-index:1000; pointer-events:none; overflow:hidden; margin:0; box-sizing:border-box; box-shadow:var(--dsw-shadow-lv3); background:var(--dsw-alias-bg-layer-1); color:var(--dsw-alias-label-primary); opacity:.9; }
 .dsh-library-ghost[data-inside="false"] { opacity:.55; }
-.dsh-library-outline {position:fixed;z-index:70;pointer-events:none;border:2px solid var(--dsh-accent);border-radius:var(--dsw-radius-xl);background:var(--dsh-accent-soft);opacity:.4;box-sizing:border-box}
+.dsh-library-outline {position:fixed;z-index:70;pointer-events:none;border:2px solid var(--color-chart-4);border-radius:var(--dsw-radius-xl);background:color-mix(in srgb, var(--color-chart-4) 12%, transparent);opacity:.4;box-sizing:border-box}
 .dsh-library-outline[data-pending="true"]{border-style:dashed;background:transparent}
 .dsh-library-ghost .dsh-w-head { flex:none; }
 @media(prefers-reduced-motion:reduce){.dsh-library-panel .dsh-directory-item{transition:none}}

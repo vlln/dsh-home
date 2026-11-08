@@ -65,7 +65,7 @@ export const quickStyles = `
 .dsh-quick-widget-link[aria-disabled=true] { opacity: .5; cursor: default; }
 .dsh-quick-widget-error {
   margin: 0;
-  color: var(--dsh-danger);
+  color: var(--color-text-error-primary);
   font: var(--dsw-font-xs-13);
   overflow-wrap: anywhere;
 }

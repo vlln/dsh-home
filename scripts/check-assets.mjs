@@ -75,6 +75,22 @@ function checkNoLiteralColour(files) {
   return failures
 }
 
+/** The retired role vocabulary (0006). Geometry variables keep their --dsh- name. */
+const RETIRED_TOKEN = /--dsh-(accent|warning|danger|positive|ramp|track|pill|hero|status-color)([a-z-]*)/g
+
+function checkNoRetiredTokens(files) {
+  const failures = []
+  for (const file of files) {
+    const rel = path.relative(ROOT, file)
+    const source = readFileSync(file, 'utf8')
+    for (const match of source.matchAll(RETIRED_TOKEN)) {
+      const line = source.slice(0, match.index).split('\n').length
+      failures.push(`${rel}:${line}: ${match[0]} was retired in 0006 — use a semantic token from theme.css`)
+    }
+  }
+  return failures
+}
+
 function checkRegistrationContract(files) {
   const failures = []
   for (const file of files) {
@@ -106,6 +122,7 @@ export function runChecks({ compiled = false } = {}) {
     'single entry point': checkSingleEntry(files),
     'no literal colour': checkNoLiteralColour(files),
     'registration contract': checkRegistrationContract(files),
+    'retired token vocabulary': checkNoRetiredTokens(files),
   }
   const failures = Object.values(groups).flat()
 

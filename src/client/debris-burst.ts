@@ -17,7 +17,8 @@ function cardTones(node: HTMLElement): string[] {
   const style = getComputedStyle(node)
   const label = style.color
   const border = style.borderTopColor
-  const accent = style.getPropertyValue('--dsh-accent').trim()
+  // The data hue is the only accent left (0006 retired the --dsh-* roles).
+  const accent = style.getPropertyValue('--color-chart-4').trim()
   return [label, border !== '' ? border : label, accent !== '' ? accent : label].filter(tone => tone !== '')
 }
 

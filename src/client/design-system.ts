@@ -1,22 +1,18 @@
 /**
- * 首页的旧视觉词表（**正在退场**）。
+ * 首页的**共享小部件**词表（不是颜色词表）。
  *
- * 2026-11-07 起，配色、字号阶梯、圆角与动效归 `src/client/theme.css`（BoardUI 语义
- * token + 复合字阶），见 `decisions/0006-boardui-visual-language.md`。本文件仍然定义
- * `--dsh-*` 角色色，是因为尚未迁移的卡片与 `dsh-legacy` 样式层还引用它们；新卡片不许
- * 再用这里的 token，`scripts/check-assets.mjs` 会在构建时挡住绕过收口的新代码。
+ * 2026-11-07 起配色、字号阶梯、圆角与动效归 `src/client/theme.css`（BoardUI 语义
+ * token + 复合字阶 + `@theme`），见 `decisions/0006-boardui-visual-language.md`。
+ * 本文件只保留三件事：
  *
- * 迁移完之后，这个文件应该只剩 `FONT` 这类 JS 侧需要的常量，`--dsh-*` 全部删除。
+ * 1. JS 侧需要的排版常量（`FONT`、`RAMP_LEVELS`）；
+ * 2. 几个仍被内置卡复用的类（`.dsh-chip`、`.dsh-ws-pill`、`.dsh-quiet-select`、
+ *    `.dsh-track`、`.dsh-status-dot` 等）的**几何**规则；
+ * 3. 这些类与图表之间的对齐约定。
  *
- * 首页唯一的视觉标准：语义色、字号、圆角与共用小部件。
- *
- * 规则（详见 `docs/design-system.md`）：
- * - 墨色 / 表面 / 描边直接取宿主 alias（`--dsw-alias-label-*`、`bg-*`、`border-*`），
- *   深浅主题由宿主切换；本文件不再定义第二套主题。
- * - 产品自己的颜色只有三种角色：强调（accent）、注意（warning）、错误（danger）。
- *   全部落在 `--dsh-*` 上，组件样式只准引用这些变量，不准直接写语义色或十六进制。
- * - 数据图形只用同一种强调色的四档浓淡（`--dsh-ramp-1…4`），不按组件换色相。
- * - 工作区胶囊只有一个中性色：它标识「这是一个工作区」，不标识「哪一个」。
+ * 规则：这里只准引用 `theme.css` 的语义 token（`--color-text-*`、`--color-chart-*`、
+ * `--color-status-*`、`--color-background-*`），**不再定义任何颜色角色**。
+ * 新卡片不要用这里的类，用 `src/client/ui/`。
  *
  * @module @vlln/dsh-home/client/design-system
  */
@@ -35,35 +31,10 @@ export const FONT = {
 export const RAMP_LEVELS = [1, 2, 3, 4] as const
 
 export const designSystemStyles = `
-.dsh-home, .dsh-w {
-  /* 唯一强调色：主操作、今天标记、全部数据图形。 */
-  --dsh-accent: var(--dsw-alias-state-business-primary);
-  --dsh-accent-soft: color-mix(in srgb, var(--dsh-accent) 12%, transparent);
-  /* 悬停加深：浅色主题变深、深色主题变亮，始终朝墨色方向走一档。 */
-  --dsh-accent-hover: color-mix(in srgb, var(--dsh-accent) 86%, var(--dsw-alias-label-primary));
-  /* 注意力与错误：只用于真实状态，不做装饰。 */
-  --dsh-warning: var(--dsw-alias-state-warn-primary);
-  --dsh-warning-soft: color-mix(in srgb, var(--dsh-warning) 12%, transparent);
-  --dsh-danger: var(--dsw-alias-state-error-primary);
-  --dsh-danger-soft: color-mix(in srgb, var(--dsh-danger) 12%, transparent);
-  /* 成功 / 完成：绿。只用于「做成了」的状态，不做装饰。 */
-  --dsh-positive: var(--dsw-alias-state-success-primary);
-  --dsh-positive-soft: color-mix(in srgb, var(--dsh-positive) 12%, transparent);
-  /* 数据图形：同一色相的四档。 */
-  --dsh-ramp-1: color-mix(in srgb, var(--dsh-accent) 18%, var(--dsw-alias-bg-layer-1));
-  --dsh-ramp-2: color-mix(in srgb, var(--dsh-accent) 44%, var(--dsw-alias-bg-layer-1));
-  --dsh-ramp-3: color-mix(in srgb, var(--dsh-accent) 72%, var(--dsw-alias-bg-layer-1));
-  --dsh-ramp-4: var(--dsh-accent);
-  /* 轨道 / 空槽：比背景深一档，不用彩色。 */
-  --dsh-track: var(--dsw-alias-bg-skeleton);
-  /* 工作区胶囊：唯一底色与唯一字色。 */
-  --dsh-pill-bg: var(--dsw-alias-interactive-bg-active);
-  --dsh-pill-ink: var(--dsw-alias-label-secondary);
-  /* 排版与几何。 */
-  --dsh-hero-size: 30px;
-  --dsh-hero-line: 34px;
-  --dsh-radius-pill: 999px;
-}
+/* 颜色与字号不再在这里定义：语义 token 与复合字阶在 \`src/client/theme.css\`
+ * （BoardUI 词表，编译产物见 ui/generated/theme-css.ts）。本文件只保留共享小部件
+ * 的几何与排版规则，且一律引用 semantic token，不再引入任何 \`--dsh-*\` 颜色角色。
+ */
 
 /* 主值：所有卡片同一个字号，不再各卡 26/28/32/36 混用。 */
 .dsh-home-widget .dsh-number,
@@ -72,8 +43,8 @@ export const designSystemStyles = `
 .dsh-home-widget .dsh-usage-total,
 .dsh-home-widget .dsh-balance-amount,
 .dsh-home-widget .dsh-countdown-days {
-  font-size: var(--dsh-hero-size);
-  line-height: var(--dsh-hero-line);
+  font-size: 2rem;
+  line-height: 2.5rem;
   font-weight: 600;
   letter-spacing: -.03em;
   font-variant-numeric: tabular-nums;
@@ -86,10 +57,10 @@ export const designSystemStyles = `
   min-width: 0;
   max-width: 38%;
   padding: 1px 8px;
-  border-radius: var(--dsh-radius-pill);
+  border-radius: 999px;
   corner-shape: round;
-  background: var(--dsh-pill-bg);
-  color: var(--dsh-pill-ink);
+  background: var(--color-background-tertiary-default);
+  color: var(--color-text-secondary);
   font: var(--dsw-font-xxs-strong-12);
   line-height: 16px;
   overflow: hidden;
@@ -106,7 +77,7 @@ export const designSystemStyles = `
   height: 22px;
   padding: 0 9px;
   border: none;
-  border-radius: var(--dsh-radius-pill);
+  border-radius: 999px;
   corner-shape: round;
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-secondary);
@@ -119,17 +90,17 @@ export const designSystemStyles = `
 }
 .dsh-chip:hover { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
 .dsh-chip[data-active="true"] { background: var(--dsw-alias-label-primary); color: var(--dsw-alias-label-primary-foreground); }
-.dsh-chip:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsh-accent)); outline-offset: 1px; }
-.dsh-chip[data-tone="warn"] { background: var(--dsh-warning-soft); color: var(--dsh-warning); }
-.dsh-chip[data-tone="danger"] { background: var(--dsh-danger-soft); color: var(--dsh-danger); }
-.dsh-chip[data-tone="accent"] { background: var(--dsh-accent-soft); color: var(--dsh-accent); }
+.dsh-chip:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4)); outline-offset: 1px; }
+.dsh-chip[data-tone="warn"] { background: color-mix(in srgb, var(--color-status-yellow-text) 12%, transparent); color: var(--color-status-yellow-text); }
+.dsh-chip[data-tone="danger"] { background: color-mix(in srgb, var(--color-text-error-primary) 12%, transparent); color: var(--color-text-error-primary); }
+.dsh-chip[data-tone="accent"] { background: color-mix(in srgb, var(--color-chart-4) 12%, transparent); color: var(--color-chart-4); }
 
 /* 会话状态筛选：与其它 chip 同一语法；选中态为墨色，状态含义由小圆点承担：
    在跑=绿、在等你=琥珀、未读=蓝。颜色按语义固定，不按组件分配。 */
-.dsh-status-chip[data-group="running"] { --dsh-status-color: var(--dsh-positive); }
-.dsh-status-chip[data-group="waiting"] { --dsh-status-color: var(--dsh-warning); }
-.dsh-status-chip[data-group="done"] { --dsh-status-color: var(--dsh-accent); }
-.dsh-status-dot { width: 6px; height: 6px; flex: none; border-radius: 50%; clip-path: circle(50%); background: var(--dsh-status-color, var(--dsw-alias-label-tertiary)); }
+.dsh-status-chip[data-group="running"] { --dsh-dot-color: var(--color-status-lime-text); }
+.dsh-status-chip[data-group="waiting"] { --dsh-dot-color: var(--color-status-yellow-text); }
+.dsh-status-chip[data-group="done"] { --dsh-dot-color: var(--color-chart-4); }
+.dsh-status-dot { width: 6px; height: 6px; flex: none; border-radius: 50%; clip-path: circle(50%); background: var(--dsh-dot-color, var(--dsw-alias-label-tertiary)); }
 .dsh-status-chip {
   display: inline-flex;
   align-items: center;
@@ -137,7 +108,7 @@ export const designSystemStyles = `
   height: 24px;
   padding: 0 10px;
   border: 0;
-  border-radius: var(--dsh-radius-pill);
+  border-radius: 999px;
   corner-shape: round;
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-secondary);
@@ -177,7 +148,7 @@ export const designSystemStyles = `
   text-overflow: ellipsis;
 }
 .dsh-quiet-select:is(:hover, :focus-visible) { color: var(--dsw-alias-label-secondary); }
-.dsh-quiet-select:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsh-accent)); outline-offset: 2px; border-radius: var(--dsw-radius-xs); }
+.dsh-quiet-select:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4)); outline-offset: 2px; border-radius: var(--dsw-radius-xs); }
 .dsh-quiet-select:disabled { opacity: .7; cursor: default; }
 
 /* 悬停提示：跟随指针的小气泡，Portal 到 body，不被卡片裁剪。 */
@@ -197,8 +168,8 @@ export const designSystemStyles = `
 }
 
 /* 数据轨道：所有条形图共用同一条中性轨道。 */
-.dsh-track { background: var(--dsh-track); border-radius: var(--dsh-radius-xs); overflow: hidden; }
-.dsh-track > span { display: block; height: 100%; border-radius: inherit; background: var(--dsh-accent); }
+.dsh-track { background: var(--color-chart-track); border-radius: 6px; overflow: hidden; }
+.dsh-track > span { display: block; height: 100%; border-radius: inherit; background: var(--color-chart-4); }
 
 @media (prefers-reduced-motion: reduce) {
   .dsh-quiet-select { transition: none; }

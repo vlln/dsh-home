@@ -36,11 +36,15 @@ test('every colour role is defined once, in design-system.ts', async () => {
   }
 })
 
-test('the capsule, the accent and the chart ramp are single-valued', () => {
-  assert.match(standard, /--dsh-pill-bg: var\(--dsw-alias-interactive-bg-active\)/)
-  assert.match(standard, /--dsh-accent: var\(--dsw-alias-state-business-primary\)/)
-  for (const level of [1, 2, 3, 4]) assert.match(standard, new RegExp(`--dsh-ramp-${level}:`))
-  assert.equal(standard.match(/--dsh-pill-bg:/g)?.length, 1)
+test('the standard owns geometry only: the colour vocabulary lives in theme.css', () => {
+  // 0006 moved every colour role into `src/client/theme.css`. What must stay true is
+  // that the shared classes name one accent, one capsule fill and one data hue —
+  // and that design-system.ts stops inventing roles of its own.
+  assert.doesNotMatch(standard, /--dsh-(accent|warning|danger|positive|ramp|track|pill|hero)[a-z-]*:/,
+    'design-system.ts must not define colour roles any more')
+  assert.match(standard, /--color-chart-4/, 'the accent is the data hue')
+  assert.doesNotMatch(standard, /--color-chart-[1235]/, 'the standard must not pick a second data hue')
+  assert.match(standard, /--dsh-dot-color/)
 })
 
 test('digest cards never scroll and never page', async () => {
@@ -62,10 +66,13 @@ test('digest cards never scroll and never page', async () => {
   assert.doesNotMatch(activity, /activity\.zone|activity\.partial'|activity\.incomplete/)
 })
 
-test('the standard document names every token it owns', () => {
-  const defined = new Set([...standard.matchAll(/(--dsh-[a-z0-9-]+):/gu)].map(match => match[1]))
-  assert.ok(defined.size >= 15)
-  for (const token of defined) assert.ok(doc.includes(token), `docs/design-system.md must document ${token}`)
+test('the standard document names every shared class it owns, and says where colour lives', () => {
+  // 0006: the colour vocabulary is theme.css. What the document must still cover is
+  // the shared widget classes inside design-system.ts, plus a pointer to the tokens.
+  const classes = new Set([...standard.matchAll(/^\.(dsh-[a-z0-9-]+) \{/gmu)].map(match => match[1]))
+  assert.ok(classes.size >= 4, `expected the shared classes, found ${[...classes].join(', ')}`)
+  for (const name of classes) assert.ok(doc.includes(name), `docs/design-system.md must document .${name}`)
+  assert.match(doc, /theme\.css/u)
   assert.match(doc, /滚动条/u)
   assert.match(doc, /胶囊/u)
 })

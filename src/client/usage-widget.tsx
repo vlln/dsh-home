@@ -41,15 +41,15 @@ interface SplitPart { key: string; value: number; color: string; label: string }
 /** 同一个量的四段：颜色只是同一色相的浓淡，名字与数值由 tooltip 说明。 */
 function splitParts(buckets: TokenBuckets, t: Translate): SplitPart[] {
   return [
-    { key: 'input', value: buckets.input, color: 'var(--dsh-ramp-4)', label: t('usage.input') },
-    { key: 'cacheRead', value: buckets.cacheRead, color: 'var(--dsh-ramp-2)', label: t('usage.cache') },
-    { key: 'output', value: buckets.output, color: 'var(--dsh-ramp-3)', label: t('usage.output') },
-    { key: 'cacheWrite', value: buckets.cacheWrite, color: 'var(--dsh-ramp-1)', label: t('usage.cacheWrite') },
+    { key: 'input', value: buckets.input, color: 'var(--color-chart-4)', label: t('usage.input') },
+    { key: 'cacheRead', value: buckets.cacheRead, color: 'color-mix(in srgb, var(--color-chart-4) 44%, var(--color-background-primary-default))', label: t('usage.cache') },
+    { key: 'output', value: buckets.output, color: 'color-mix(in srgb, var(--color-chart-4) 72%, var(--color-background-primary-default))', label: t('usage.output') },
+    { key: 'cacheWrite', value: buckets.cacheWrite, color: 'color-mix(in srgb, var(--color-chart-4) 18%, var(--color-background-primary-default))', label: t('usage.cacheWrite') },
   ].filter(part => part.value > 0)
 }
 
 function donutGradient(parts: readonly SplitPart[], total: number, hover: string | null): string {
-  if (total === 0) return 'conic-gradient(var(--dsh-accent-soft) 0 100%)'
+  if (total === 0) return 'conic-gradient(color-mix(in srgb, var(--color-chart-4) 12%, transparent) 0 100%)'
   let cursor = 0
   const stops = parts.map(part => {
     const from = cursor
@@ -117,9 +117,9 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
       </div>
     </div>
     <div className="dsh-usage-chips">
-      <span className="dsh-chip" {...tip.bind(`${t('usage.input')} · ${today.input.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-4)' } as CSSProperties} aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></span>
-      <span className="dsh-chip" {...tip.bind(`${t('usage.cache')} · ${today.cacheRead.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-2)' } as CSSProperties} aria-hidden="true" />{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></span>
-      <span className="dsh-chip" {...tip.bind(`${t('usage.output')} · ${today.output.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--dsh-ramp-3)' } as CSSProperties} aria-hidden="true" />{t('usage.output')} <b>{compactCount(today.output)}</b></span>
+      <span className="dsh-chip" {...tip.bind(`${t('usage.input')} · ${today.input.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--color-chart-4)' } as CSSProperties} aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></span>
+      <span className="dsh-chip" {...tip.bind(`${t('usage.cache')} · ${today.cacheRead.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'color-mix(in srgb, var(--color-chart-4) 44%, var(--color-background-primary-default))' } as CSSProperties} aria-hidden="true" />{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></span>
+      <span className="dsh-chip" {...tip.bind(`${t('usage.output')} · ${today.output.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'color-mix(in srgb, var(--color-chart-4) 72%, var(--color-background-primary-default))' } as CSSProperties} aria-hidden="true" />{t('usage.output')} <b>{compactCount(today.output)}</b></span>
     </div>
     {week && <div className="dsh-usage-bars" role="img" aria-label={t('usage.week')}>
       {days.map(day => {

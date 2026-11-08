@@ -14,62 +14,36 @@
 > 检查清单；两者由 [`test/design-system.test.mjs`](../test/design-system.test.mjs) 绑定，
 > 改动不同步会直接测试失败。
 
-## 1. 三层颜色，只有一层属于我们
+## 1. 颜色词表在 `theme.css`，不在这里
 
-| 层 | 来源 | 用法 |
+2026-11-07 起（[decisions/0006](../decisions/0006-boardui-visual-language.md)），配色、字阶、
+圆角与动效全部由 `src/client/theme.css` 提供：BoardUI 的语义 token（`--color-text-primary`、
+`--color-background-secondary-default`、`--color-border-button-default`、`--color-chart-1…5`、
+`--color-status-*`）加上复合字号阶梯（`text-title-1-medium`、`text-body-medium`…）。
+
+| 层 | 位置 | 谁能用 |
 |---|---|---|
-| 宿主 alias | `--dsw-alias-label-*`、`--dsw-alias-bg-*`、`--dsw-alias-border-*`、`--dsw-alias-interactive-*` | 墨色、表面、描边、悬停底。深浅主题由宿主切换，组件不判断 |
-| 产品角色 | `--dsh-*`（本文件第 3 节） | 强调、注意、错误、数据梯度、胶囊、主值字号 |
-| 组件样式 | 只写 `var(--dsh-*)` 与宿主 alias | 不写十六进制、不写 `--dsw-alias-state-*`、不定义第二套主题 |
+| 语义 token / 字阶 | `theme.css`（编译成 `ui/generated/theme-css.ts`） | 新卡片与 `ui/` 组件 |
+| 共享小部件的几何 | 本文件 + `src/client/design-system.ts` | 尚未迁移的内置卡 |
+| 旧 `--dsh-*` 颜色角色 | **已删除** | 无 |
 
-组件样式里出现 `#rrggbb` 或 `--dsw-alias-state-*` 都算违规（图片占位 SVG 除外）。
-需要新颜色时，先问「它是强调、注意、错误，还是数据梯度」，然后在 `design-system.ts`
-加一个角色，而不是在组件里就地取色。
+- 组件样式里不准出现 `#rrggbb`、`rgb(`、`oklch(`；`scripts/check-assets.mjs` 在构建时拦住。
+- 深浅主题由宿主在 `body[data-ds-dark-theme]` 上切换，token 自己翻，组件不判断。
+- 需要新颜色：先在 `theme.css` 里找一个语义 token；找不到说明**语义没想清楚**，不是缺色。
 
-## 2. 颜色按语义固定，不按组件分配
+## 2. 数据图形只用一种色相
 
-颜色可以不止蓝灰；允许出现的彩色只有下面四种，含义固定。**同一个含义在任何组件里必须
-用同一个颜色，不同含义不得共用一个颜色**；不允许某个组件「因为好看」挑一个色相。
+图表、热力格、轨道条都从 `--color-chart-4`（数据色）派生浓淡；`HeatCell` 的
+`level 0…4` 就是这条规则的实现。不同**含义**（成功 / 注意 / 错误）分别走
+`--color-status-lime-text` / `--color-status-yellow-text` / `--color-text-error-primary`，
+只在真实状态里出现，不做装饰。
 
-| 角色 | Token | 含义 | 在哪里出现 |
-|---|---|---|---|
-| 强调 / 信息 | `--dsh-accent` | 主路径、数据、选中 | 今天标记、全部图表、图标底板、选中态 |
-| 成功 / 完成 | `--dsh-positive` | 这件事做成了 | 习惯打点与连续天数、番茄钟的休息阶段、会话「在跑」点 |
-| 注意 | `--dsh-warning` | 需要你看一眼 | 计时到点、在等你、优先级「重要」、扫描未完成提示 |
-| 错误 / 破坏性 | `--dsh-danger` | 出错或不可逆 | 删除、保存失败、优先级「紧急」 |
+## 3. 排版与几何
 
-- 主操作按钮不占用强调色，一律用宿主的 `--dsw-alias-button-primary-fill`（墨色），
-  `Start`、`添加`、`保存` 与页首按钮因此是同一个颜色。
-- 会话的状态点（在跑 / 在等你 / 未读 / 空闲）用宿主的 `StateDot`；会话状态筛选胶囊里也用
-  同一套：在跑=绿、在等你=琥珀、未读=蓝，且只是 6px 的小圆点，胶囊底色仍统一。
-- 数据图形（热力图、柱状、轨道条、token 环）只用同色相的四档 `--dsh-ramp-1…4`；
-  不按组件换色相，也不为分类另起一套彩色。
-- 浅底一律由该颜色派生的 `*-soft`（12% 透明）表示，不新造一个浅色。
-
-## 3. 词表
-
-| Token | 值 | 用途 |
-|---|---|---|
-| `--dsh-accent` | 宿主 business-primary | 唯一强调色 |
-| `--dsh-accent-soft` | 强调色 12% | 图标底板、选中底、浅色填充 |
-| `--dsh-accent-hover` | 强调色 86% 混墨色 | 实心按钮悬停（深色主题自动变亮） |
-| `--dsh-warning` | 宿主 warn-primary | 需要注意 |
-| `--dsh-warning-soft` | 注意色 12% | 注意态浅底 |
-| `--dsh-danger` | 宿主 error-primary | 错误、删除 |
-| `--dsh-danger-soft` | 错误色 12% | 错误态浅底 |
-| `--dsh-positive` | 宿主 success-primary | 成功 / 完成 |
-| `--dsh-positive-soft` | 成功色 12% | 完成态浅底 |
-| `--dsh-ramp-1` | 强调色 18% 混卡片底 | 数据最浅档 |
-| `--dsh-ramp-2` | 强调色 44% | 数据第二档 |
-| `--dsh-ramp-3` | 强调色 72% | 数据第三档 |
-| `--dsh-ramp-4` | 强调色 | 数据最深档 / 满格 |
-| `--dsh-track` | 宿主 bg-skeleton | 进度轨道、空槽、未填格 |
-| `--dsh-pill-bg` | 宿主 interactive-bg-active | 工作区胶囊唯一底色 |
-| `--dsh-pill-ink` | 宿主 label-secondary | 工作区胶囊唯一字色 |
-| `--dsh-hero-size` | 30px | 卡片主值字号 |
-| `--dsh-hero-line` | 34px | 卡片主值行高 |
-| `--dsh-status-color` | 由 `data-group` 注入 | 会话状态胶囊里小圆点的颜色（在跑绿 / 在等你琥珀 / 未读蓝） |
-| `--dsh-radius-pill` | 999px | 胶囊圆角（配合 `corner-shape: round`） |
+- 主值：`text-display-4-semibold`（32/40）+ `tabular-nums`；卡片标题 `text-body-medium`；
+  说明 `text-caption-1-medium` + `text-text-tertiary`。新卡片不要手写 px。
+- 圆角：卡片 `rounded-3xl`，内部表面 `rounded-lg`/`rounded-xl`，胶囊 `rounded-full`（999px）。
+- 间距：4 / 8 / 12 / 16 四档；卡片内边距 `p-4`。
 
 ## 4. 共用小部件（只在 design-system.ts 定义）
 
@@ -80,7 +54,9 @@
 | `.dsh-status-chip` | 会话状态的三个视图；选中态一律墨色，状态含义由文字承担 |
 | `.dsh-quiet-select` | 安静的文本下拉：无边框、无底色、11px、自带箭头。筛选只用它 |
 | `.dsh-hover-tip` | 悬停提示气泡，Portal 到 `body`，不被卡片裁剪 |
-| `.dsh-track` | 数据轨道：中性底 + 强调色填充 |
+| `.dsh-track` | 数据轨道：中性底（`--color-chart-track`）+ 数据色填充 |
+| `.dsh-status-dot` | 6px 状态点；颜色由 `data-group` 注入的 `--dsh-dot-color` 决定 |
+| `.dsh-status-count` | 状态胶囊里的计数，等宽数字、次级墨色 |
 
 组件样式不得重新定义这些类，只能加布局约束（例如 `.dsh-area-rows .dsh-ws-pill { max-width:72% }`）。
 

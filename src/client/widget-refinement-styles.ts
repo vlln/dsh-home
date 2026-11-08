@@ -41,7 +41,7 @@ export const widgetRefinementStyles = `
 .dsh-home-widget .dsh-area-rows .dsh-row-top { gap:6px; }
 .dsh-home-widget .dsh-area-duration { margin-inline-start:auto; flex:none; font:var(--dsw-font-xs-strong-13); font-variant-numeric:tabular-nums; }
 .dsh-home-widget .dsh-area-track { display:block; width:100%; height:4px; border-radius:var(--dsw-radius-xs); background:var(--dsw-alias-bg-skeleton); overflow:hidden; }
-.dsh-home-widget .dsh-area-track > span { display:block; height:100%; border-radius:inherit; background:var(--dsh-accent); opacity:.65; }
+.dsh-home-widget .dsh-area-track > span { display:block; height:100%; border-radius:inherit; background:var(--color-chart-4); opacity:.65; }
 .dsh-home-widget .dsh-area-rows .dsh-row-meta { font:var(--dsw-font-xxxs-11); }
 /* Stable proportions, rounded neutral tracks and a clear current-day accent.
    Taller cards gain useful chart height instead of only empty space. */
@@ -86,7 +86,7 @@ export const widgetRefinementStyles = `
 .dsh-home-widget .dsh-recent-item:active { background:var(--dsw-alias-interactive-bg-active); }
 .dsh-home-widget .dsh-recent-item:focus-visible {
   background:var(--dsw-alias-interactive-bg-hover);
-  outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsh-accent));
+  outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--color-chart-4));
   outline-offset:-2px;
 }
 
