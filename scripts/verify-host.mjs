@@ -204,6 +204,17 @@ async function stableShot(page, filename) {
   await page.screenshot({ path: path.join(artifacts, filename), fullPage: true, animations: 'disabled' })
 }
 const editorOf = page => page.locator('[contenteditable="true"][role="textbox"]').first()
+/**
+ * Edit mode is disabled until the workbench reports writable and idle; the first
+ * ledger scan can hold it for a while, so wait for it instead of racing it.
+ */
+async function openEdit(page) {
+  const edit = page.getByRole('button', { name: 'Edit layout', exact: true })
+  await edit.waitFor({ state: 'visible' })
+  await eventually(() => edit.isEnabled(), 'Edit layout enabled')
+  await edit.click()
+}
+
 /** The toggle is only labelled "Open sidebar" while collapsed. */
 async function ensureSidebarOpen(page) {
   const open = page.getByRole('button', { name: 'Open sidebar' })
@@ -242,7 +253,7 @@ async function layoutCases(page) {
   await rpc(page, 'settings/update', { ns: 'locale', patch: { preference: 'en' } })
   await page.reload(); await openHome(page)
   await ensureSidebarOpen(page)
-  await page.getByRole('button', { name: 'Edit layout', exact: true }).click()
+  await openEdit(page)
   const recent = page.locator('[data-widget-id="recent"]')
   await recent.getByRole('button', { name: 'Size: L', exact: true }).click()
   await eventually(async () => (await homeApi(page, 'layout.get')).layout?.size?.recent === 'l', 'size durable write')
@@ -251,7 +262,7 @@ async function layoutCases(page) {
   await page.reload(); await openHomeWithoutRecent(page)
   assert.equal(await page.locator('[data-widget-id="recent"]').count(), 0)
   await ensureSidebarOpen(page)
-  await page.getByRole('button', { name: 'Edit layout', exact: true }).click()
+  await openEdit(page)
   await page.getByRole('button', { name: /^Widgets/ }).click()
   await page.locator('.dsh-tray-item').filter({ hasText: 'Recent sessions' }).click()
   await eventually(async () => !(await homeApi(page, 'layout.get')).layout.hidden.includes('recent'), 'restored durable write')
