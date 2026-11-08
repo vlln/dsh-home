@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
-import { CardEmpty } from './ui/index.ts'
+import { CardEmpty, cx, RowButton } from './ui/index.ts'
 import { todayKey, useHomeData } from './home-data.ts'
 import { habitDue, habitMarked, habitStreak } from './planner-model.ts'
 import { plannerPreview } from './planner-preview.ts'
@@ -74,21 +74,27 @@ function HabitBody({ habits, today, t, readOnly, showAll, onMark, onDelete, onCr
           const marked = habitMarked(habit, today)
           const streak = habitStreak(habit, today)
           const isDue = habitDue(habit, today)
-          return <li key={habit.id} className="dsh-habit-row flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-background-secondary-default" data-marked={marked ? 'true' : 'false'}
-            data-due={isDue ? 'true' : 'false'} data-hue={habitHue(habit.id)}>
-            <button type="button" className="dsh-habit-mark" role="checkbox" aria-checked={marked}
-              aria-label={habit.title} disabled={readOnly} onClick={() => onMark?.(habit, !marked)}>
-              <span className="dsh-todo-tick" aria-hidden="true" />
-            </button>
-            <span className="dsh-habit-text">
-              <span className="dsh-habit-title">{habit.title}</span>
-              <span className="dsh-habit-meta">{weekdayLabel(habit, t)}</span>
-            </span>
-            <span className="dsh-habit-streak" data-zero={streak === 0 ? 'true' : 'false'}>
-              {streak === 0 ? t('habit.noStreak') : t('habit.streak', { count: streak })}
-            </span>
-            {!readOnly && <button type="button" className="dsh-habit-delete" aria-label={t('habit.delete')}
-              onClick={() => onDelete?.(habit)}>×</button>}
+          // One row, one tap: the whole line toggles, so the target is the row and not a
+          // 16px checkbox. Streak and delete ride on the right like every other row.
+          return <li key={habit.id} data-marked={marked ? 'true' : 'false'} data-due={isDue ? 'true' : 'false'}>
+            <RowButton role="checkbox" aria-checked={marked} disabled={readOnly}
+              aria-label={habit.title} onClick={() => onMark?.(habit, !marked)}
+              data-hue={habitHue(habit.id)}
+              trailing={<>
+                <span className={cx('tabular-nums', marked && 'text-status-lime-text')}>
+                  {streak === 0 ? t('habit.noStreak') : t('habit.streak', { count: streak })}
+                </span>
+                {!readOnly && <span role="button" tabIndex={-1} aria-label={t('habit.delete')} className="text-text-tertiary hover:text-text-primary"
+                  onClick={event => { event.stopPropagation(); onDelete?.(habit) }}>×</span>}
+              </>}>
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="dsh-habit-box flex size-4 flex-none items-center justify-center rounded-[4px] border border-border-button-default text-text-primary" aria-hidden="true">
+                  <span className="dsh-todo-tick" />
+                </span>
+                <span className="truncate">{habit.title}</span>
+                <span className="shrink-0 text-caption-1-medium text-text-tertiary">{weekdayLabel(habit, t)}</span>
+              </span>
+            </RowButton>
           </li>
         })}
       </ul>

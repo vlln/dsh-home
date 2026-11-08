@@ -107,7 +107,9 @@ export const plannerStyles = `
 .dsh-habit-mark { flex:none; width:24px; height:24px; clip-path:circle(50%); padding:0; display:inline-flex; align-items:center; justify-content:center; border:2px solid var(--color-border-button-hover); border-radius:50%; background:var(--dsh-card); color:var(--color-text-white); cursor:pointer; transition:background .12s ease, border-color .12s ease; }
 .dsh-habit-mark:hover { border-color:color-mix(in srgb, var(--color-status-lime-text) 55%, transparent); }
 .dsh-habit-mark[aria-checked="true"] { border-color:var(--color-status-lime-text); background:var(--color-status-lime-text); }
-.dsh-habit-mark .dsh-todo-tick { opacity:0; }
+.dsh-habit-box .dsh-todo-tick { opacity:0; }
+[aria-checked="true"] .dsh-habit-box { background:var(--color-chart-4); border-color:var(--color-chart-4); color:var(--color-text-white); }
+[aria-checked="true"] .dsh-habit-box .dsh-todo-tick { opacity:1; }
 .dsh-habit-mark[aria-checked="true"] .dsh-todo-tick { opacity:1; }
 .dsh-habit-text { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
 .dsh-habit-title { color:var(--color-text-primary); font-size:13px; line-height:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
