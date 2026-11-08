@@ -56,6 +56,30 @@ export function CardFooter({ children, className }: { children: ReactNode; class
 }
 
 /**
+ * 一排小读数格（2–4 个）。
+ *
+ * BoardUI 的卡里，主图之外总有一排这样的小格子——一个数字一个标签，格子比卡面暗
+ * 一级、没有边框。它的作用是让一张卡在任何数据量下都有结构：没有这一排时，数据一
+ * 稀疏卡片就只剩一大块底色。
+ */
+export function StatGrid({ stats, className }: {
+  stats: readonly { key: string; label: ReactNode; value: ReactNode; tone?: 'default' | 'positive' | 'warning' | 'accent' }[]
+  className?: string
+}): ReactNode {
+  return <div className={cx('grid gap-2', className)} style={{ gridTemplateColumns: `repeat(${Math.max(1, stats.length)}, minmax(0, 1fr))` }}>
+    {stats.map(stat => <div key={stat.key} className="flex min-w-0 flex-col gap-0.5 rounded-xl bg-[var(--dsh-sunken)] px-2.5 py-2">
+      <span className="truncate text-caption-1-medium text-text-tertiary">{stat.label}</span>
+      <span className={cx('truncate text-title-2-medium tabular-nums', {
+        default: 'text-text-primary',
+        positive: 'text-status-lime-text',
+        warning: 'text-status-yellow-text',
+        accent: 'text-chart-4',
+      }[stat.tone ?? 'default'])}>{stat.value}</span>
+    </div>)}
+  </div>
+}
+
+/**
  * 空态：一句"为什么是空的"，必要时给一个动作。
  *
  * 空态要安静，也要**贴左上**。居中一块大字加一个按钮是最容易写、也最难看的一种：

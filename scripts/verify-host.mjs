@@ -270,6 +270,57 @@ async function openHomeWithoutRecent(page) {
   }, 'Home click after asynchronous first-use dialogs')
   await page.locator('.dsh-home').waitFor()
 }
+/**
+ * A board that reads as designed has no unsupported gaps: every card either sits on
+ * the first row or rests on another card, and the first row touches the grid top.
+ * Free-form placement used to leave two empty rows at the top, which is what made the
+ * first screen look like it had lost a tile.
+ */
+async function packedBoardCase(page) {
+  await page.reload(); await openHome(page)
+  await page.locator('.dsh-home-widget').first().waitFor()
+  const grid = await page.locator('.dsh-spatial-container').evaluate(el => {
+    const r = el.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left) }
+  })
+  const boxes = await page.locator('.dsh-home-widget').evaluateAll(els => els.map(el => {
+    const r = el.getBoundingClientRect()
+    return { id: el.dataset.widgetId, x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
+  }))
+  assert.ok(boxes.length > 0, 'the board renders at least one card')
+  const top = Math.min(...boxes.map(box => box.y))
+  assert.ok(top - grid.top <= 40, `no dead band above the first card (${top - grid.top}px)`)
+  const GAP = 12
+  for (const box of boxes) {
+    if (box.y === top) continue
+    const supported = boxes.some(other => other !== box
+      && Math.abs(other.y + other.h + GAP - box.y) <= 2
+      && other.x < box.x + box.w && box.x < other.x + other.w)
+    assert.ok(supported, `card ${box.id} floats above nothing at y=${box.y}`)
+  }
+  // Compaction on release: drag the tallest card down and let it go; the board must
+  // not gain an unsupported gap.
+  const moved = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('.dsh-home-widget')]
+    const first = cards[0]
+    const r = first.getBoundingClientRect()
+    return { id: first.dataset.widgetId, x: Math.round(r.x + r.width / 2), y: Math.round(r.y + 12) }
+  })
+  await openEdit(page)
+  const grip = page.locator(`[data-widget-id="${moved.id}"] .dsh-widget-grip`).first()
+  await grip.hover()
+  await page.mouse.down()
+  await page.mouse.move(moved.x, moved.y + 260, { steps: 14 })
+  await page.mouse.up()
+  await page.waitForTimeout(400)
+  await page.getByRole('button', { name: /^(Done|完成)$/ }).click()
+  await page.waitForTimeout(600)
+  const after = await page.locator('.dsh-home-widget').evaluateAll(els => els.map(el => {
+    const r = el.getBoundingClientRect(); return { y: Math.round(r.y), h: Math.round(r.h ?? r.height) }
+  }))
+  const afterTop = Math.min(...after.map(box => box.y))
+  assert.ok(afterTop - grid.top <= 40, `release compacts the board back to the top (${afterTop - grid.top}px)`)
+  check('board is packed: first row at grid top, no unsupported gaps after a drag', { boxes: boxes.length })
+}
 async function recentCases(page) {
   // No synthetic ledger. The card is fixed at five rows and has no search box or
   // directory filter (docs/design-system.md 9), and a faked feed drifted from the
@@ -382,6 +433,7 @@ async function execute() {
     if (!argv.includes('--only-tail')) {
       await visualCases(page)
       await layoutCases(page)
+      await packedBoardCase(page)
       await recentCases(page)
     } else {
       report.partial = 'tail diagnostic only; visual/layout/recent not rerun'

@@ -20,7 +20,7 @@ import {
 import { SessionRow } from './session-row.tsx'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
-import { CardBody, CardEmpty, SegmentedControl, SegmentedControlItem } from './ui/index.ts'
+import { CardBody, CardEmpty, SegmentedControl, SegmentedControlItem, StatGrid } from './ui/index.ts'
 
 export type SessionStatusConfig = { status: SessionStatusGroup | null }
 const GROUP_TYPE = '@vlln/dsh-home:running'
@@ -82,12 +82,17 @@ export function SessionStatusContent(props: WidgetContentProps<SessionStatusConf
         <span className="flex items-center gap-1.5">
           <i className={['size-1.5 flex-none rounded-full', DOT_TONE[value]].join(' ')} aria-hidden="true" />
           <span>{t(`sessionStatus.group.${value}`)}</span>
-          <span className="tabular-nums text-text-tertiary">{counts[value]}</span>
         </span>
       </SegmentedControlItem>)}
     </SegmentedControl>
+    {/* Counts live in their own tiles: a filter's job is to choose a view, not to
+        carry the numbers. The tiles also give an empty card structure. */}
+    <StatGrid className="mt-2" stats={SESSION_STATUS_GROUPS.map(value => ({
+      key: value, label: t(`sessionStatus.group.${value}`), value: counts[value],
+      tone: value === 'running' ? 'positive' : value === 'waiting' ? 'warning' : 'accent',
+    }))} />
     {shown.length === 0
-      ? <CardEmpty title={t(`sessionStatus.empty.${group}`)} className="flex-1" />
+      ? <CardEmpty title={t(`sessionStatus.empty.${group}`)} className="flex-1 pt-2" />
       : <div className="dsh-rows dsh-status-rows mt-1 flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
         {shown.map(row => <SessionRow
           key={row.session.id}

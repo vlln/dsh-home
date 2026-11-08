@@ -110,7 +110,7 @@ export function HeatCell({ level, size, label, selected, unknown, onClick, class
 }): ReactNode {
   const tone = unknown === true ? 'bg-transparent ring-1 ring-inset ring-border-button-default' : HEAT_TONE[level]
   const classes = cx(
-    'block flex-none rounded-[3px] transition-colors duration-150',
+    'block flex-none rounded-[4px] transition-colors duration-150',
     tone,
     selected === true && 'ring-2 ring-text-primary',
     onClick !== undefined && 'cursor-pointer hover:ring-1 hover:ring-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring',
