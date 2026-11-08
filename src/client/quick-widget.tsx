@@ -60,22 +60,22 @@ export function QuickContent(props: WidgetContentProps<QuickConfig>) {
         })
     }
   }
-  return <div className="dsh-quick-widget" data-quick-instance={instance.instanceId} aria-busy={busy}>
-    <Button variant="primary" disabled={disabled} onClick={() => { actions.startSession() }} className="dsh-quick-widget-action">
+  return <div className="dsh-quick-widget flex h-full min-h-0 flex-col gap-1.5" data-quick-instance={instance.instanceId} aria-busy={busy}>
+    <Button variant="primary" disabled={disabled} onClick={() => { actions.startSession() }} className="dsh-quick-widget-action w-full justify-start rounded-xl">
       <span>{t('widget.quick.new')}</span><span className="dsh-key">{shortcutHint()}</span>
     </Button>
-    {last !== undefined && <Button variant="ghost" disabled={disabled} onClick={() => { actions.openSession(last.id) }} className="dsh-quick-widget-action">
+    {last !== undefined && <Button variant="ghost" disabled={disabled} onClick={() => { actions.openSession(last.id) }} className="dsh-quick-widget-action w-full justify-start rounded-xl">
       <span>{t('widget.quick.resume')}</span><span className="dsh-key">{formatAgo(last.lastAt, state.now, t)}</span>
     </Button>}
-    {configError === null && config.links.length > 0 && <div className="dsh-quick-widget-links">
+    {configError === null && config.links.length > 0 && <div className="dsh-quick-widget-links flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
       {config.links.map((link, index) => link.kind === 'url'
-        ? <a key={index} className="dsh-quick-widget-link" href={disabled ? undefined : link.target} target="_blank" rel="noopener noreferrer"
+        ? <a key={index} className="dsh-quick-widget-link flex items-center gap-2 rounded-xl px-2 py-1.5 text-body-medium text-text-secondary transition-colors hover:bg-background-secondary-default hover:text-text-primary" href={disabled ? undefined : link.target} target="_blank" rel="noopener noreferrer"
           aria-disabled={disabled || undefined} tabIndex={disabled ? -1 : undefined} title={link.target}>
           <span>{link.label}</span><span aria-hidden="true">↗</span>
         </a>
         : <Button key={index} variant="ghost" disabled={disabled || (link.kind === 'workdir' && actions.startTask === undefined)}
-          title={link.target} className="dsh-quick-widget-action" onClick={() => { open(link) }}>
-          <span>{link.label}</span><span className="dsh-quick-widget-kind">{t(`quick.kind.${link.kind}`)}</span>
+          title={link.target} className="dsh-quick-widget-action w-full justify-start rounded-xl" onClick={() => { open(link) }}>
+          <span>{link.label}</span><span className="dsh-quick-widget-kind ml-auto text-caption-1-medium text-text-tertiary">{t(`quick.kind.${link.kind}`)}</span>
         </Button>)}
     </div>}
     {configError !== null && <p className="dsh-quick-widget-error" role="alert">{t(`quick.error.${configError}`)}</p>}
