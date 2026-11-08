@@ -135,7 +135,8 @@ export function Donut({ segments, size = 108, thickness = 12, activeKey, center,
   // Hover feedback belongs to the primitive: the caller may pin a segment
   // (`activeKey`) but should not have to re-implement angle math to get it.
   const [hovered, setHovered] = useState<string | null>(null)
-  const effective = activeKey !== undefined ? activeKey : hovered
+  // `null` and `undefined` both mean "not controlled": the primitive owns the hover.
+  const effective = activeKey === undefined || activeKey === null ? hovered : activeKey
   const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
   const radius = (size - thickness) / 2
   const circumference = 2 * Math.PI * radius

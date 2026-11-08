@@ -98,7 +98,6 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
         <span className="dsh-usage-unit text-caption-1-medium text-text-tertiary">{t('usage.today')} · {t('usage.unit')}</span>
       </div>
       <Donut size={96} thickness={12} label={t('usage.split')}
-        activeKey={hover}
         segments={[
           { key: 'input', value: today.input, tone: 'chart-4' },
           { key: 'cache', value: today.cacheRead, tone: 'chart-2' },
