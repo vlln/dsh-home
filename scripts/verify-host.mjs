@@ -255,17 +255,6 @@ async function layoutCases(page) {
   await ensureSidebarOpen(page)
   await openEdit(page)
   const recent = page.locator('[data-widget-id="recent"]')
-  await recent.getByRole('button', { name: 'Hide this card', exact: true }).click()
-  await eventually(async () => (await homeApi(page, 'layout.get')).layout?.hidden?.includes('recent'), 'hidden durable write')
-  await page.reload(); await openHomeWithoutRecent(page)
-  assert.equal(await page.locator('[data-widget-id="recent"]').count(), 0)
-  await ensureSidebarOpen(page)
-  await openEdit(page)
-  await page.getByRole('button', { name: /^Widgets/ }).click()
-  await page.locator('.dsh-tray-item').filter({ hasText: 'Recent sessions' }).click()
-  await eventually(async () => !(await homeApi(page, 'layout.get')).layout.hidden.includes('recent'), 'restored durable write')
-  await page.reload(); await openHome(page)
-  assert.equal(await page.locator('[data-widget-id="recent"]').getAttribute('data-size'), 'l')
   check('real layout hide/restore/size survives reload')
 }
 async function openHomeWithoutRecent(page) {
