@@ -7,6 +7,7 @@
  * @module @vlln/dsh-home/client/ui/viz
  */
 
+import { useState } from 'react'
 import type { ReactElement, ReactNode } from 'react'
 import { cx } from './lib/cx.ts'
 
@@ -130,11 +131,31 @@ export function Donut({ segments, size = 108, thickness = 12, activeKey, center,
   center?: ReactNode
   label?: string
 }): ReactNode {
+  // Hover feedback belongs to the primitive: the caller may pin a segment
+  // (`activeKey`) but should not have to re-implement angle math to get it.
+  const [hovered, setHovered] = useState<string | null>(null)
+  const effective = activeKey !== undefined ? activeKey : hovered
   const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
   const radius = (size - thickness) / 2
   const circumference = 2 * Math.PI * radius
   let cursor = 0
-  return <div className="relative flex-none" style={{ width: size, height: size }} role="img" aria-label={label}>
+  // Hit-testing by angle rather than by the arc element: an SVG stroke is only
+  // hittable on the ring itself, and pointers mostly land inside the hole.
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>): void => {
+    if (total <= 0) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    const dx = event.clientX - rect.left - size / 2
+    const dy = event.clientY - rect.top - size / 2
+    const angle = (Math.atan2(dy, dx) + Math.PI / 2 + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI)
+    let cursor = 0
+    for (const segment of segments) {
+      cursor += Math.max(0, segment.value) / total
+      if (angle <= cursor) { setHovered(segment.key); return }
+    }
+    setHovered(null)
+  }
+  return <div className={cx('relative flex-none')} style={{ width: size, height: size }} role="img" aria-label={label}
+    onPointerMove={onPointerMove} onPointerLeave={() => setHovered(null)}>
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
       <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={thickness} className="stroke-chart-track" />
       {total > 0 && segments.map(segment => {
@@ -145,7 +166,8 @@ export function Donut({ segments, size = 108, thickness = 12, activeKey, center,
         const tone = TONE[segment.tone]
         return <circle key={segment.key} cx={size / 2} cy={size / 2} r={radius} fill="none"
           strokeWidth={thickness} strokeDasharray={dash} strokeDashoffset={offset} strokeLinecap="butt"
-          className={cx('transition-opacity duration-200', tone, activeKey !== undefined && activeKey !== null && activeKey !== segment.key && 'opacity-25')}
+          className={cx('transition-opacity duration-200', tone, effective !== null && effective !== segment.key && 'opacity-25')}
+
           transform={`rotate(-90 ${size / 2} ${size / 2})`} />
       })}
     </svg>
