@@ -8,10 +8,10 @@
  * Twelve columns by twelve rows, tiled with no gap — the shape is the point.
  */
 export const DEFAULT_BOARD: Readonly<Record<string, { x: number; y: number; w: number; h: number }>> = Object.freeze({
-  recent: { x: 0, y: 0, w: 4, h: 6 },
+  recent: { x: 0, y: 0, w: 4, h: 8 },
   today: { x: 4, y: 0, w: 8, h: 4 },
   running: { x: 4, y: 4, w: 8, h: 4 },
-  rhythm: { x: 4, y: 8, w: 8, h: 4 },
+  rhythm: { x: 0, y: 8, w: 12, h: 4 },
 })
 import type { GridRect, Layout, WidgetSize } from './api.ts'
 import { isGridColumns } from './canvas-width.ts'

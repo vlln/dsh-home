@@ -1,6 +1,7 @@
 /** node --experimental-strip-types --test test/spatial-model.test.mjs */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import {
   buildSpatialLayout, canPlace, defaultSpatialHeight, findSpatialSpace,
   mergeSpatialPositions, moveSpatialItem, sizeFromRect, widthFromSize,
@@ -302,4 +303,12 @@ test('first-fit handles bounded capacity exhaustion without emitting an overlapp
   const occupied = []
   for (let y = 0; y <= SPATIAL_MAX_Y; y += SPATIAL_MAX_H) occupied.push(item(String(y), 0, y, 12, SPATIAL_MAX_H))
   assert.equal(findSpatialSpace(occupied, rect(0, 0, 12), 12), null)
+})
+
+test('a gesture never re-packs the board: packing is an explicit action', async () => {
+  // "Pack on release" made the board un-arrangeable — every drag snapped the card back
+  // to the top row, so a gap could not be left and a card could not be put beside a tall
+  // one. Tidy layout is the only compaction path; the drop path must stay free.
+  const grid = await readFile(new URL('../src/client/spatial-grid.tsx', import.meta.url), 'utf8')
+  assert.doesNotMatch(grid, /compactSpatialLayout\(/)
 })
