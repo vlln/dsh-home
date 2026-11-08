@@ -328,25 +328,6 @@ export const CSS = `
 .dsh-tray-state { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
 
 .dsh-w-facts { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--dsw-alias-label-tertiary); }
-.dsh-empty-action {
-  align-self: center;
-  height: 24px;
-  padding: 0 11px;
-  border: none;
-  border-radius: 999px;
-  corner-shape: round;
-  background: var(--dsw-alias-button-primary-fill);
-  color: var(--dsw-alias-label-primary-foreground);
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-}
-.dsh-empty-action:hover { background: var(--dsw-alias-button-primary-hover); }
-.dsh-empty-action:focus-visible {
-  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4));
-  outline-offset: 1px;
-}
-
 .dsh-icon-button {
   display: inline-flex;
   align-items: center;
@@ -653,11 +634,6 @@ export const CSS = `
 body.dsh-home-dragging { user-select: none; cursor: grabbing; }
 body.dsh-home-dragging * { cursor: grabbing !important; }
 /* 标题行本身就是拖拽面：用户会先试着拖标题，而不是先找把手。 */
-.dsh-drag-surface { cursor: grab; }
-.dsh-drag-surface:active { cursor: grabbing; }
-
-.dsh-duo { color: var(--dsw-alias-label-caption); }
-
 .dsh-expand {
   margin-top: 16px;
   width: 100%;
