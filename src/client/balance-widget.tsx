@@ -16,7 +16,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
 import { IconBalance } from './widget-glyphs.tsx'
-import { Button, CardBody, CardHero, CardMeta, CardFooter, CardSkeleton } from './ui/index.ts'
+import { Button, CardBody, CardHero, CardMeta, CardFooter, CardSkeleton, CountUp } from './ui/index.ts'
 
 export type BalanceConfig = { auto: boolean }
 
@@ -69,7 +69,7 @@ function BalanceBody({ state, t, loading, onRefresh, readOnly }: {
   }
   const currency = state.currency === 'CNY' ? '¥' : state.currency === 'USD' ? '$' : `${state.currency ?? ''} `
   return <CardBody>
-    <CardHero value={`${currency}${(state.total ?? 0).toFixed(2)}`} />
+    <CardHero value={<CountUp value={state.total ?? 0} format={total => `${currency}${total.toFixed(2)}`} />} />
     <CardMeta>
       {state.toppedUp !== null && state.toppedUp !== undefined && <span>{t('balance.toppedUp')} {state.toppedUp.toFixed(2)}</span>}
       {state.granted !== null && state.granted !== undefined && state.granted > 0 && <span>{t('balance.granted')} {state.granted.toFixed(2)}</span>}

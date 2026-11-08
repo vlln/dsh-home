@@ -47,13 +47,16 @@
     "dsh": ">=0.2.0"
   },
   "scripts": {
-    "build": "npm run build:css && tsdown --config ./tsdown.config.ts && tsc -p tsconfig.widgets.json",
+    "build": "npm run build:css && npm run check:assets && tsdown --config ./tsdown.config.ts && tsc -p tsconfig.widgets.json",
     "test": "node --experimental-strip-types --test",
     "typecheck": "tsc --noEmit",
     "test:host": "node scripts/verify-host.mjs --run",
     "prepublishOnly": "npm run build && npm test",
     "build:css": "node scripts/build-css.mjs",
-    "vendor": "node scripts/vendor-boardui.mjs"
+    "vendor": "node scripts/vendor-boardui.mjs",
+    "new:widget": "node scripts/new-widget.mjs",
+    "check:assets": "node scripts/check-assets.mjs",
+    "check": "npm run check:assets && npm run typecheck && npm test"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-api-workspace-controller": "0.2.1-rc.5",

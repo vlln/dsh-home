@@ -211,7 +211,7 @@ export const plannerStyles = `
 /* ---------- 图片 / 一句话 ---------- */
 .dsh-picture { position:relative; flex:1 1 auto; min-height:0; margin:0; border-radius:12px; overflow:hidden; background:var(--dsw-alias-bg-skeleton); }
 .dsh-picture img { width:100%; height:100%; display:block; }
-.dsh-picture-caption { position:absolute; inset-inline:0; bottom:0; padding:6px 10px; color:var(--dsw-alias-label-primary-foreground); font-size:11px; line-height:16px; font-weight:600; background:rgb(0 0 0 / 55%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dsh-picture-caption { position:absolute; inset-inline:0; bottom:0; padding:6px 10px; color:var(--dsw-alias-label-primary-foreground); font-size:11px; line-height:16px; font-weight:600; background:color-mix(in srgb, var(--color-neutral-950) 55%, transparent); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dsh-picture-empty { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; border:.5px dashed var(--dsw-alias-border-l2); border-radius:12px; color:var(--dsw-alias-label-tertiary); font-size:11px; text-align:center; padding:10px; }
 .dsh-picture-empty-glyph { color:var(--dsw-alias-label-caption); font-size:22px; line-height:1; }
 .dsh-picture-path { max-width:100%; color:var(--dsw-alias-label-caption); font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:start; }

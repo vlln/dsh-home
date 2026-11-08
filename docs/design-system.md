@@ -1,5 +1,15 @@
 # 首页视觉标准
 
+> **2026-11-07：配色与字阶层已经下沉到 `src/client/theme.css`（BoardUI 语义 token +
+> 复合字阶），本文件的第 1–3 节（`--dsh-*` 角色色、单色数据梯度、主值字号变量）只在
+> 尚未迁移的卡片上仍然有效。**
+>
+> 新卡片的规矩在 [`../decisions/0006-boardui-visual-language.md`](../decisions/0006-boardui-visual-language.md)：
+> 颜色/字号/圆角/间距/动效一律来自 `src/client/ui/`，卡面只填数据与信息设计，
+> `scripts/check-assets.mjs` 会在构建时拦住绕过收口或写死色值的新代码。
+> 第 4–11 节（共用小部件、标题图标、可自解释的图表、卡片里不出现滚动条、新增组件清单）
+> **继续有效**，它们讲的是信息设计，不是皮肤。
+
 > 唯一实现：[`src/client/design-system.ts`](../src/client/design-system.ts)。本文件是规则、词表与
 > 检查清单；两者由 [`test/design-system.test.mjs`](../test/design-system.test.mjs) 绑定，
 > 改动不同步会直接测试失败。

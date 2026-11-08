@@ -49,3 +49,6 @@ export { CardBody, CardHero, CardMeta, CardFooter, CardEmpty, CardSkeleton } fro
 /** 图形原语（柱、轨道）；读数由调用方用 Tooltip 负责。 */
 export { SparkBars, Meter } from './viz.tsx'
 export type { VizItem } from './viz.tsx'
+
+/** 动效原语：入场错峰与数字滚动（只动 opacity/filter，把 transform 留给网格）。 */
+export { Reveal, CountUp, useCountUp, motionEnabled } from './motion.tsx'

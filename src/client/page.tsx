@@ -274,7 +274,7 @@ export function HomePage(props: HomePageProps): ReactNode {
             libraryGhost={libraryDrag && <><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
               <CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetContentPreview definition={libraryDrag.definition} t={t} language={locale()}
                 size={libraryDrag.definition.defaults.size} {...cardContentSize(libraryDrag.item.w, libraryDrag.item.h)}/></CardBoundary></>}>
-          {geometry.map(rect => {
+          {geometry.map((rect, cardIndex) => {
             const instance = instancesById.get(rect.i)
             if (instance === undefined) return null
             const definition = byType.get(instance.typeId)
@@ -286,7 +286,8 @@ export function HomePage(props: HomePageProps): ReactNode {
               } } : {}),
             }
             return <section key={instance.instanceId}
-              className="dsh-w dsh-home-widget flex flex-col gap-2.5 rounded-3xl border border-border-button-default bg-background-primary-default p-4 shadow-card transition-shadow duration-200"
+              className="dsh-w dsh-home-widget dsh-enter flex flex-col gap-2.5 rounded-3xl border border-border-button-default bg-background-primary-default p-4 shadow-card transition-shadow duration-200"
+              style={{ '--dsh-enter-index': cardIndex } as React.CSSProperties}
               data-widget-id={instance.instanceId} data-widget-type={instance.typeId} data-size={widgetProps.size}
               data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
               <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!writable || busy || interacting} gripDisabled={!writable || busy}

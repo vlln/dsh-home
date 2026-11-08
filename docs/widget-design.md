@@ -1,6 +1,11 @@
 # 小组件视觉语法与设计参考
 
-> **现行标准见 [`design-system.md`](design-system.md)。** 本文记录 0.21–0.43 的设计研究、参考与取舍，
+> **2026-11-07 之后的视觉层见 [`../decisions/0006-boardui-visual-language.md`](../decisions/0006-boardui-visual-language.md)。**
+> 本文第 55、66 行「不为外观引入另一套 UI 框架」「不引入固定色板」两条已被 0006 推翻：
+> 视觉与控件改为 BoardUI 的源码（`src/client/ui/`），由 `src/client/theme.css` 一套 token 驱动。
+> 下面 0.21–0.53 的记录保留为历史取舍，不再作为新卡片的实现依据。
+>
+> **当时的现行标准见 [`design-system.md`](design-system.md)。** 本文记录 0.21–0.43 的设计研究、参考与取舍，
 > 其中的配色与逐组件强调色已被 0.45 的统一色板取代；颜色、主值字号、胶囊、卡片无滚动条等规则
 > 以 `design-system.md` 与 `src/client/design-system.ts` 为准。
 
