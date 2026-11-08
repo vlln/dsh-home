@@ -64,6 +64,28 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * Palette: data ink
+ *
+ * Upstream ships teal / lime / pink / sky / purple. This project reads one
+ * series per card far more often than many, so the slots are re-pointed at the
+ * vocabulary the board actually speaks: azure is the single-series hue (bars,
+ * heat cells, rings, meters), and pink / lime / violet / cyan are what a second
+ * and third series get. Slot names stay stable so components never learn hues.
+ * ------------------------------------------------------------------------- */
+@theme {
+  --color-chart-1: var(--color-pink-500);
+  --color-chart-1-active: var(--color-pink-600);
+  --color-chart-2: var(--color-lime-500);
+  --color-chart-2-active: var(--color-lime-600);
+  --color-chart-3: var(--color-violet-500);
+  --color-chart-3-active: var(--color-violet-600);
+  --color-chart-4: var(--color-blue-500);
+  --color-chart-4-active: var(--color-blue-600);
+  --color-chart-5: var(--color-cyan-500);
+  --color-chart-5-active: var(--color-cyan-600);
+}
+
+/* ---------------------------------------------------------------------------
  * Data ink
  *
  * The vendored ramp (teal / lime / pink / sky / purple) is the honest way to
