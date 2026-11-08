@@ -44,11 +44,11 @@ export {
 export { cx } from './lib/cx.ts'
 
 /** 卡片内部的四段结构（主值 / 说明 / 空态 / 骨架）。 */
-export { CardBody, CardHero, CardMeta, CardFooter, CardEmpty, CardSkeleton } from './parts.tsx'
+export { CardBody, CardHero, CardMeta, CardFooter, CardEmpty, CardError, CardSkeleton } from './parts.tsx'
 
 /** 图形原语（柱、轨道）；读数由调用方用 Tooltip 负责。 */
-export { SparkBars, Meter } from './viz.tsx'
-export type { VizItem } from './viz.tsx'
+export { SparkBars, Meter, HeatCell } from './viz.tsx'
+export type { VizItem, HeatLevel } from './viz.tsx'
 
 /** 动效原语：入场错峰与数字滚动（只动 opacity/filter，把 transform 留给网格）。 */
 export { Reveal, CountUp, useCountUp, motionEnabled } from './motion.tsx'

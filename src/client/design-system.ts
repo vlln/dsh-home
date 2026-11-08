@@ -1,4 +1,13 @@
 /**
+ * 首页的旧视觉词表（**正在退场**）。
+ *
+ * 2026-11-07 起，配色、字号阶梯、圆角与动效归 `src/client/theme.css`（BoardUI 语义
+ * token + 复合字阶），见 `decisions/0006-boardui-visual-language.md`。本文件仍然定义
+ * `--dsh-*` 角色色，是因为尚未迁移的卡片与 `dsh-legacy` 样式层还引用它们；新卡片不许
+ * 再用这里的 token，`scripts/check-assets.mjs` 会在构建时挡住绕过收口的新代码。
+ *
+ * 迁移完之后，这个文件应该只剩 `FONT` 这类 JS 侧需要的常量，`--dsh-*` 全部删除。
+ *
  * 首页唯一的视觉标准：语义色、字号、圆角与共用小部件。
  *
  * 规则（详见 `docs/design-system.md`）：

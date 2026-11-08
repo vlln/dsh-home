@@ -76,3 +76,41 @@ export function Meter({ ratio, label, tone = 'accent', className }: {
     <div className={cx('h-full rounded-full transition-[width] duration-500 ease-out', fill)} style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%` }} />
   </div>
 }
+
+/** 热力格的浓淡档：0 是空槽，4 是最深。颜色由数据色派生，不在这里选色相。 */
+export type HeatLevel = 0 | 1 | 2 | 3 | 4
+
+const HEAT_TONE: Record<HeatLevel, string> = {
+  0: 'bg-chart-track',
+  1: 'bg-chart-4/25',
+  2: 'bg-chart-4/50',
+  3: 'bg-chart-4/75',
+  4: 'bg-chart-4',
+}
+
+/**
+ * 一个热力格。给 `onClick` 就是可点的按钮（键盘可达、aria-pressed），不给就是装饰。
+ * 尺寸用 `size` 传像素——热图要按容器实测宽度算格子，不能交给 CSS。
+ */
+export function HeatCell({ level, size, label, selected, unknown, onClick, className }: {
+  level: HeatLevel
+  size: number
+  label?: string
+  selected?: boolean
+  unknown?: boolean
+  onClick?: () => void
+  className?: string
+}): ReactNode {
+  const tone = unknown === true ? 'bg-transparent ring-1 ring-inset ring-border-button-default' : HEAT_TONE[level]
+  const classes = cx(
+    'block flex-none rounded-[3px] transition-colors duration-150',
+    tone,
+    selected === true && 'ring-2 ring-text-primary',
+    onClick !== undefined && 'cursor-pointer hover:ring-1 hover:ring-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring',
+    className,
+  )
+  const style = { width: size, height: size }
+  return onClick === undefined
+    ? <span className={classes} style={style} aria-hidden="true" />
+    : <button type="button" className={classes} style={style} aria-label={label} aria-pressed={selected} onClick={onClick} />
+}

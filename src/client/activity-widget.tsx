@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { post } from './api.ts'
 import { useBuiltin } from './builtin-registration.tsx'
 import { activityLevel, activityPreviewSnapshot, activityWeeks, migrateActivityConfig, validateActivityConfig, type ActivityConfig, type ActivitySnapshot } from './activity-model.ts'
@@ -8,6 +7,7 @@ import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { Translate } from './format.ts'
 import { useVisibleRows } from './fit-rows.ts'
+import { Button, HeatCell, type HeatLevel } from './ui/index.ts'
 import { useHoverTip } from './hover-tip.tsx'
 import { IconActivity } from './widget-glyphs.tsx'
 
@@ -91,7 +91,7 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
     const node = calendar.current
     if (ready && node) node.scrollLeft = node.scrollWidth
   }, [ready, config.range, preview])
-  if (!result && error) return <div className="dsh-empty" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>
+  if (!result && error) return <div className="dsh-empty" role="alert">{t('activity.error')}<Button size="small" variant="secondary" onClick={retry}>{t('activity.retry')}</Button></div>
   if (!result) return <div className="dsh-empty" role="status">{t('activity.loading')}</div>
   if (!result.available) return <div className="dsh-empty">{t('activity.unavailable')}</div>
   const { weeks, count, first, cellSize, chartWidth, blocks, gap } = activityWeeks(result.days, result.today,
@@ -100,11 +100,12 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
   const active = days.filter(day => day.messages > 0).length
   const messages = days.reduce((n, day) => n + day.messages, 0)
   const dayLabel = (day: {key: string; messages: number; sessions: number}) => t(result.complete ? 'activity.day' : 'activity.partialDay', { date: day.key, messages: day.messages, sessions: day.sessions })
-  const cell = (day: (typeof weeks)[number][number], index: number) => day ? <button type="button" className="dsh-activity-cell" key={day.key}
-    data-date={day.key} data-level={activityLevel(day.messages)} data-selected={date === day.key} data-unknown={!result.complete && day.messages === 0}
-    aria-label={dayLabel(day)} aria-pressed={date === day.key}
-    {...tip.bind(dayLabel(day))}
-    onClick={() => { if (!preview) setDate(previous => previous === day.key ? undefined : day.key) }} />
+  const cell = (day: (typeof weeks)[number][number], index: number) => day ? <span key={day.key} className="dsh-activity-cell-slot" data-date={day.key}
+    {...tip.bind(dayLabel(day))}>
+    <HeatCell size={cellSize} level={activityLevel(day.messages) as HeatLevel} label={dayLabel(day)}
+      selected={date === day.key} unknown={!result.complete && day.messages === 0}
+      onClick={() => { if (!preview) setDate(previous => previous === day.key ? undefined : day.key) }} />
+  </span>
     : <span className="dsh-activity-cell dsh-activity-spacer" key={`pad${index}`} />
   const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
   const detail = date !== undefined ? <ActivityDayDetail date={date} t={t} state={state} actions={actions}
@@ -112,15 +113,18 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
     matched={result.matchedSessions} onBack={() => { setDate(undefined) }} /> : null
   return <div className="dsh-activity" data-activity-complete={result.complete} data-activity-range={config.range} data-activity-layout={blocks.length ? 'blocks' : 'weeks'}
     style={{ '--dsh-activity-cell-size': `${cellSize}px`, '--dsh-activity-chart-width': `${chartWidth}px`, '--dsh-activity-gap': `${gap}px` } as CSSProperties}>
-    <div className="dsh-activity-summary" aria-label={t('activity.summary', { days: count, active, messages })}>
-      <div className="dsh-activity-primary"><strong className="dsh-activity-number">{active}</strong><span>{t('activity.activeDays')}</span></div>
-      <div className="dsh-activity-secondary">
+    <div className="dsh-activity-summary flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1" aria-label={t('activity.summary', { days: count, active, messages })}>
+      <div className="dsh-activity-primary flex items-baseline gap-2">
+        <strong className="dsh-activity-number text-display-4-semibold leading-none tabular-nums tracking-tight text-text-primary">{active}</strong>
+        <span className="text-caption-1-medium text-text-tertiary">{t('activity.activeDays')}</span>
+      </div>
+      <div className="dsh-activity-secondary flex flex-wrap items-baseline gap-x-3 gap-y-1 text-caption-1-medium text-text-tertiary">
         <span>{t('activity.period', { days: count })}</span>
         <span>{t('activity.messages', { count: messages })}</span>
         {result.scanning && <span>{t('activity.indexing', result.progress)}</span>}
       </div>
     </div>
-    {error && <div className="dsh-muted" role="alert">{t('activity.error')}<Button size="sm" variant="outline" onClick={retry}>{t('activity.retry')}</Button></div>}
+    {error && <div className="dsh-muted" role="alert">{t('activity.error')}<Button size="small" variant="secondary" onClick={retry}>{t('activity.retry')}</Button></div>}
     <div ref={calendar} className="dsh-activity-scroll" tabIndex={detail === null ? 0 : -1} aria-label={t('activity.metric')}
       data-detail={detail === null ? undefined : 'true'}>
       {detail ?? (blocks.length ? <div className="dsh-activity-blocks">{blocks.map(block => <section className="dsh-activity-block" key={block.first} aria-label={t('activity.block', { first: block.first, last: block.last })}>
@@ -138,7 +142,7 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
         zone and the "empty cells are not inactivity" paragraph were noise for the reader. */}
     <div className="dsh-activity-caption">
       <span className="dsh-activity-range">{first} – {result.today}</span>
-      <div className="dsh-activity-legend"><span>{t('activity.less')}</span>{[0,1,2,3,4].map(level => <span key={level} className="dsh-activity-cell" data-level={level} />)}<span>{t('activity.more')}</span></div>
+      <div className="dsh-activity-legend"><span>{t('activity.less')}</span>{([0,1,2,3,4] as const).map(level => <HeatCell key={level} size={10} level={level} />)}<span>{t('activity.more')}</span></div>
       <div className="dsh-activity-filters">
         <select className="dsh-quiet-select dsh-activity-scale" aria-label={t('activity.range')} title={t('activity.range')}
           value={config.range} disabled={saveConfig === undefined}

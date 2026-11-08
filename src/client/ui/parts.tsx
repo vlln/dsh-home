@@ -91,3 +91,22 @@ export function CardSkeleton({ rows, height = 12, className }: { rows?: number; 
 function SkeletonBar({ width, height }: { width: string; height: number }): ReactNode {
   return <span className="block animate-pulse rounded-md bg-background-secondary-default" style={{ width, height }} aria-hidden="true" />
 }
+
+/**
+ * 错误态：一张卡坏了只有这张卡坏。
+ *
+ * 和空态同一套几何，只是语气不同：说清楚"哪里没读到"，给一个重试，不要把异常
+ * 直接摊在卡面上。
+ */
+export function CardError({ title, detail, action, className }: {
+  title: ReactNode
+  detail?: ReactNode
+  action?: ReactNode
+  className?: string
+}): ReactNode {
+  return <div className={cx('flex h-full min-h-24 flex-col items-center justify-center gap-1.5 text-center', className)} role="alert">
+    <span className="text-body-medium text-text-error-primary">{title}</span>
+    {detail !== undefined && <span className="max-w-[42ch] text-caption-1-medium text-text-tertiary">{detail}</span>}
+    {action !== undefined && <div className="pt-1">{action}</div>}
+  </div>
+}

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { IconTrashOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
-import { Button } from './ui/index.ts'
+import { Button, CardError } from './ui/index.ts'
 import { formatAgo, formatDay, type Translate } from './format.ts'
 import type { WidgetActions } from './widgets.tsx'
 import type { SessionStatusMap } from './session-model.ts'
@@ -233,7 +233,7 @@ export function HomePage(props: HomePageProps): ReactNode {
             </Button>
             {!editing && <>
               <Button variant="primary" size="small" onClick={() => { actions.startSession() }}>{t('action.newSession')}</Button>
-              <Button variant="ghost" size="small" onClick={() => { actions.leave() }}>{t('action.back')}</Button>
+              <Button variant="secondary" size="small" onClick={() => { actions.leave() }}>{t('action.back')}</Button>
             </>}
           </div>
         </header>
@@ -295,7 +295,7 @@ export function HomePage(props: HomePageProps): ReactNode {
                 onKeyDelete={() => requestDelete(instance.instanceId)} onNudge={key => nudge(instance.instanceId,key)} />
               <div className="dsh-w-body dsh-home-widget-content" inert={editing || undefined}>
                 {definition === undefined ? <div className="dsh-empty" role="status">{t('widget.unavailable', { typeId: instance.typeId })}</div>
-                  : <CardBoundary key={renderKey(instance, definition)} fallback={<div className="dsh-error" role="alert">{t('error.card')}</div>}>
+                  : <CardBoundary key={renderKey(instance, definition)} fallback={<CardError title={t('error.card')} />}>
                     <WidgetBody definition={definition} widgetProps={widgetProps} />
                   </CardBoundary>}
               </div>
