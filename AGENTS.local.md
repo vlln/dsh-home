@@ -211,3 +211,14 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
   都过期。删掉改尺寸与其落盘等待后，撞到 "Hide this card"。
   处理方式与 `taskCases` 不同：**这两段要重写而不是删**——布局交互是首页的核心功能，
   删掉等于把最该保护的东西保护掉了。tray 条目有稳定的 `data-widget-type`，比卡片上的按钮好定位。
+
+### B5 续 2（2026-11-07 深夜）
+
+- **`recentCases` 红，性质已判定：合成数据没到页面，不是断言过期。**
+  证据：把选择器换成卡片自身的 `[data-session-id]` 之后仍是一行都没有——若数据到了、只是计数变了，至少能看到行。
+  所以排查顺序固定：**先证明注入命中，再改断言**。我已经两次反过来做、两次白改并回退。
+  注入点在 `page.route('**/plugins/dsh-home/api', ...)`，只拦截 `op === 'snapshot'` 并 fulfill 一份
+  `{ok:true,value:{sessions:[...]}}`；下一步要么在回调里打点确认命中，要么直接读页面快照看 `sessions` 是否被替换。
+- **隐藏功能已整体消失**：卡片按钮、库内切换、`store.hide()` 调用者都没有；`tray.hide`/`tray.hint`
+  两条文案已删（960d6cc）。别再按文案找入口。
+- 验收进度：12 项通过。剩余卡点排序：`recentCases` 数据注入 → 拖动/整理选择器 → 负控。
