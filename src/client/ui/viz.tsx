@@ -41,15 +41,18 @@ export function SparkBars({ items, wrap, className, minHeight = 4 }: {
     {items.map(item => {
       const height = item.empty === true ? 0 : Math.max(minHeight, Math.round(item.ratio * 100))
       const bar = <span
-        className="relative flex h-full min-h-0 w-full max-w-9 items-end justify-center overflow-hidden rounded-md bg-chart-track"
+        className="relative flex h-full min-h-0 w-full max-w-9 items-end justify-center rounded-md bg-chart-track"
         data-empty={item.empty === true ? 'true' : undefined}
       >
         {item.empty === true
           ? <span className="h-px w-[58%] bg-chart-neutral" />
           : <span
+            // Solid, not 75%-over-the-track: an alpha fill let the track show through the
+            // bar and read as a second, lighter block inside it.
             className={cx(
-              'w-[58%] rounded-[4px] transition-[height,background-color] duration-300 ease-out',
-              item.emphasis === true ? 'bg-chart-4' : 'bg-chart-4/75 hover:bg-chart-4',
+              'w-[58%] rounded-[4px] transition-[height] duration-300 ease-out',
+              'bg-chart-4 hover:bg-chart-4-active',
+              item.emphasis === true ? 'opacity-100' : 'opacity-85 hover:opacity-100',
             )}
             style={{ height: `${height}%` }}
             data-emphasis={item.emphasis === true ? 'true' : undefined}

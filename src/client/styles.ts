@@ -654,6 +654,7 @@ const designSystemStyles = `
 .dsh-quiet-select:disabled { opacity: .7; cursor: default; }
 
 /* 悬停提示：跟随指针的小气泡，Portal 到 body，不被卡片裁剪。 */
+.dsh-tip { background: var(--dsh-tip-bg); color: var(--dsh-tip-fg); }
 .dsh-hover-tip {
   position: fixed;
   z-index: 1000;
