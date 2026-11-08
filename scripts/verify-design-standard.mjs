@@ -68,11 +68,19 @@ try {
         assert(size.sw <= size.w + 1, `${box.id} ${part} shows a horizontal scrollbar: ${JSON.stringify(size)}`)
       }
     }
-    const rowCount = await page.locator('[data-widget-id="std-recent"] .dsh-session-row').count()
-    assert(rowCount >= 3, `recent shows a useful number of rows: ${rowCount}`)
-    assert.equal(await page.locator('[data-widget-id="std-recent"] .dsh-recent-footer button').count(), 0, 'recent has no pager button')
-    const footer = await page.locator('[data-widget-id="std-recent"] .dsh-recent-footer').innerText()
+    // Recent sessions: no search box, no directory select, exactly the five newest and
+    // entries tall enough to read — five rows stay inside an undeclared 6-row card.
+    const recentCard = page.locator('[data-widget-id="std-recent"]')
+    assert.equal(await recentCard.locator('.dsh-recent-filters, input, select').count(), 0, 'recent has no search or directory controls')
+    const rowCount = await recentCard.locator('.dsh-recent-item').count()
+    assert.equal(rowCount, 5, `recent keeps the five newest sessions: ${rowCount}`)
+    assert.equal(await recentCard.locator('.dsh-recent-footer button').count(), 0, 'recent has no pager button')
+    const footer = await recentCard.locator('.dsh-recent-footer').innerText()
     assert.match(footer, /\d+\s*(\/|of)\s*\d+/u, `recent states the real total: ${footer}`)
+    const heights = await recentCard.locator('.dsh-recent-item').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height))
+    assert(heights.every(height => height >= 42), `recent entries are tall targets, not strips: ${heights.join(', ')}`)
+    const listBox = await recentCard.locator('.dsh-recent-list').evaluate(el => ({ h: el.clientHeight, sh: el.scrollHeight }))
+    assert(listBox.sh <= listBox.h + 1, `the five entries fit without overflow: ${JSON.stringify(listBox)}`)
     // Every card carries its glyph: a missing icon made headings look truncated.
     const cards = await page.locator('.dsh-home-widget').count()
     assert.equal(await page.locator('.dsh-home-widget .dsh-widget-symbol').count(), cards, 'every card has a heading icon')

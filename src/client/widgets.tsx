@@ -337,7 +337,7 @@ function RhythmBody({ t, data }: WidgetProps) {
 /** 内置小组件表：顺序即默认排布。 */
 export const BUILTIN_WIDGETS: readonly BuiltinWidget[] = [
   {
-    id: 'recent', order: 0, defaultSize: 'm', defaultHeight: 7, Glyph: IconSessions,
+    id: 'recent', order: 0, defaultSize: 's', defaultHeight: 8, Glyph: IconSessions,
     title: t => t('widget.recent.title'), body: RecentBody,
   },
   {

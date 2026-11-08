@@ -1,17 +1,18 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { HomeWidgetRegistry } from '../src/client/widget-registry.ts'
-import { normalizeWidgetSizing, legacyInstanceProjection, presetGeometry, projectedWidgetPresets } from '../src/client/widget-sizing.ts'
+import { declaredWidthFor, normalizeWidgetSizing, legacyInstanceProjection, presetGeometry, projectedWidgetPresets } from '../src/client/widget-sizing.ts'
 import { applyWidgetPreset, buildSpatialLayout, canPlace } from '../src/client/spatial-model.ts'
 import { HomeStore } from '../src/client/store.ts'
 import { emptyLayout, emptyPrefs } from '../src/client/api.ts'
 import { readFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 const definition = extra => ({ typeId:'test/presets:note', apiVersion:1, title:'Note', configVersion:1,
   defaultConfig:()=>({text:'keep'}), validateConfig:()=>true, Content:()=>null,
   sizing:{default:{w:4,h:6},supported:[{w:4,h:4},{w:4,h:6},{w:8,h:6},{w:8,h:8},{w:12,h:8}]}, ...extra })
 const rect = ({x,y,w,h}) => ({x,y,w,h})
 function registry(extra) { const r=new HomeWidgetRegistry(); r.register(definition(extra)); return r }
-const meta = (r,id) => { const d=r.get('test/presets:note'); return {id,sizing:d.sizing,defaultSize:d.defaults.size,defaultHeight:d.defaults.height,...d.defaults} }
+const meta = (r,id) => { const d=r.get('test/presets:note'); return {id,sizing:d.sizing,declaredSizing:d.declaredSizing,defaultSize:d.defaults.size,defaultHeight:d.defaults.height,...d.defaults} }
 test('all bounded integer shapes project without a host catalog, including legacy string syntax',()=>{
   for(let w=1;w<=12;w++)for(let h=3;h<=30;h++)for(const cols of [12,6,2]) {
     const shape={w,h},actual=presetGeometry(shape,cols)
@@ -65,14 +66,27 @@ test('resize membership accepts only exact declared pairs, never a bounds cross 
  assert.deepEqual(rect(applyWidgetPreset(middle,'a',sizing,{w:7,h:9},6)[0]),{x:0,y:0,w:6,h:9})
  assert.deepEqual(rect(geometry[0]),rect(a))
 })
-test('historical narrow/custom/large shapes survive load, movement bounds and missing-breakpoint projection',()=>{
+test('a declared widget narrows undeclared saved widths and keeps narrower legacy ones untouched',()=>{
  const r=registry(); const widths=[1,2,3,5,7,11]
+ // The declaration is 4/8/12: 5 and 7 land on 4, 11 on 8, and anything narrower than the
+ // narrowest declaration (4) is an old custom width that must not grow.
+ const adopted={1:1,2:2,3:3,5:4,7:4,11:8}
  const positions=Object.fromEntries(widths.map((w,i)=>[String(i),{x:0,y:i*32,w,h:i===5?30:7}]))
  const layout={...emptyLayout(),instanceLayout:true,order:Object.keys(positions),positions:{12:positions}},before=structuredClone(layout)
  const geometry=buildSpatialLayout(layout,widths.map((_,i)=>meta(r,String(i))),12)
- for(const item of geometry){assert.deepEqual(rect(item),positions[item.i]);assert.ok(item.minW<=item.w&&item.maxW>=item.w);assert.ok(item.maxH>=item.h)}
+ for(const item of geometry){
+  const saved=positions[item.i]
+  assert.deepEqual(rect(item),{...saved,w:adopted[saved.w]},`${saved.w} -> ${adopted[saved.w]}`)
+  assert.ok(item.minW<=item.w&&item.maxW>=item.w);assert.ok(item.maxH>=item.h)
+ }
  for(const cols of[6,2])for(const item of buildSpatialLayout(layout,widths.map((_,i)=>meta(r,String(i))),cols)) assert.deepEqual({w:item.w,h:item.h},presetGeometry('4x6',cols))
- assert.deepEqual(layout,before)
+ assert.deepEqual(layout,before,'re-projection never rewrites the saved document')
+})
+test('the recent card declares one narrow width so an old wide saved card narrows in place',()=>{
+ const source=readFileSync(new URL('../src/client/builtin-registration.tsx',import.meta.url),'utf8')
+ assert.match(source,/recent: \{ default: \{ w:4,h:8 \}, supported: \[\{w:4,h:8\},\{w:4,h:10\}\] \}/)
+ assert.equal(declaredWidthFor(8,{default:{w:4,h:8},supported:[{w:4,h:8},{w:4,h:10}]},12),4)
+ assert.equal(declaredWidthFor(4,{default:{w:4,h:8},supported:[{w:4,h:8},{w:4,h:10}]},12),4)
 })
 test('explicit preset is anchored and rejects collision, edge and unsupported shape without mutation',()=>{
  const sizing=registry().get('test/presets:note').sizing

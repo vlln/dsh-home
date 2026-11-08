@@ -344,6 +344,14 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 - 真实鼠标六案（x2y2,x3y2,x4y5,x6y2,x3y7,x5y5）均无瞬时红色、无逐帧 peer 重叠、active / placeholder 漂移 0px、跨轴误差 0px；held / release / Done / reload 一致。
 - 原四组精确轴向撑开浏览器回归继续通过，原始用户布局已独立全量比对未改变。
 
+## 最近会话改成五条两行（2026-11-07，0.53.x / dsh 0.2.1-rc.5）
+
+- 删除搜索框与工作目录下拉：它们在 4 列宽的摘要卡里占掉一整行 36px，把每条会话压成 28px 的单行；这张卡回答「今天刚动过什么」，检索交给侧栏。`filterRecentSessions` / `cwdFilterValue` / `recentPageSize` / `recentViewportPageSize` 一并删除，`recentEmptyState(total, indexing)` 不再有 `noMatch`。
+- 判定上限改成硬常量 `RECENT_ROW_LIMIT = 5`（`session-model.ts`），列表取 `slice(0, 5)`，页脚写 `最近 N / M 个会话`；不再用 `useVisibleRows` 估容量——条目是 `flex: 1 1 0`，量出来的行高是被拉伸后的值，会退化成 1 行。
+- 条目重写成两行（`recent.tsx` 自己的 `dsh-recent-item`，不再复用 `SessionRow`）：第一行状态点 + 14px 标题 + 相对时间，第二行工作区胶囊 + 「在等你」的文字胶囊（琥珀，取自 `--dsh-warning`）。`min-height` 42 / `max-height` 86，43px 是两行内容预算（18 + 3 + 18 + 4），所以 6 行的旧卡也放得下 5 条，10 行的卡是留白而不是拉大的字。
+- 宽度声明改成 `{ default: {4,8}, supported: [{4,8},{4,10}] }`。尺寸不可用户修改，所以旧布局里 8 列的保存矩形现在会在投影时收窄到 4 列：新增 `declaredWidthFor()` 与 `RegisteredWidgetDefinition.declaredSizing`（只有显式声明 `sizing` 的组件才归位，旧 `defaults` 定义保持原边界）。只收窄、不动高度与坐标、不写回文档。
+- 验收：新增 `scripts/verify-recent-card.mjs`（无控件、正好 5 条、旧 8×7 卡渲染成 372px、五条等高 ≥ 55px、列表与卡片都无溢出、hover/键盘焦点可见、组件库预览同构、真实数据只有 2 条时条目 ≤ 86px 且不变形）；`verify-design-standard` 改断言 4×6 旧卡里五条 ≥ 42px 且列表不溢出；`verify-session-rows` 的组件库行断言改到新结构。476 项单测、`tsc`、构建通过。
+
 ## 图表悬停与卡片内图标（2026-11-07，0.51.x / dsh 0.2.1-rc.5）
 
 - 抽出 `hover-tip.tsx`：`useHoverTip()` 提供 `bind(text)`（enter/move/leave/focus/blur）与 Portal 气泡；活动热力图先用上，随后 token 柱、圆环、今日时间带复用同一套。

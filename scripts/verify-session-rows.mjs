@@ -137,20 +137,20 @@ try {
   assert.equal(await page.locator('.dsh-directory-item[data-widget-type="@vlln/dsh-home:running"]').count(), 1, 'session status is offered')
   const recent = page.locator('.dsh-directory-item[data-widget-type="@vlln/dsh-home:recent"]')
   await recent.scrollIntoViewIfNeeded()
-  const rows = recent.locator('.dsh-session-row')
+  const rows = recent.locator('.dsh-recent-item')
   assert((await rows.count()) >= 3, 'the sample shows session rows')
   const first = rows.first()
   assert.deepEqual(await first.evaluate(el => [...el.children].map(child => child.className)), [
-    'dsh-session-status', 'dsh-ws-pill', 'dsh-session-title', 'dsh-session-trailing',
-  ], 'reading order is dot, capsule, title, time')
+    'dsh-recent-top', 'dsh-recent-meta',
+  ], 'two lines: title and time, then the workspace capsule')
   const rowLook = await rows.evaluateAll(nodes => nodes.map(node => {
     const pill = node.querySelector('.dsh-ws-pill')
-    const title = node.querySelector('.dsh-session-title')
+    const title = node.querySelector('.dsh-recent-title')
     return {
       pillBg: pill && getComputedStyle(pill).backgroundColor,
       pillColor: pill && getComputedStyle(pill).color,
       titleBg: title && getComputedStyle(title).backgroundColor,
-      trailing: node.querySelector('.dsh-session-trailing')?.textContent ?? '',
+      trailing: node.querySelector('.dsh-recent-time')?.textContent ?? '',
       status: node.getAttribute('data-status'),
     }
   }))
@@ -158,10 +158,10 @@ try {
     assert.notEqual(row.pillBg, 'rgba(0, 0, 0, 0)', `every workspace capsule has a fill (${row.pillBg})`)
     assert.equal(row.pillColor, 'rgb(97, 102, 107)', 'capsule text uses the standard neutral ink')
     assert.equal(row.titleBg, 'rgba(0, 0, 0, 0)', 'the session title stays plain text')
-    assert.match(row.trailing, /^(now|\d+(min|h|d|mo|y)|Activity time unknown)/u, `the trailing column is the time: ${row.trailing}`)
+    assert.match(row.trailing, /^(now|刚刚|\d+\s*\S+|Activity time unknown|活动时间未知)/u, `the trailing column is the time: ${row.trailing}`)
   }
   assert.equal(new Set(rowLook.map(row => row.pillBg)).size, 1, 'every workspace shares one capsule fill')
-  checks.push('会话行：状态点在最左、工作区胶囊、纯文字标题、时间在右')
+  checks.push('最近会话：状态点在最左、纯文字标题与时间一行、工作区胶囊一行')
   await recent.screenshot({ path: new URL('recent-rows.png', out).pathname, animations: 'disabled' })
 
   // A day with no activity draws no bar and no tinted column: no green sliver.
@@ -221,6 +221,8 @@ try {
   await notes().locator('.dsh-note-input').blur()
   for (let attempt = 0; attempt < 60 && (await configOf('notes-demo'))?.text !== '改过的标题\n正文换了。'; attempt++) await page.waitForTimeout(50)
   assert.equal((await configOf('notes-demo'))?.text, '改过的标题\n正文换了。', 'the note saves in place')
+  // The document can land before React repaints the card; wait for the visible title.
+  await page.waitForFunction(() => document.querySelector('[data-widget-id="notes-demo"] .dsh-note-title')?.textContent?.trim() === '改过的标题', undefined, { timeout: 5000 })
   assert.equal((await notes().locator('.dsh-note-title').innerText()).trim(), '改过的标题', 'the first line is the title again')
   checks.push('便笺：原地编辑、无对话框、首行加粗、失焦即保存')
 

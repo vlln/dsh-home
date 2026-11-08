@@ -96,12 +96,27 @@ export function projectedWidgetPresets(sizing: Readonly<WidgetSizing> | WidgetSi
   }
   return result
 }
+
+/**
+ * 保存下来的宽度必须落在组件自己声明的宽度里。
+ *
+ * 尺寸不可由用户改，所以保存的矩形一旦不在声明里，就不是「用户的选择」，而是旧声明的残留
+ * （声明从 8 列收窄到 4 列就是这种情况）。收窄永远不可能和邻卡重叠，于是这里直接采用
+ * 「不超过原宽度的最大声明宽度」——卡片在下次编辑落盘之前就已经按新声明渲染。
+ * 比所有声明都窄的旧宽度原样保留；高度从不迁移，因为改高度可能撞上邻居。
+ */
+export function declaredWidthFor(savedWidth: number, sizing: Readonly<WidgetSizing>, cols: number): number {
+  const widths = projectedWidgetPresets(sizing, cols).map(option => option.w)
+  if (widths.includes(savedWidth)) return savedWidth
+  const narrower = widths.filter(width => width < savedWidth)
+  return narrower.length === 0 ? savedWidth : Math.max(...narrower)
+}
 /** Pre-position builtins existed before explicit sizing; only generic legacy records
  * (no exact position in any breakpoint) use these immutable historical hints. */
 export function legacyInstanceProjection(typeId: string, id: string, layout: { positions?: Record<string, Record<string, unknown>> }, definition?: RegisteredWidgetDefinition): { size: 's' | 'm' | 'l'; height: number } | undefined {
   if (Object.values(layout.positions ?? {}).some(rows => Object.hasOwn(rows, id))) return undefined
   const old: Record<string, { size: 's' | 'm'; height: number }> = {
-    recent: { size: 'm', height: 7 }, tasks: { size: 's', height: 8 }, today: { size: 'm', height: 4 },
+    recent: { size: 's', height: 7 }, tasks: { size: 's', height: 8 }, today: { size: 'm', height: 4 },
     running: { size: 's', height: 4 }, areas: { size: 's', height: 4 }, rhythm: { size: 'm', height: 4 },
     resume: { size: 'm', height: 4 }, queue: { size: 's', height: 4 }, quick: { size: 's', height: 4 },
     notes: { size: 's', height: 6 }, clock: { size: 's', height: 4 }, activity: { size: 'm', height: 6 },

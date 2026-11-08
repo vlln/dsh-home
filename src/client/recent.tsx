@@ -1,92 +1,82 @@
-/** Recent sessions: catalog + activity ledger, independent of focus/dismiss preferences. */
-import { useMemo, useRef, useState } from 'react'
+/**
+ * 最近会话：最近五条，每条两行——标题与时间一行，工作区胶囊与状态一行。
+ *
+ * 没有搜索框、没有工作目录下拉：4 列宽的摘要卡里这两个控件要占掉一整行 36px，把每条
+ * 会话压成 28px 的单行，而这张卡本来就不是会话目录（要搜索去侧栏）。五条、每条更高，
+ * 正好把固定高度的卡填满；剩下的总数写在页脚，卡片不滚动也不分页。
+ */
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { Input } from '@deepseek-ai/dsh-client-ui-primitives'
-import { useVisibleRows } from './fit-rows.ts'
-import type { SessionStatusMap } from './session-model.ts'
-import { SessionRow } from './session-row.tsx'
-import type { WidgetProps } from './widgets.tsx'
+import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import { compactAgo } from './format.ts'
+import type { RecentStatus, SessionStatusMap } from './session-model.ts'
 import {
-  cwdFilterValue, cwdLabels, filterRecentSessions, mergeRecentSessions, recentEmptyState,
-  recentViewportPageSize, recentSessionStatus,
+  cwdLabels, mergeRecentSessions, recentEmptyState, recentSessionStatus, RECENT_ROW_LIMIT,
 } from './session-model.ts'
+import { sessionDotState } from './session-row.tsx'
+import { WorkspacePill } from './workspace-pill.tsx'
+import type { WidgetProps } from './widgets.tsx'
 
 export interface RecentProps extends WidgetProps {
   statuses?: SessionStatusMap
   statusSource?: 'runtime' | 'none'
 }
 
+/** 只有「在等你」的状态值得写成文字：其余状态由圆点承担，第二行保持安静。 */
+function isWaiting(status: RecentStatus): boolean {
+  return status === 'approval' || status === 'plan' || status === 'question'
+}
+
 /** Body only: registry/page supplies the standard widget shell and heading. */
-export function RecentBody({ t, data, sessions, now, actions, size, width, height, statuses, statusSource, loading, loadError }: RecentProps): ReactNode {
-  const [query, setQuery] = useState('')
-  const [directory, setDirectory] = useState('')
-  const rowsRef = useRef<HTMLDivElement>(null)
+export function RecentBody({ t, data, sessions, now, actions, statuses, statusSource, loading, loadError }: RecentProps): ReactNode {
   const all = useMemo(() => mergeRecentSessions(sessions, data?.sessions), [sessions, data?.sessions])
   const labels = useMemo(() => cwdLabels(all.map(session => session.cwd)), [all])
-  const directories = useMemo(() => [...labels].sort(([leftPath, left], [rightPath, right]) => (
-    left < right ? -1 : left > right ? 1 : leftPath < rightPath ? -1 : leftPath > rightPath ? 1 : 0
-  )), [labels])
-  const hasUnknownCwd = all.some(session => session.cwd === undefined)
-  const matched = useMemo(() => filterRecentSessions(all, query, directory), [all, query, directory])
-  // A first estimate paints immediately; the measured capacity then decides the real cut.
-  const estimate = recentViewportPageSize(size, width, height)
-  const capacity = useVisibleRows(rowsRef, '.dsh-session-line')
-  const shown = matched.slice(0, capacity ?? estimate)
+  const shown = all.slice(0, RECENT_ROW_LIMIT)
   const indexing = !loadError && (data === null ? loading !== false : data.scanning || data.scannedAt === null)
-  const empty = recentEmptyState(all.length, matched.length, indexing)
+  const empty = recentEmptyState(all.length, indexing)
   // Omitted statusSource may accompany a supplied map; explicit 'none' means do not use it.
   const source = statusSource ?? (statuses === undefined ? 'none' : 'runtime')
 
   return (
     <div className="dsh-recent" data-status-source={source}>
-      <div className="dsh-recent-filters">
-        <Input
-          type="search"
-          className="dsh-recent-search"
-          aria-label={t('recent.search')}
-          placeholder={t('recent.search')}
-          value={query}
-          onChange={event => { setQuery(event.currentTarget.value) }}
-        />
-        {/* Native select supplies the keyboard interaction without a custom popup contract. */}
-        <select
-          className="dsh-recent-cwd"
-          aria-label={t('recent.cwd')}
-          value={directory}
-          title={directory.startsWith(':') ? directory.slice(1) : t('recent.cwd')}
-          onChange={event => { setDirectory(event.currentTarget.value) }}
-        >
-          <option value="">{t('recent.allCwds')}</option>
-          {hasUnknownCwd && <option value="?">{t('recent.unknownCwd')}</option>}
-          {directories.map(([path, label]) => (
-            <option key={path} value={cwdFilterValue(path)} title={path}>{label}</option>
-          ))}
-          {directory !== '' && !all.some(session => cwdFilterValue(session.cwd) === directory) && (
-            <option value={directory}>{directory === '?' ? t('recent.unknownCwd') : directory.slice(1)}</option>
-          )}
-        </select>
-      </div>
-
-      {empty !== null ? (
-        <div className="dsh-empty" role="status">{t(loadError && all.length === 0 ? 'error.load' : `recent.${empty}`)}</div>
+      {empty === null ? (
+        <ol className="dsh-recent-list">
+          {shown.map(session => {
+            const title = session.title ?? t('recent.untitled')
+            const workspace = session.cwd === undefined ? t('recent.unknownCwd') : labels.get(session.cwd) ?? session.cwd
+            const status = recentSessionStatus(session, source === 'runtime' ? statuses?.get(session.id) : undefined)
+            const statusLabel = t(`recent.status.${status}`)
+            const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
+            return (
+              <li key={session.id}>
+                <button type="button" className="dsh-recent-item" data-session-id={session.id} data-status={status}
+                  aria-label={`${title} · ${workspace} · ${statusLabel} · ${trailing}`}
+                  onClick={() => { actions.openSession(session.id) }}>
+                  <span className="dsh-recent-top">
+                    <span className="dsh-recent-dot" role="img" aria-label={statusLabel} title={statusLabel}>
+                      <StateDot state={sessionDotState(status)} />
+                    </span>
+                    <span className="dsh-recent-title" title={title}>{title}</span>
+                    <span className="dsh-recent-time">{trailing}</span>
+                  </span>
+                  <span className="dsh-recent-meta">
+                    <WorkspacePill label={workspace} cwd={session.cwd ?? workspace}
+                      title={session.cwd} unknown={session.cwd === undefined} />
+                    {isWaiting(status) && <span className="dsh-recent-state">{statusLabel}</span>}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ol>
       ) : (
-        <div className="dsh-rows" ref={rowsRef}>
-          {shown.map(session => <SessionRow
-            key={session.id}
-            session={session}
-            title={session.title ?? t('recent.untitled')}
-            workspace={session.cwd === undefined ? t('recent.unknownCwd') : labels.get(session.cwd) ?? session.cwd}
-            workspaceTitle={session.cwd}
-            status={recentSessionStatus(session, source === 'runtime' ? statuses?.get(session.id) : undefined)}
-            now={now}
-            t={t}
-            onOpen={() => { actions.openSession(session.id) }}
-          />)}
-        </div>
+        <div className="dsh-empty" role="status">{t(loadError && all.length === 0 ? 'error.load' : `recent.${empty}`)}</div>
       )}
 
       <div className="dsh-recent-footer">
-        <span className="dsh-muted" role="status">{t('recent.count', { shown: shown.length, total: matched.length })}</span>
+        <span className="dsh-muted" role="status">{shown.length === all.length
+          ? t('recent.countAll', { n: all.length })
+          : t('recent.count', { shown: shown.length, total: all.length })}</span>
         {indexing && shown.length > 0 && <span className="dsh-muted" role="status">{t('recent.indexing')}</span>}
       </div>
     </div>

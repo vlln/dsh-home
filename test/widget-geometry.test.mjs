@@ -16,11 +16,41 @@ function registered(defaults) {
 }
 function meta(definition, id = 'widget-a') {
   const defaults = definition.defaults
-  return { id, sizing: definition.sizing, defaultSize: defaults.size, defaultHeight: defaults.height,
+  return { id, sizing: definition.sizing, declaredSizing: definition.declaredSizing, defaultSize: defaults.size, defaultHeight: defaults.height,
     minWidth: defaults.minWidth, maxWidth: defaults.maxWidth,
     minHeight: defaults.minHeight, maxHeight: defaults.maxHeight }
 }
 const rect = ({ x, y, w, h }) => ({ x, y, w, h })
+
+function declared(sizing) {
+  const registry = new HomeWidgetRegistry()
+  registry.register({ typeId: 'test/geometry:declared', apiVersion: 1, title: 'Declared',
+    configVersion: 1, defaultConfig: () => ({}), validateConfig: () => true, Content: () => null, sizing })
+  return registry.get('test/geometry:declared')
+}
+
+test('a narrower declaration re-projects a wider saved card in place; legacy hints never migrate', () => {
+  const definition = declared({ default: { w: 4, h: 8 }, supported: [{ w: 4, h: 8 }, { w: 4, h: 10 }] })
+  assert.equal(definition.declaredSizing, true)
+  assert.equal(registered({ size: 'm', height: 7 }).declaredSizing, false)
+  const layout = { ...emptyLayout(), instanceLayout: true, order: ['widget-a'],
+    positions: { 12: { 'widget-a': { x: 0, y: 6, w: 8, h: 7 } } } }
+  const before = structuredClone(layout)
+  const [item] = buildSpatialLayout(layout, [meta(definition)], 12)
+  // Width follows the declaration; the height is grandfathered because moving it could collide.
+  assert.deepEqual(rect(item), { x: 0, y: 6, w: 4, h: 7 })
+  assert.deepEqual(layout, before, 'projection is read-only until the next edit persists it')
+  // A saved width narrower than every declaration is a real historical choice and stays.
+  const narrow = { ...emptyLayout(), instanceLayout: true, order: ['widget-a'],
+    positions: { 12: { 'widget-a': { x: 0, y: 6, w: 2, h: 7 } } } }
+  assert.equal(buildSpatialLayout(narrow, [meta(definition)], 12)[0].w, 2)
+  // Declared peers are unaffected: their saved width is already declared.
+  const paired = { ...emptyLayout(), instanceLayout: true, order: ['widget-a', 'widget-b'],
+    positions: { 12: { 'widget-a': { x: 0, y: 0, w: 8, h: 7 }, 'widget-b': { x: 8, y: 0, w: 4, h: 8 } } } }
+  const [first, second] = buildSpatialLayout(paired, [meta(definition), meta(definition, 'widget-b')], 12)
+  assert.equal(first.w, 4)
+  assert.deepEqual(rect(second), { x: 8, y: 0, w: 4, h: 8 })
+})
 
 test('legacy defaults map to one fixed shape and its projected metadata on 12/6/2-column breakpoints', () => {
   const definition = registered({ size: 's', height: 6, minWidth: 4, maxWidth: 5, minHeight: 5, maxHeight: 7 })

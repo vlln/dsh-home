@@ -2,7 +2,7 @@
  * Pure recent-session model. No runtime imports: also runnable with Node type stripping.
  * Catalog supplies live metadata; the ledger supplies activity, not the session universe.
  */
-import type { LedgerSession, WidgetSize } from './api.ts'
+import type { LedgerSession } from './api.ts'
 import type { SessionMeta } from './store.ts'
 
 /** 宿主 `sessionStatus` 根钩子的快照值。 */
@@ -123,45 +123,21 @@ export function cwdLabels(paths: readonly (string | undefined)[]): Map<string, s
   return labels
 }
 
-/** Native select values: empty means all, '?' means missing cwd, paths have a ':' prefix. */
-export function cwdFilterValue(cwd: string | undefined): string {
-  return cwd === undefined ? '?' : `:${cwd}`
-}
+/**
+ * 最近会话只保留最近五条。
+ *
+ * 这张卡是「今天刚动过什么」的摘要，不是会话目录：再多一条就要靠滚动或分页，而摘要卡
+ * 不滚动、不分页。五条正好把固定高度的卡填满（每条两行），从目录里翻历史交给侧栏。
+ * 搜索与目录筛选曾经也在这张卡上，它们让一行只有 28px，也不该挤在 4 列宽的摘要里；
+ * 需要找某个会话时用侧栏搜索。
+ */
+export const RECENT_ROW_LIMIT = 5
 
-/** All query tokens must match title, full path, or full id (case insensitive). */
-export function filterRecentSessions(
-  sessions: readonly RecentSession[],
-  query = '',
-  directory = '',
-): RecentSession[] {
-  const tokens = query.trim().toLocaleLowerCase().split(/\s+/u).filter(Boolean)
-  return sessions.filter(session => {
-    if (directory !== '' && cwdFilterValue(session.cwd) !== directory) return false
-    const haystack = [session.title ?? '', session.cwd ?? '', session.id].join('\n').toLocaleLowerCase()
-    return tokens.every(token => haystack.includes(token))
-  })
-}
-
-/** UI page size. Show more adds another page, without fetching or hiding rows permanently. */
-export function recentPageSize(size: WidgetSize): number {
-  return size === 's' ? 3 : size === 'm' ? 6 : 10
-}
-
-/** Content-height capacity, not width buckets. Reserve filters, footer and gaps;
- * the list stays scrollable for larger fonts/long metadata and Show more. */
-export function recentViewportPageSize(size: WidgetSize, width?: number, height?: number): number {
-  if (!Number.isFinite(height) || !Number.isFinite(width) || height! <= 0 || width! <= 0) return recentPageSize(size)
-  // One-line rows: a tinted workspace segment plus the title plate.
-  const controls = width! < 400 ? 104 : 62
-  const row = 30
-  return Math.max(1, Math.min(20, Math.floor((height! - controls) / row)))
-}
-
-/** Indexing is not a claim that the account has no sessions or no search results yet. */
-export function recentEmptyState(total: number, matched: number, indexing: boolean): 'indexing' | 'empty' | 'noMatch' | null {
-  if (matched > 0) return null
-  if (indexing) return 'indexing'
-  return total === 0 ? 'empty' : 'noMatch'
+/** Indexing is not a claim that the account has no sessions yet. Without filters there
+ * is no "no match" state left: the card either has sessions or it does not. */
+export function recentEmptyState(total: number, indexing: boolean): 'indexing' | 'empty' | null {
+  if (total > 0) return null
+  return indexing ? 'indexing' : 'empty'
 }
 
 /** 「会话状态」的三个视图；等待交互曾是独立组件，现在只是 running 的另一个视图。 */

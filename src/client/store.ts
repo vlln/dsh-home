@@ -520,7 +520,7 @@ export class HomeStore {
     if (!this.migrationRegistry || this.migrationRegistry.get(instance.typeId) !== definition) throw new Error('Widget provider changed')
     const metas = this.state.instances.map(item => {
       const registered = this.migrationRegistry!.get(item.typeId)
-      return { id: item.instanceId, sizing: registered?.sizing,
+      return { id: item.instanceId, sizing: registered?.sizing, declaredSizing: registered?.declaredSizing,
         legacyProjection: legacyInstanceProjection(item.typeId, item.instanceId, this.state.layout, registered), defaultSize: registered?.defaults.size ?? 'm' as const,
         defaultHeight: registered?.defaults.height ?? 4, ...registered?.defaults }
     })

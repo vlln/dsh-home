@@ -111,7 +111,8 @@ export function useBuiltin() {
 }
 const BUILTIN_SIZING: Record<string, WidgetSizing> = {
   pinned: { default: { w:4,h:8 }, supported: [{w:4,h:8},{w:8,h:8}] },
-  recent: { default: { w:8,h:8 }, supported: [{w:4,h:8},{w:8,h:8},{w:8,h:10},{w:12,h:10}] },
+  // 最近会话是一份窄列表：5 条、每条两行，4 列正好；8/12 列只会把标题拉成一条长带。
+  recent: { default: { w:4,h:8 }, supported: [{w:4,h:8},{w:4,h:10}] },
   today: { default: { w:8,h:4 }, supported: [{w:4,h:4},{w:8,h:4}] },
   areas: { default: { w:4,h:6 }, supported: [{w:4,h:6},{w:8,h:6},{w:8,h:8}] },
   rhythm: { default: { w:8,h:4 }, supported: [{w:4,h:4},{w:8,h:4},{w:12,h:6}] },

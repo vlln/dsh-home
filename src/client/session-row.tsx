@@ -17,6 +17,11 @@ const DOT: Record<RecentStatus, StateDotState> = {
   running: 'ongoing', unread: 'done', idle: 'idle', unknown: 'idle',
 }
 
+/** 状态 → 宿主圆点。等待类是琥珀、在跑是绿、未读是蓝，颜色只表示语义。 */
+export function sessionDotState(status: RecentStatus): StateDotState {
+  return DOT[status]
+}
+
 export interface SessionRowProps {
   session: Pick<RecentSession, 'id' | 'lastAt'>
   title: string

@@ -50,9 +50,11 @@ test('digest cards never scroll and never page', async () => {
   const refinement = await read('widget-refinement-styles.ts')
   const activityCss = await read('activity-styles.ts')
   assert.doesNotMatch(recent, /extraPages|recent\.more/)
-  assert.match(recent, /useVisibleRows\(rowsRef/)
+  // No search box, no directory select, and a hard five-entry cap.
+  assert.doesNotMatch(recent, /dsh-recent-filters|dsh-recent-search|type="search"|<select/)
+  assert.match(recent, /slice\(0, RECENT_ROW_LIMIT\)/)
   assert.match(pinned, /useVisibleRows\(rowsRef/)
-  assert.match(refinement, /dsh-recent > \.dsh-rows[^}]*overflow:hidden/)
+  assert.match(refinement, /dsh-recent-list[^}]*overflow:hidden/)
   assert.match(refinement, /dsh-pinned-rows[^}]*overflow:hidden/)
   assert.match(activityCss, /\.dsh-activity-scroll \{[^}]*overflow:hidden/s)
   assert.doesNotMatch(activityCss, /\.dsh-activity-scroll \{[^}]*overflow-y:auto/s)

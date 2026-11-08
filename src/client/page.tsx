@@ -128,7 +128,7 @@ export function HomePage(props: HomePageProps): ReactNode {
   const metas = useMemo(() => state.instances.map(instance => {
     const defaults = byType.get(instance.typeId)?.defaults
     return {
-      id: instance.instanceId, sizing: byType.get(instance.typeId)?.sizing,
+      id: instance.instanceId, sizing: byType.get(instance.typeId)?.sizing, declaredSizing: byType.get(instance.typeId)?.declaredSizing,
       legacyProjection: legacyInstanceProjection(instance.typeId, instance.instanceId, state.layout, byType.get(instance.typeId)), defaultSize: defaults?.size ?? 'm' as const,
       defaultHeight: defaults?.height ?? 4,
       ...(defaults === undefined ? {} : { minWidth: defaults.minWidth, maxWidth: defaults.maxWidth, minHeight: defaults.minHeight, maxHeight: defaults.maxHeight }),

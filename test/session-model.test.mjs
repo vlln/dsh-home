@@ -2,8 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  activityTimestamp, cwdFilterValue, cwdLabels, filterRecentSessions, mergeRecentSessions,
-  recentEmptyState, recentPageSize, recentViewportPageSize, recentSessionStatus,
+  activityTimestamp, cwdLabels, mergeRecentSessions, recentEmptyState, recentSessionStatus, RECENT_ROW_LIMIT,
 } from '../src/client/session-model.ts'
 
 function ledger(id, overrides = {}) {
@@ -110,46 +109,16 @@ test('cwd labels show shortest distinguishing suffix while retaining original pa
   assert.equal(similar.get('C:\\work\\other'), 'other')
 })
 
-test('search includes title, full id and cwd; multi-token matching intersects directory filter', () => {
-  const rows = [
-    row('session-abc12345-first', { title: 'Fix Alpha', cwd: '/home/one/project' }),
-    row('session-abc12345-second', { title: 'Fix Beta', cwd: '/home/two/project' }),
-    row('none', { title: 'Unknown workspace' }),
-  ]
-  assert.equal(filterRecentSessions(rows, '  FIX   /one/ ').length, 1)
-  assert.equal(filterRecentSessions(rows, 'abc12345-second')[0].id, rows[1].id)
-  assert.equal(filterRecentSessions(rows, 'fix', cwdFilterValue('/home/two/project'))[0].id, rows[1].id)
-  assert.equal(filterRecentSessions(rows, 'alpha', cwdFilterValue('/home/two/project')).length, 0)
-  assert.deepEqual(filterRecentSessions(rows, '', '?'), [rows[2]])
-  assert.equal(filterRecentSessions(rows, '', cwdFilterValue('/missing')).length, 0)
-  assert.deepEqual(filterRecentSessions(rows, ' '), rows)
-  assert.notEqual(filterRecentSessions(rows), rows)
+test('the recent card keeps only the five newest sessions', () => {
+  assert.equal(RECENT_ROW_LIMIT, 5)
+  const rows = Array.from({ length: 9 }, (_, index) => ledger(`session-${index}`, { lastAt: 1000 + index }))
+  const newest = mergeRecentSessions({}, rows).slice(0, RECENT_ROW_LIMIT)
+  assert.deepEqual(newest.map(item => item.id), ['session-8', 'session-7', 'session-6', 'session-5', 'session-4'])
 })
 
-test('select values distinguish missing cwd from any actual path', () => {
-  assert.equal(cwdFilterValue(undefined), '?')
-  assert.notEqual(cwdFilterValue('?'), '?')
-  assert.notEqual(cwdFilterValue(''), '')
-})
-
-test('size pages and short IDs do not lose canonical identity', () => {
-  assert.deepEqual(['s', 'm', 'l'].map(recentPageSize), [3, 6, 10])
-})
-
-test('recent capacity follows measured height and reserves wrapped narrow controls', () => {
-  assert.equal(recentViewportPageSize('m'), 6)
-  assert.equal(recentViewportPageSize('s', 800, 400), 11)
-  assert.equal(recentViewportPageSize('l', 800, 400), 11)
-  assert.equal(recentViewportPageSize('s', 800, 600), 17)
-  assert.equal(recentViewportPageSize('s', 300, 400), 9)
-  assert.equal(recentViewportPageSize('s', 200, 30), 1)
-  assert.equal(recentViewportPageSize('s', 800, 100000), 20)
-  assert.equal(recentViewportPageSize('m', NaN, 400), 6)
-})
-test('empty state separates indexing, no sessions, and filtered no match', () => {
-  assert.equal(recentEmptyState(0, 0, false), 'empty')
-  assert.equal(recentEmptyState(10, 0, false), 'noMatch')
-  assert.equal(recentEmptyState(0, 0, true), 'indexing')
-  assert.equal(recentEmptyState(10, 0, true), 'indexing')
-  assert.equal(recentEmptyState(10, 3, true), null)
+test('empty state separates indexing from a genuinely empty account', () => {
+  assert.equal(recentEmptyState(0, false), 'empty')
+  assert.equal(recentEmptyState(0, true), 'indexing')
+  assert.equal(recentEmptyState(10, false), null)
+  assert.equal(recentEmptyState(10, true), null)
 })

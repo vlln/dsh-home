@@ -3,13 +3,15 @@ import type { GridRect, Layout, WidgetSize } from './api.ts'
 import { isGridColumns } from './canvas-width.ts'
 import { homeOrder, legacySpatialHeight } from './layout-model.ts'
 import type { WidgetSizing } from './widget-contract.ts'
-import { presetGeometry, projectedWidgetPresets, sameWidgetPreset } from './widget-sizing.ts'
+import { presetGeometry, projectedWidgetPresets, sameWidgetPreset, declaredWidthFor } from './widget-sizing.ts'
 
 export interface SpatialMeta {
   id: string
   defaultSize: WidgetSize
   defaultHeight?: number
   sizing?: Readonly<WidgetSizing>
+  /** True only when the widget declared `sizing`; a legacy single shape is a hint. */
+  declaredSizing?: boolean
   /** Compatibility hints only for an existing pre-position instance. */
   legacyProjection?: { size: WidgetSize; height: number }
   minWidth?: number
@@ -209,6 +211,8 @@ function savedBreakpointFor(layout: Layout, cols: number): Record<string, unknow
  * nearest stored breakpoint is read verbatim; a missing one uses legacy first-fit.
  * Neither path writes or compacts another breakpoint. viewportCols distinguishes
  * widget resize bounds from the actual viewport for implicit keyboard movement.
+ * A saved width outside a widget's own declaration is narrowed to the declaration
+ * (declaredWidthFor); the height is never migrated, because it could collide.
  */
 export function buildSpatialLayout(
   layout: Layout, metas: readonly SpatialMeta[], cols: number,
@@ -240,7 +244,15 @@ export function buildSpatialLayout(
   }
 
   for (const id of order) {
-    const rect = Object.hasOwn(saved, id) ? saved[id] : undefined
+    const savedRect = Object.hasOwn(saved, id) ? saved[id] : undefined
+    const meta = byId.get(id)!
+    // A preset widget's width is its declaration, not the saved rectangle: sizes are
+    // fixed, so an undeclared saved width is a leftover from an older declaration and
+    // adopts the declared span (see declaredWidthFor). Narrowing cannot overlap a peer,
+    // so the board renders the declared card before the next edit persists it.
+    const rect = meta.declaredSizing === true && meta.sizing !== undefined && isRect(savedRect, cols)
+      ? { ...savedRect, w: declaredWidthFor(savedRect.w, meta.sizing, cols) }
+      : savedRect
     if (isRect(rect, cols) && canPlace(occupied, id, rect, cols)) {
       const item = itemFrom(id, rect)
       occupied.push(item)

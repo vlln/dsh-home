@@ -104,6 +104,10 @@ export interface WidgetDefinition<C extends JsonValue = JsonValue> {
 export type RegisteredWidgetDefinition<C extends JsonValue = JsonValue> = Omit<WidgetDefinition<C>, 'defaults' | 'sizing'> & {
     readonly defaults: Readonly<WidgetDefaults>;
     readonly sizing: Readonly<WidgetSizing>;
+    /** True when the plugin declared `sizing` itself rather than the deprecated legacy
+     * `defaults`. Only a real declaration may re-project a saved width: a legacy
+     * single-shape size is a compatibility hint, and old custom widths stay valid. */
+    readonly declaredSizing: boolean;
 };
 /** Service consumed by independent client extensions. The caller owns the disposer through ctx.effect. */
 export interface HomeWidgets {

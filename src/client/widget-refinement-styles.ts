@@ -74,15 +74,21 @@ export const widgetRefinementStyles = `
 /* Queue status is present in the data already: a quiet row and a colored dot,
    with the real reason retained as text rather than an invented status. */
 
-/* Recent card: filters and footer stay fixed, the row list shows exactly the rows that
-   fit (see fit-rows.ts) and never scrolls. Session row styling lives next to its
-   component in styles.ts under .dsh-session-row. */
-.dsh-home-widget .dsh-recent { gap:8px; height:100%; min-height:0; }
-.dsh-home-widget .dsh-recent > :is(.dsh-recent-filters,.dsh-recent-footer) { flex:none; }
-.dsh-home-widget .dsh-recent > .dsh-rows { flex:1 1 auto; min-height:0; overflow:hidden; margin-inline:0; padding:2px; }
-.dsh-home-widget .dsh-recent-filters > :is(input,select) { background:var(--dsw-alias-bg-layer-1); }
-.dsh-home-widget .dsh-recent-filters input::placeholder { color:var(--dsw-alias-label-tertiary); opacity:1; }
-.dsh-home-widget .dsh-recent-footer { padding-top:4px; border-top:.5px solid var(--dsw-alias-border-l2); }
+/* Recent card: five tall entries share the card height, so the list reads as a stack of
+   targets instead of a strip of one-line rows. The list never scrolls; the footer states
+   the real total. Entry styling lives next to the component in styles.ts. */
+.dsh-home-widget .dsh-recent { gap:6px; height:100%; min-height:0; }
+.dsh-home-widget .dsh-recent > .dsh-recent-footer { flex:none; padding-top:4px; border-top:.5px solid var(--dsw-alias-border-l2); }
+.dsh-home-widget .dsh-recent > .dsh-empty { flex:1 1 auto; }
+.dsh-home-widget .dsh-recent-list { flex:1 1 auto; min-height:0; overflow:hidden; }
+.dsh-home-widget .dsh-recent-item { transition:background-color 120ms ease-out; }
+.dsh-home-widget .dsh-recent-item:hover { background:var(--dsw-alias-interactive-bg-hover); }
+.dsh-home-widget .dsh-recent-item:active { background:var(--dsw-alias-interactive-bg-active); }
+.dsh-home-widget .dsh-recent-item:focus-visible {
+  background:var(--dsw-alias-interactive-bg-hover);
+  outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsh-accent));
+  outline-offset:-2px;
+}
 
 /* Native pins: newest-first, cut to what fits, total count still stated. */
 .dsh-pinned { display:flex; flex-direction:column; height:100%; min-height:0; gap:8px; }
@@ -111,7 +117,7 @@ export const widgetRefinementStyles = `
 .dsh-home .dsh-w { animation:none; }
 .dsh-home .react-grid-layout,.dsh-home .react-grid-item { transition-duration:150ms; }
 @media (prefers-reduced-motion: reduce) {
-  .dsh-home-widget :is(.dsh-row,.dsh-row-arrow,.dsh-focus-primary,.dsh-focus-secondary,.dsh-icon-button),
+  .dsh-home-widget :is(.dsh-row,.dsh-row-arrow,.dsh-recent-item,.dsh-focus-primary,.dsh-focus-secondary,.dsh-icon-button),
   .dsh-home .react-grid-layout,.dsh-home .react-grid-item { transition:none; }
 }
 `

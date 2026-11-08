@@ -192,7 +192,8 @@ export class HomeWidgetRegistry implements HomeWidgets {
       if (typeof value !== 'function' && !wrapped) fail(`"${typeId}": ${key} must be a React component`)
     }
     if (definition.sizing !== undefined && definition.defaults !== undefined) fail('use sizing or legacy defaults, not both')
-    const sizing = definition.sizing === undefined ? legacyWidgetSizing(defaultsFor(definition.defaults)) : normalizeWidgetSizing(definition.sizing)
+    const declaredSizing = definition.sizing !== undefined
+    const sizing = declaredSizing ? normalizeWidgetSizing(definition.sizing!) : legacyWidgetSizing(defaultsFor(definition.defaults))
     const defaults = sizingDefaults(sizing)
     const factory = definition.defaultConfig
     const validator = definition.validateConfig
@@ -218,7 +219,7 @@ export class HomeWidgetRegistry implements HomeWidgets {
       preview.config?.()
     }
     const normalized = {
-      ...definition, defaults, sizing, preview,
+      ...definition, defaults, sizing, declaredSizing, preview,
       defaultConfig: () => {
         try { return validateWidgetConfig({ validateConfig: validator } as WidgetDefinition<C>, factory()) }
         catch (error) { fail(`"${typeId}" defaultConfig: ${message(error)}`) }

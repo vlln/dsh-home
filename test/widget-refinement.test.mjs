@@ -32,7 +32,7 @@ test('content patterns use container geometry without hiding outer overflow or a
   assert.match(builtin, /size, width, height/)
   assert.match(widgetRefinementStyles, /container-type:inline-size/)
   assert.match(personal, /16cqi/)
-  assert.match(widgetRefinementStyles, /dsh-recent > .dsh-rows.*overflow:hidden/)
+  assert.match(widgetRefinementStyles, /dsh-recent-list.*overflow:hidden/)
   assert.doesNotMatch(widgetRefinementStyles, /dsh-home-widget-content[^}]*overflow:hidden/)
   assert.match(personal, /dsh-note-input\{[^}]*min-height:100%/s)
 })

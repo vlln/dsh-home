@@ -531,10 +531,8 @@ export const CSS = `
 .dsh-home [inert] { cursor: default; }
 .dsh-home .dsh-tool:disabled { opacity: 0.4; cursor: default; }
 
-/* ---- 工作台：原生搜索 / 目录选择，继承宿主语义 token ---- */
-.dsh-recent { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.dsh-recent-filters { display: flex; gap: 8px; flex-wrap: wrap; }
-.dsh-recent-search, .dsh-recent-cwd, .dsh-home-select {
+/* ---- 工作台：原生输入控件，继承宿主语义 token ---- */
+.dsh-home-select {
   box-sizing: border-box;
   min-width: 0;
   width: 100%;
@@ -547,12 +545,44 @@ export const CSS = `
   font: inherit;
   font-size: var(--dsh-content-font-size-secondary, 13px);
 }
-.dsh-recent-search { flex: 2 1 180px; }
-.dsh-recent-cwd { flex: 1 1 140px; }
-.dsh-recent-search::placeholder { color: var(--dsw-alias-label-tertiary); }
-.dsh-recent-search:focus-visible, .dsh-recent-cwd:focus-visible, .dsh-home-select:focus-visible {
+.dsh-home-select:focus-visible {
   outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsh-accent));
   outline-offset: 2px;
+}
+/* Recent sessions: five tall entries. Line one carries the title and the time, line
+   two the workspace capsule and (only when it matters) the waiting state. The dot
+   leads so the list can be scanned by state before reading a word. The type is set on
+   a 43px budget so five entries still fit an undeclared 6-row card; a taller card
+   gives each entry air instead of scaling the text. */
+.dsh-recent { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dsh-recent-list {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px; flex: 1 1 auto;
+  min-height: 0; margin: 0; padding: 0; list-style: none;
+}
+/* 43px is the two-line content budget (18 + 3 + 18 + 4): five of them, plus gaps, still
+   fit a grandfathered 6-row card. A taller card hands the extra space to the entries,
+   capped at 86px so a 10-row card gets air instead of a stretched list. */
+.dsh-recent-list > li { display: flex; flex: 1 1 0; min-height: 42px; max-height: 86px; }
+.dsh-recent-item {
+  display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  box-sizing: border-box; width: 100%; min-width: 0;
+  margin: 0; padding: 2px 10px; border: 0; border-radius: var(--dsw-radius-md);
+  background: transparent; color: inherit; font: inherit; text-align: start; cursor: pointer;
+}
+.dsh-recent-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dsh-recent-dot { flex: none; display: inline-flex; align-items: center; }
+.dsh-recent-title {
+  flex: 1 1 auto; min-width: 0; color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-s-strong-14); line-height: 18px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dsh-recent-time { flex: none; font: var(--dsw-font-xxxs-11); color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
+.dsh-recent-meta { display: flex; align-items: center; gap: 6px; min-width: 0; padding-inline-start: 14px; }
+.dsh-recent-meta .dsh-ws-pill { max-width: 62%; }
+.dsh-recent-state {
+  flex: none; padding: 1px 8px; border-radius: var(--dsh-radius-pill); corner-shape: round;
+  background: var(--dsh-warning-soft); color: var(--dsh-warning);
+  font: var(--dsw-font-xxxs-11); font-weight: 600; white-space: nowrap;
 }
 /* One-line session row: state dot, workspace capsule, session title, time.
    The dot leads so a column can be scanned by state before reading a word. */
