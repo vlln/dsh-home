@@ -11,6 +11,7 @@ import { useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
+import { Chip } from './ui/index.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
@@ -90,11 +91,11 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
   const [hover, setHover] = useState<string | null>(null)
   const tip = useHoverTip()
   const share = (part: SplitPart): string => windowTotal === 0 ? '0%' : percent(part.value / windowTotal)
-  return <div className="dsh-usage" data-compact={compact ? 'true' : 'false'}>
-    <div className="dsh-usage-hero">
-      <div className="dsh-usage-figure">
-        <span className="dsh-usage-total" aria-label={t('usage.today')}>{compactCount(total)}</span>
-        <span className="dsh-usage-unit">{t('usage.today')} · {t('usage.unit')}</span>
+  return <div className="dsh-usage flex h-full min-h-0 flex-col gap-2" data-compact={compact ? 'true' : 'false'}>
+    <div className="dsh-usage-hero flex items-start justify-between gap-3">
+      <div className="dsh-usage-figure flex min-w-0 flex-col gap-0.5">
+        <span className="dsh-usage-total text-display-4-semibold leading-none tabular-nums tracking-tight text-text-primary" aria-label={t('usage.today')}>{compactCount(total)}</span>
+        <span className="dsh-usage-unit text-caption-1-medium text-text-tertiary">{t('usage.today')} · {t('usage.unit')}</span>
       </div>
       <div className="dsh-usage-donut" style={{ background: donutGradient(parts, windowTotal, hover) }} role="img"
         aria-label={t('usage.split')} tabIndex={0}
@@ -116,10 +117,10 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
         </span>
       </div>
     </div>
-    <div className="dsh-usage-chips">
-      <span className="dsh-chip" {...tip.bind(`${t('usage.input')} · ${today.input.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--color-chart-4)' } as CSSProperties} aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></span>
-      <span className="dsh-chip" {...tip.bind(`${t('usage.cache')} · ${today.cacheRead.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'color-mix(in srgb, var(--color-chart-4) 44%, var(--color-background-primary-default))' } as CSSProperties} aria-hidden="true" />{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></span>
-      <span className="dsh-chip" {...tip.bind(`${t('usage.output')} · ${today.output.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'color-mix(in srgb, var(--color-chart-4) 72%, var(--color-background-primary-default))' } as CSSProperties} aria-hidden="true" />{t('usage.output')} <b>{compactCount(today.output)}</b></span>
+    <div className="dsh-usage-chips flex flex-wrap items-center gap-1">
+      <Chip variant="caption" color="neutral" {...tip.bind(`${t('usage.input')} · ${today.input.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--color-chart-4)' } as CSSProperties} aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></Chip>
+      <Chip variant="caption" color="neutral" {...tip.bind(`${t('usage.cache')} · ${today.cacheRead.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'color-mix(in srgb, var(--color-chart-4) 44%, var(--color-background-primary-default))' } as CSSProperties} aria-hidden="true" />{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></Chip>
+      <Chip variant="caption" color="neutral" {...tip.bind(`${t('usage.output')} · ${today.output.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'color-mix(in srgb, var(--color-chart-4) 72%, var(--color-background-primary-default))' } as CSSProperties} aria-hidden="true" />{t('usage.output')} <b>{compactCount(today.output)}</b></Chip>
     </div>
     {week && <div className="dsh-usage-bars" role="img" aria-label={t('usage.week')}>
       {days.map(day => {

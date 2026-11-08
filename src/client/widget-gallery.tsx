@@ -146,7 +146,7 @@ export function WidgetGallery({ definitions, t, language, disabled, onDrag, onCl
     </div>
     <p className="dsh-gallery-hint text-caption-1-medium text-text-tertiary">{t('library.hint')}</p>
     <div className="dsh-gallery-toolbar"><Input type="search" aria-label={t('gallery.search')} placeholder={t('gallery.search')} value={search} onChange={event=>setSearch(event.target.value)}/>
-      <div className="dsh-gallery-filters" role="group" aria-label={t('gallery.filter')}>{(['all','builtin','extension'] as const).map(value=><Button key={value} size="small" variant={source===value?'secondary':'ghost'} className={source===value?undefined:'bg-transparent'} aria-pressed={source===value} onClick={()=>setSource(value)}>{t(`gallery.${value}`)}</Button>)}</div>
+      <div className="dsh-gallery-filters" role="group" aria-label={t('gallery.filter')}>{(['all','builtin','extension'] as const).map(value=><Button key={value} size="small" variant={source===value?'secondary':'ghost'} className={source===value?undefined:'bg-transparent text-text-secondary hover:bg-background-secondary-default hover:text-text-primary'} aria-pressed={source===value} onClick={()=>setSource(value)}>{t(`gallery.${value}`)}</Button>)}</div>
     </div>
     <div className="dsh-widget-directory">{filtered.map(definition=>{
       const title=galleryText(definition.title,definition.typeId),Icon=definition.icon

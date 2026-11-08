@@ -12,6 +12,7 @@ import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { useNow } from './home-data.ts'
 import { countdownLeft, nextTarget, parseDayKey } from './focus-model.ts'
+import { CardEmpty } from './ui/index.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
@@ -90,23 +91,23 @@ function CountdownSettings({ config, onConfigChange }: WidgetSettingsProps<Count
 
 function CountdownBody({ config, now, t, readOnly }: { config: CountdownConfig; now: number; t: Translate; readOnly: boolean }): ReactNode {
   const target = nextTarget(config.targets.filter(validTarget), now)
-  if (target === null) return <p className="dsh-todo-empty">{t(config.targets.length === 0 ? 'countdown.empty' : 'countdown.pickOne')}</p>
+  if (target === null) return <CardEmpty title={t(config.targets.length === 0 ? 'countdown.empty' : 'countdown.pickOne')} />
   const left = countdownLeft(target.date, now)
-  return <div className="dsh-countdown" data-expired={left.expired ? 'true' : 'false'}>
-    <span className="dsh-countdown-title">{target.title}</span>
+  return <div className="dsh-countdown flex h-full min-h-0 flex-col justify-center gap-1.5" data-expired={left.expired ? 'true' : 'false'}>
+    <span className="dsh-countdown-title truncate text-body-medium text-text-secondary">{target.title}</span>
     {left.expired
-      ? <span className="dsh-countdown-expired">{t('countdown.expired')}</span>
+      ? <span className="dsh-countdown-expired text-display-4-semibold tracking-tight text-text-error-primary">{t('countdown.expired')}</span>
       : left.days > 0
-        ? <span className="dsh-countdown-clock">
-          <span className="dsh-countdown-days">{left.days}</span>
-          <span className="dsh-countdown-unit">{t('countdown.days')}</span>
-          <span className="dsh-countdown-rest">{String(left.hours).padStart(2, '0')}:{String(left.minutes).padStart(2, '0')}</span>
+        ? <span className="dsh-countdown-clock flex items-baseline gap-1.5">
+          <span className="dsh-countdown-days text-display-4-semibold leading-none tabular-nums tracking-tight text-text-primary">{left.days}</span>
+          <span className="dsh-countdown-unit text-caption-1-medium text-text-tertiary">{t('countdown.days')}</span>
+          <span className="dsh-countdown-rest text-caption-1-semibold tabular-nums text-text-secondary">{String(left.hours).padStart(2, '0')}:{String(left.minutes).padStart(2, '0')}</span>
         </span>
-        : <span className="dsh-countdown-clock">
-          <span className="dsh-countdown-days">{String(left.hours).padStart(2, '0')}:{String(left.minutes).padStart(2, '0')}</span>
-          <span className="dsh-countdown-unit">{t('countdown.hours')}</span>
+        : <span className="dsh-countdown-clock flex items-baseline gap-1.5">
+          <span className="dsh-countdown-days text-display-4-semibold leading-none tabular-nums tracking-tight text-text-primary">{String(left.hours).padStart(2, '0')}:{String(left.minutes).padStart(2, '0')}</span>
+          <span className="dsh-countdown-unit text-caption-1-medium text-text-tertiary">{t('countdown.hours')}</span>
         </span>}
-    <span className="dsh-countdown-date">{target.date}</span>
+    <span className="dsh-countdown-date text-caption-1-medium tabular-nums text-text-tertiary">{target.date}</span>
     {!readOnly && config.targets.length === 0 && <span className="dsh-countdown-hint">{t('countdown.addHint')}</span>}
   </div>
 }
