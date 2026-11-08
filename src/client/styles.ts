@@ -377,20 +377,7 @@ export const CSS = `
 .dsh-rhythm-col:hover .dsh-rhythm-bar { opacity: 1; }
 /* 最近活跃：同一个量换窗口看。范围切换在卡片顶部，图表填满剩余高度。 */
 /* 零活动的那一天不画柱子，也不留底色：只剩可悬停的列与日期标签。 */
-.dsh-focus-item { position: relative; }
-.dsh-focus-item[data-dragging="true"] { opacity: 0.5; }
 .dsh-focus-item[data-drop="before"]::before,
-.dsh-focus-item[data-drop="after"]::after {
-  content: '';
-  position: absolute;
-  left: 2px;
-  right: 2px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--color-chart-4);
-}
-.dsh-focus-item[data-drop="before"]::before { top: -6px; }
-.dsh-focus-item[data-drop="after"]::after { bottom: -6px; }
 .dsh-w[data-drop="before"]::before,
 .dsh-w[data-drop="after"]::after {
   content: '';
@@ -586,7 +573,6 @@ export const CSS = `
 .dsh-session-line:focus-within .dsh-session-dismiss { opacity: 1; }
 .dsh-recent-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
 .dsh-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.dsh-home-grid + .dsh-focus-stack { margin-top: 20px; }
 .dsh-home-grid > .dsh-w + .dsh-w { margin-top: 0; }
 
 /* Unified mobile-widget editing surface. Only the editing shell owns gestures. */
@@ -621,9 +607,6 @@ export const CSS = `
 @media (prefers-reduced-motion: reduce) { .dsh-canvas-grip::after { transition: none; } }
 .dsh-home-widget { min-width: 0; }
 /* The retired focus stack is gone; only the legacy reorder handle keeps its class. */
-.dsh-home-widget .dsh-focus-item, .dsh-home-widget .dsh-focus-empty {
-  border: 0; background: transparent; padding: 0; border-radius: 0; animation: none; margin: 0;
-}
 .dsh-home-widget-content { position: relative; }
 .dsh-home[data-editing="true"] .dsh-home-widget { border-style: dashed; border-color: var(--color-chart-4); animation: none; }
 .dsh-home[data-editing="true"] .dsh-home-widget .dsh-w-head { cursor: grab; touch-action: none; position: relative; z-index: 3; flex-wrap: wrap; }
@@ -666,98 +649,17 @@ export const CSS = `
 @media (prefers-reduced-motion: reduce) { .dsh-home .react-grid-layout, .dsh-home .react-grid-item { transition: none; } }
 
 /* ---- 三件事（默认视图） ---- */
-.dsh-focus-stack { display: flex; flex-direction: column; gap: 12px; }
 .dsh-home-head + .dsh-focus,
-.dsh-home-head + .dsh-focus-stack { margin-top: 20px; }
 .dsh-w + .dsh-w { margin-top: 12px; }
 /* 拖动期间禁掉文本选择：否则用户一按一拖选中的是标题文字，看起来像"拖不动"。 */
 body.dsh-home-dragging { user-select: none; cursor: grabbing; }
 body.dsh-home-dragging * { cursor: grabbing !important; }
-.dsh-w-head, .dsh-focus-eyebrow-row, .dsh-focus-title { user-select: none; }
 /* 标题行本身就是拖拽面：用户会先试着拖标题，而不是先找把手。 */
 .dsh-drag-surface { cursor: grab; }
 .dsh-drag-surface:active { cursor: grabbing; }
 
-.dsh-focus {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 20px 22px 18px;
-  border-radius: var(--dsw-radius-xl);
-  border: 0.5px solid var(--dsw-alias-settings-card-stroke);
-  background: var(--dsw-alias-settings-card-fill);
-}
-.dsh-focus-eyebrow-row { display: flex; align-items: center; gap: 8px; }
-.dsh-focus-eyebrow-row .dsh-icon-button { margin-left: auto; }
-.dsh-focus-eyebrow {
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: var(--dsw-alias-label-tertiary);
-}
-.dsh-focus-title {
-  margin: 0;
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--dsw-alias-label-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dsh-focus-snippet {
-  margin: 0;
-  font-size: 13px;
-  line-height: 21px;
-  color: var(--dsw-alias-label-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.dsh-focus-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
-}
-.dsh-focus-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .dsh-focus-primary,
-.dsh-focus-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 34px;
-  padding: 0 14px;
-  border-radius: var(--dsw-radius-md);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  border: 0.5px solid transparent;
-}
-.dsh-focus-primary {
-  background: var(--dsw-alias-button-primary-fill);
-  color: var(--dsw-alias-label-primary-foreground);
-}
-.dsh-focus-primary:hover { background: var(--dsw-alias-button-primary-hover); }
-.dsh-focus-secondary {
-  background: transparent;
-  border-color: var(--dsw-alias-border-l3);
-  color: var(--dsw-alias-label-secondary);
-}
-.dsh-focus-secondary:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
 .dsh-focus-primary:focus-visible,
-.dsh-focus-secondary:focus-visible {
-  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4));
-  outline-offset: 1px;
-}
-.dsh-focus-empty { align-items: flex-start; gap: 8px; }
-.dsh-focus-empty-text { margin: 0; font-size: 13px; color: var(--dsw-alias-label-secondary); }
 .dsh-duo { color: var(--dsw-alias-label-caption); }
 
 .dsh-expand {
