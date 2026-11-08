@@ -184,3 +184,18 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
   总开关是 `html[data-motion="off"]`，截图与 Playwright 断言都靠它。
 - **同版本号装包会复用旧产物**：`dsh plugin add` 会说 "Already up to date"。验证脚本必须先删 profile
   里的副本并比对 `lib/client.js` 的 sha256（`.work/dsh-home/relaunch.sh` 已经这么做了）。
+
+## B5（回归网）现状与拆法（2026-11-07）
+
+`scripts/verify-host.mjs` 长期不可用，三层原因：
+
+1. **版本硬编码 0.4.0**（五处）→ 已改成读 `package.json`（f7f7949）。
+2. **夹具里有已退役的实例**（`legacy:tasks`、`:today`）→ 页面正确降级成占位卡，但脚本按老标题断言。
+   夹具在 `.work/dsh-home/dsh/data/dsh-home/state.json`，清掉退役实例即可（不进仓库）。
+3. **用例对象消失**：`openHome` 之后整段视觉用例围着 `[data-widget-id="tasks"]` 写，而这张卡在
+   0.4x 就被拆成 to-do / plan / 今天。这层不是改选择器，要**重写用例**。
+
+拆法：B5a 先把 `tasks` 相关用例迁到现役卡（优先 `activity` / `clock`，覆盖面最广），目标是
+"能从 openHome 一路跑到尾"；B5b 再逐条转绿，一处一 commit。
+
+判断标准：跑到尾之前不合并任何 B1–B4 的改动——没有安全网时改样式模块，等于蒙眼。
