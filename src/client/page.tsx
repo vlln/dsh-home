@@ -209,7 +209,9 @@ export function HomePage(props: HomePageProps): ReactNode {
   useLayoutEffect(() => {
     homeRef.current?.style.setProperty('--dsh-home-board-width', `${boardWidth}px`)
   }, [boardWidth])
-  const gripVisible = editable && !interacting
+  // The board width is the user's, so its handle is always there — not only in edit
+  // mode. Editing is for arranging cards; sizing the canvas is not an edit.
+  const gripVisible = writable && !busy && !interacting
   const commitCanvasWidth = (next: number): void => { store.setCanvasWidth(next) }
   return (
     <div ref={homeRef} className="dsh-home" data-editing={editing ? 'true' : 'false'}>
