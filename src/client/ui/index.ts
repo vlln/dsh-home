@@ -13,42 +13,38 @@
  *   React 18，`ref` 会被 React 丢掉。需要 DOM 时包一层 div 再挂 ref。
  * - 文案由调用方给（组件不读 locale）。
  *
+ * 中间那段是**生成**的（`scripts/gen-ui-index.mjs`）：它列出当前真正存在的
+ * vendored 组件。`prune:vendor` 打包前删掉没人用的组件并重写这段，
+ * `vendor` 把整套目录拉回来并重写这段——所以两边都不会留下悬空导出。
+ *
  * @module @vlln/dsh-home/client/ui
  */
 
-export { Button, ButtonLink, buttonStyles } from './boardui/button.tsx'
-export type { ButtonProps, ButtonLinkProps } from './boardui/button.tsx'
-export { ButtonGroup, ButtonGroupItem } from './boardui/button-group.tsx'
-export { Chip, CHIP_COLORS } from './boardui/chip.tsx'
-export { Badge } from './boardui/badge.tsx'
-export { Avatar } from './boardui/avatar.tsx'
-export { Switch, SwitchTrack } from './boardui/switch.tsx'
-export { SegmentedControl, SegmentedControlItem } from './boardui/segmented-control.tsx'
-export { Tooltip, TooltipTrigger } from './boardui/tooltip.tsx'
-export { Skeleton, SkeletonText } from './boardui/skeleton.tsx'
-export { Spinner, SpinnerGlyph } from './boardui/spinner.tsx'
-export { ProgressBar, ProgressCircle, ProgressTrack } from './boardui/progress.tsx'
-export { StatCards } from './boardui/stat-cards.tsx'
-export { Select, SelectItem } from './boardui/select.tsx'
-export { TextField, Input, InputBase } from './boardui/input.tsx'
-export {
-  Dropdown,
-  DropdownTrigger,
-  DropdownPopover,
-  DropdownGroup,
-  DropdownItem,
-  DropdownDivider,
-} from './boardui/dropdown.tsx'
+/* ---------------------------------------------------------------------------
+ * Hand-written surface: dsh-home's own primitives. Not generated.
+ * ------------------------------------------------------------------------- */
 
 /** 类名合并（tailwind-merge，认识 BoardUI 的复合字号类）。 */
 export { cx } from './lib/cx.ts'
 
-/** 卡片内部的四段结构（主值 / 说明 / 空态 / 骨架）。 */
+/** 卡片内部的四段结构（主值 / 说明 / 空态 / 错误 / 骨架）。 */
 export { CardBody, CardHero, CardMeta, CardFooter, CardEmpty, CardError, CardSkeleton } from './parts.tsx'
 
-/** 图形原语（柱、轨道）；读数由调用方用 Tooltip 负责。 */
+/** 图形原语（柱、轨道、热力格）；读数由调用方用 Tooltip 负责。 */
 export { SparkBars, Meter, HeatCell } from './viz.tsx'
 export type { VizItem, HeatLevel } from './viz.tsx'
 
 /** 动效原语：入场错峰与数字滚动（只动 opacity/filter，把 transform 留给网格）。 */
 export { Reveal, CountUp, useCountUp, motionEnabled } from './motion.tsx'
+
+/* ---------------------------------------------------------------------------
+ * Vendored BoardUI surface — generated, do not edit by hand.
+ * `prune:vendor` writes the modules that survived; `vendor` writes them all back.
+ * ------------------------------------------------------------------------- */
+
+// <generated:surface>
+export * from './boardui/button.tsx'
+export * from './boardui/chip.tsx'
+export * from './boardui/segmented-control.tsx'
+export * from './boardui/tooltip.tsx'
+// </generated:surface>

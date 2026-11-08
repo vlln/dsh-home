@@ -46,3 +46,15 @@ Items: button, cx, directional-icon, button-group, chip, badge, avatar, input, s
   React 18, where React strips `ref` from function-component props. So **do not
   pass `ref` to a vendored component**; attach the ref to a wrapper element
   instead. Nothing inside the vendored source relies on an incoming `ref`.
+
+## Keeping the tree honest
+
+The catalogue and the shipped tree are two different things:
+
+- `pnpm run vendor` pulls the whole catalogue back and regenerates
+  `ui/index.ts` from the files that exist.
+- `pnpm run prune:vendor` deletes vendored files no widget names, then
+  regenerates the same block. `prepack` runs it before every `npm pack`, and
+  `check:assets` fails when anything is unused.
+- `ui/index.ts` is generated between the two marker comments; the hand-written
+  half above it (card parts, viz, motion, `cx`) is never touched.

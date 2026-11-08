@@ -207,4 +207,6 @@ for (const [rel, content] of writes) {
   await writeFile(path.join(UI_DIR, rel), content)
 }
 await writeFile(vendorPath, vendorDoc)
+const { execFileSync } = await import('node:child_process')
+execFileSync(process.execPath, [path.join(ROOT, 'scripts/gen-ui-index.mjs')], { cwd: ROOT, stdio: 'inherit' })
 console.log(`vendored ${writes.size} files from ${items.length} items into src/client/ui/`)

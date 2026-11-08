@@ -55,8 +55,11 @@
     "build:css": "node scripts/build-css.mjs",
     "vendor": "node scripts/vendor-boardui.mjs",
     "new:widget": "node scripts/new-widget.mjs",
-    "check:assets": "node scripts/check-assets.mjs",
-    "check": "npm run check:assets && npm run typecheck && npm test"
+    "check:assets": "node scripts/gen-ui-index.mjs --check && node scripts/prune-vendor.mjs --check && node scripts/check-assets.mjs",
+    "check": "npm run check:assets && npm run typecheck && npm test",
+    "gen:ui": "node scripts/gen-ui-index.mjs",
+    "prune:vendor": "node scripts/prune-vendor.mjs",
+    "prepack": "npm run prune:vendor && npm run build"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-api-workspace-controller": "0.2.1-rc.5",
