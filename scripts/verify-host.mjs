@@ -177,8 +177,9 @@ async function openHome(page) {
     return true
   }, 'Home click after asynchronous first-use dialogs')
   await page.locator('.dsh-home').waitFor()
-  await page.locator('[data-widget-id="recent"]').waitFor()
-  await page.locator('[data-widget-id="tasks"]').waitFor()
+  // The board is registry-driven: wait for the shape, not for one widget that
+  // may have been retired (`tasks` was split into to-do / plan / today).
+  await page.locator('.dsh-home-widget').first().waitFor()
   await dismissFirstUse(page)
   // Do not capture the fading account dialog or the staggered widget entrance.
   await page.locator('[role="presentation"] [aria-hidden="true"][class*="mask"]').waitFor({ state: 'hidden' })
