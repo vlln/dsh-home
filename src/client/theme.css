@@ -144,3 +144,15 @@ html[data-motion="off"] * {
   animation-delay: 0s !important;
   transition-duration: 0s !important;
 }
+
+/* ---------------------------------------------------------------------------
+ * Dark: the empty-slot track has to stay visible
+ *
+ * Upstream leaves `--color-chart-track` on a light neutral, which on a dark card
+ * is within a few points of the surface — the heat grid read as an empty card.
+ * Derive it from the text colour instead, so it keeps a constant gap from
+ * whatever the dark surface is.
+ * ------------------------------------------------------------------------- */
+body[data-ds-dark-theme] {
+  --color-chart-track: color-mix(in srgb, var(--color-text-primary) 16%, transparent);
+}
