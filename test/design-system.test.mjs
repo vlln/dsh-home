@@ -1,4 +1,4 @@
-/** 视觉标准只有一份：design-system.ts 定义颜色角色，docs/design-system.md 解释用法。
+/** 视觉标准只有一份：styles.ts 定义共享小部件，docs/design-system.md 解释用法。
  * 这组断言防止下一次改动又把颜色写回组件样式里。 */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -7,9 +7,9 @@ import { readFile, readdir } from 'node:fs/promises'
 const client = new URL('../src/client/', import.meta.url)
 const files = (await readdir(client)).filter(name => name.endsWith('.ts') || name.endsWith('.tsx'))
 const read = (name) => readFile(new URL(name, client), 'utf8')
-const standard = await read('design-system.ts')
+const standard = await read('styles.ts')
 const doc = await readFile(new URL('../docs/design-system.md', import.meta.url), 'utf8')
-const styleModules = files.filter(name => name.includes('styles') && name !== 'design-system.ts')
+const styleModules = files.filter(name => name.includes('styles') && name !== 'styles.ts')
 
 test('every colour role is defined once, in design-system.ts', async () => {
   for (const name of files) {
@@ -18,7 +18,7 @@ test('every colour role is defined once, in design-system.ts', async () => {
     if (name !== 'picture-widget.tsx') {
       assert.doesNotMatch(source, /#[0-9a-fA-F]{3,8}\b/, `${name} must not hardcode a colour`)
     }
-    if (name !== 'design-system.ts') {
+    if (name !== 'styles.ts') {
       assert.doesNotMatch(source, /--dsw-alias-state-/, `${name} must use --dsh-* roles, not raw state hues`)
       assert.doesNotMatch(source, /--dsh-(hue|pill)-(blue|teal|green|amber|violet|pink)/, `${name} must not keep a rainbow palette`)
     }
@@ -66,12 +66,14 @@ test('digest cards never scroll and never page', async () => {
   assert.doesNotMatch(activity, /activity\.zone|activity\.partial'|activity\.incomplete/)
 })
 
-test('the standard document names every shared class it owns, and says where colour lives', () => {
-  // 0006: the colour vocabulary is theme.css. What the document must still cover is
-  // the shared widget classes inside design-system.ts, plus a pointer to the tokens.
-  const classes = new Set([...standard.matchAll(/^\.(dsh-[a-z0-9-]+) \{/gmu)].map(match => match[1]))
-  assert.ok(classes.size >= 4, `expected the shared classes, found ${[...classes].join(', ')}`)
-  for (const name of classes) assert.ok(doc.includes(name), `docs/design-system.md must document .${name}`)
+test('the shared widget classes are defined once and documented', () => {
+  // After B4 the stylesheet is styles.ts, which also carries layout rules, so
+  // this pins the handful of classes the document actually owns.
+  const shared = ['dsh-ws-pill', 'dsh-chip', 'dsh-status-dot', 'dsh-status-chip', 'dsh-status-count', 'dsh-quiet-select', 'dsh-hover-tip', 'dsh-track']
+  for (const name of shared) {
+    assert.ok(standard.includes('.' + name), `styles.ts must define .${name}`)
+    assert.ok(doc.includes(name), `docs/design-system.md must document .${name}`)
+  }
   assert.match(doc, /theme\.css/u)
   assert.match(doc, /滚动条/u)
   assert.match(doc, /胶囊/u)

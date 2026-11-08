@@ -61,7 +61,7 @@ test('the chosen view wins while it has rows; an empty choice falls back to the 
 
 test('workspace capsules carry no colour identity: the standard has one capsule fill', async () => {
   const pill = await (await import('node:fs/promises')).readFile(new URL('../src/client/workspace-pill.tsx', import.meta.url), 'utf8')
-  const standard = await (await import('node:fs/promises')).readFile(new URL('../src/client/design-system.ts', import.meta.url), 'utf8')
+  const standard = await (await import('node:fs/promises')).readFile(new URL('../src/client/styles.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(pill, /data-hue/)
   // One capsule fill, and it comes from the semantic token layer (0006).
   assert.match(standard, /\.dsh-ws-pill \{[^}]*background: var\(--color-background-tertiary-default\)/s)
