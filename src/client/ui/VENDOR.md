@@ -4,7 +4,8 @@ wrap what you need in `src/client/ui/index.ts` instead, so the next vendor run
 stays a clean diff.
 
 Registry: https://www.boardui.com/r
-Fetched: 2026-11-08T05:33:38.660Z
+Content: 780583b7aa6d2885   (hash of the vendored files, not a timestamp: a re-run that changes
+nothing must produce the same file)
 Items: button, cx, directional-icon, button-group, chip, badge, avatar, input, select, chevrons, use-dismiss-on-outside-press, dropdown, tooltip, direction, switch, segmented-control, skeleton, spinner, progress, stat-cards, template-copy
 
 | item | upstream file | local path | sha256 |
@@ -46,15 +47,3 @@ Items: button, cx, directional-icon, button-group, chip, badge, avatar, input, s
   React 18, where React strips `ref` from function-component props. So **do not
   pass `ref` to a vendored component**; attach the ref to a wrapper element
   instead. Nothing inside the vendored source relies on an incoming `ref`.
-
-## Keeping the tree honest
-
-The catalogue and the shipped tree are two different things:
-
-- `pnpm run vendor` pulls the whole catalogue back and regenerates
-  `ui/index.ts` from the files that exist.
-- `pnpm run prune:vendor` deletes vendored files no widget names, then
-  regenerates the same block. `prepack` runs it before every `npm pack`, and
-  `check:assets` fails when anything is unused.
-- `ui/index.ts` is generated between the two marker comments; the hand-written
-  half above it (card parts, viz, motion, `cx`) is never touched.

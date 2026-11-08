@@ -160,7 +160,8 @@ wrap what you need in \`src/client/ui/index.ts\` instead, so the next vendor run
 stays a clean diff.
 
 Registry: ${REGISTRY}
-Fetched: ${new Date().toISOString()}
+Content: ${sha(provenance.map(p => `${p.item}:${p.sha256}`).join('\n')).slice(0, 16)}   (hash of the vendored files, not a timestamp: a re-run that changes
+nothing must produce the same file)
 Items: ${items.map(i => i.json.name).join(', ')}
 
 | item | upstream file | local path | sha256 |
