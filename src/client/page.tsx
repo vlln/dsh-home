@@ -1,7 +1,8 @@
 /** Registry-driven widget instances. The page owns layout, not widget business logic. */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
-import { Button, IconTrashOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconTrashOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button } from './ui/index.ts'
 import { formatAgo, formatDay, type Translate } from './format.ts'
 import type { WidgetActions } from './widgets.tsx'
 import type { SessionStatusMap } from './session-model.ts'
@@ -214,25 +215,25 @@ export function HomePage(props: HomePageProps): ReactNode {
     <div ref={homeRef} className="dsh-home" data-editing={editing ? 'true' : 'false'}>
       <div className="dsh-home-inner">
         <header className="dsh-home-head">
-          <div>
-            <div className="dsh-home-title-row">
-              <h1 className="dsh-home-title">{t('panel.title')}</h1>
-              {!editing && <Button variant="ghost" size="sm" aria-label={t('action.refresh')} onClick={() => { void store.refresh() }}>↻</Button>}
-              <span className="dsh-home-updated">{editing ? t('edit.mode') : state.lastLoadedAt === null ? t('summary.scanning') : t('summary.updated', { time: formatAgo(state.lastLoadedAt, state.now, t) })}</span>
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="dsh-home-title-row flex items-center gap-2">
+              <h1 className="dsh-home-title text-title-1-semibold tracking-tight text-text-primary">{t('panel.title')}</h1>
+              {!editing && <Button variant="ghost" size="xs" aria-label={t('action.refresh')} onClick={() => { void store.refresh() }}>↻</Button>}
+              <span className="dsh-home-updated text-caption-1-medium text-text-tertiary">{editing ? t('edit.mode') : state.lastLoadedAt === null ? t('summary.scanning') : t('summary.updated', { time: formatAgo(state.lastLoadedAt, state.now, t) })}</span>
             </div>
-            <div className="dsh-home-sub">
+            <div className="dsh-home-sub flex items-center gap-2 text-caption-1-medium text-text-tertiary">
               <span>{formatDay(state.now, locale())}</span>
               {!editing && sinceCount !== null && sinceCount > 0 && <span>{t('panel.since', { count: sinceCount })}</span>}
             </div>
           </div>
           <div className="dsh-home-actions" role="group" aria-label={t('aria.actions')}>
-            <Button variant={editing ? 'primary' : 'outline'} size="sm" disabled={!writable || busy || interacting} aria-pressed={editing}
+            <Button variant={editing ? 'primary' : 'secondary'} size="small" disabled={!writable || busy || interacting} aria-pressed={editing}
               onClick={() => { if (editing) void finish(); else { setEditing(true); setSaveError(false) } }}>
               {t(saving ? 'edit.saving' : editing ? 'action.done' : 'action.edit')}
             </Button>
             {!editing && <>
-              <Button variant="primary" size="sm" onClick={() => { actions.startSession() }}>{t('action.newSession')}</Button>
-              <Button variant="ghost" size="sm" onClick={() => { actions.leave() }}>{t('action.back')}</Button>
+              <Button variant="primary" size="small" onClick={() => { actions.startSession() }}>{t('action.newSession')}</Button>
+              <Button variant="ghost" size="small" onClick={() => { actions.leave() }}>{t('action.back')}</Button>
             </>}
           </div>
         </header>
@@ -247,14 +248,14 @@ export function HomePage(props: HomePageProps): ReactNode {
         {editing && <div className="dsh-edit-bar" inert={!editable || interacting || undefined} role="region" aria-label={t('edit.mode')}>
           <span className="dsh-edit-hint">{t('edit.hint')}</span>
           <div className="dsh-edit-actions">
-            <Button variant="outline" size="sm" aria-expanded={trayOpen} onClick={() => { setTrayOpen(!trayOpen) }}>{t('action.widgets')}</Button>
-            <Button variant="ghost" size="sm" disabled={libraryDrag !== null || geometry.length === 0} title={t('action.compactHint')} onClick={() => manage(() => { store.compactSpatialLayout(geometry, cols) })}>{t('action.compact')}</Button>
+            <Button variant="secondary" size="small" aria-expanded={trayOpen} onClick={() => { setTrayOpen(!trayOpen) }}>{t('action.widgets')}</Button>
+            <Button variant="ghost" size="small" disabled={libraryDrag !== null || geometry.length === 0} title={t('action.compactHint')} onClick={() => manage(() => { store.compactSpatialLayout(geometry, cols) })}>{t('action.compact')}</Button>
           </div>
         </div>}
         {saveError && <div className="dsh-error" role="alert">{t('edit.saveError')}</div>}
         {managementError && <div className="dsh-error" role="alert">{t('manager.error')}</div>}
         {state.error !== null && <div className="dsh-error" role="alert">
-          <span>{t('error.load')}</span><Button variant="ghost" size="sm" onClick={() => { void store.refresh() }}>{t('error.retry')}</Button>
+          <span>{t('error.load')}</span><Button variant="ghost" size="small" onClick={() => { void store.refresh() }}>{t('error.retry')}</Button>
         </div>}
         {editing && trayOpen && <WidgetGallery definitions={definitions.filter(definition => !RETIRED_FROM_LIBRARY.has(definition.typeId))} t={t} language={locale()} disabled={!writable || busy || interacting}
           position={state.prefs.libraryPosition} onPositionChange={position => { store.setLibraryPosition(position) }}
@@ -299,7 +300,7 @@ export function HomePage(props: HomePageProps): ReactNode {
           })}
           </SpatialGrid>}
         </div>
-        {state.workbenchLoaded && geometry.length === 0 && <div className="dsh-empty"><span>{t('empty.noWidgets')}</span><Button variant="outline" size="sm" disabled={!writable || busy} onClick={() => { setEditing(true); setTrayOpen(true) }}>{t('action.widgets')}</Button></div>}
+        {state.workbenchLoaded && geometry.length === 0 && <div className="dsh-empty"><span>{t('empty.noWidgets')}</span><Button variant="secondary" size="small" disabled={!writable || busy} onClick={() => { setEditing(true); setTrayOpen(true) }}>{t('action.widgets')}</Button></div>}
         {editing && <p className="dsh-muted dsh-edit-footnote">{t('edit.keyboard')}</p>}
         {gripVisible && (['left', 'right'] as const).map(side => <CanvasWidthHandle key={side} side={side}
           value={boardWidth} onCommit={commitCanvasWidth}

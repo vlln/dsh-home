@@ -18,6 +18,7 @@ import { galleryStyles } from './gallery-styles.ts'
 import { libraryStyles } from './library-styles.ts'
 import { widgetRefinementStyles } from './widget-refinement-styles.ts'
 import { widgetExpressionStyles } from './widget-expression-styles.ts'
+import { themeCss } from './ui/generated/theme-css.ts'
 
 /** 样式表元素 id（重复挂载时复用同一份）。 */
 export const STYLE_ID = 'dsh-home-styles'
@@ -811,6 +812,12 @@ body.dsh-home-dragging * { cursor: grabbing !important; }
 
 /**
  * 幂等注入样式表（同一个 document 只留一份）。
+ *
+ * 层序有含义：`dsh-legacy` 排在最前，Tailwind 的 utilities 排在最后。新写的
+ * 组件用工具类（`text-text-secondary`）时总能盖掉旧的手写规则，迁移期不必
+ * 一边改一边删；旧规则只为还没迁移的卡片保底。Tailwind 产物本身不含
+ * preflight（见 `theme.css`），不会重置宿主页面。
+ *
  * @returns 撤销函数（仅当这次调用真的插入了元素时才移除）
  */
 export function injectStyles(): () => void {
@@ -819,7 +826,13 @@ export function injectStyles(): () => void {
   if (existing !== null) return () => {}
   const element = document.createElement('style')
   element.id = STYLE_ID
-  element.textContent = designSystemStyles + CSS + activityStyles + personalStyles + plannerStyles + quickStyles + galleryStyles + libraryStyles + widgetRefinementStyles + widgetExpressionStyles
+  const legacy = designSystemStyles + CSS + activityStyles + personalStyles + plannerStyles + quickStyles + galleryStyles + libraryStyles + widgetRefinementStyles + widgetExpressionStyles
+  element.textContent =
+    '@layer dsh-reset, dsh-legacy, theme, base, components, utilities;\n' +
+    themeCss +
+    '\n@layer dsh-legacy {\n' +
+    legacy +
+    '\n}\n'
   document.head.append(element)
   return () => { element.remove() }
 }

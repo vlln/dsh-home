@@ -1,0 +1,80 @@
+/* ===========================================================================
+ * dsh-home theme entry
+ *
+ * One Tailwind compile produces every class the vendored BoardUI components and
+ * the widgets use. Nothing here ships a preflight: dsh-home renders inside the
+ * host document, so a global reset would be a collision, not a baseline.
+ *
+ * Layers:
+ *   1. Tailwind's theme variables + utilities (no base).
+ *   2. BoardUI's token table (primitives, `:root` semantics, dark overrides
+ *      rewritten to the host's `body[data-ds-dark-theme]`).
+ *   3. BoardUI's composite type ramp (`text-title-1-medium`, `text-body-…`).
+ *   4. This file's deliberate overrides — the only place dsh-home departs from
+ *      upstream values.
+ *
+ * Regenerate the compiled string with `pnpm run build:css`.
+ * =========================================================================== */
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@import "./ui/vendor-css/extras.css";
+@import "./ui/vendor-css/boardui-theme.css";
+@import "./ui/vendor-css/boardui-typography.css";
+
+/* Only scan our own source: the host bundle and node_modules never contain
+ * class names we want emitted. */
+@source "./**/*.{ts,tsx}";
+
+
+/* ---------------------------------------------------------------------------
+ * Scoped control reset
+ *
+ * BoardUI assumes Tailwind preflight, which resets `button`/`input` chrome. We
+ * skip preflight on purpose (it would restyle the host document), so the subset
+ * that matters is reset here — and only inside `.dsh-home`.
+ *
+ * Layer order does the rest: `dsh-reset` is declared *before* `dsh-legacy`, so
+ * every hand-written legacy rule still wins over this reset, while the vendored
+ * components' utilities (a later layer) win over both.
+ * ------------------------------------------------------------------------- */
+@layer dsh-reset {
+  .dsh-home :where(button, input, select, textarea) {
+    font: inherit;
+    color: inherit;
+    background-color: transparent;
+    background-image: none;
+    border: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Departures from upstream
+ * ------------------------------------------------------------------------- */
+
+@theme inline {
+  /* Inherit the host's UI font: dsh ships a Chinese-capable stack and
+   * `--font-inter` does not exist here. The type ramp still sets size, weight,
+   * leading and tracking, so the ladder holds; only the family is borrowed. */
+  --font-sans: var(
+    --dsh-font-family-text,
+    var(--dsh-font-family-text-default, ui-sans-serif, system-ui, sans-serif)
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Data ink
+ *
+ * The vendored ramp (teal / lime / pink / sky / purple) is the honest way to
+ * show more than one series. These aliases name the four roles a widget may
+ * use, so a widget asks for "the second series" instead of picking a hue.
+ * ------------------------------------------------------------------------- */
+:root {
+  --dsh-viz-1: var(--color-chart-1);
+  --dsh-viz-2: var(--color-chart-2);
+  --dsh-viz-3: var(--color-chart-3);
+  --dsh-viz-4: var(--color-chart-4);
+  --dsh-viz-5: var(--color-chart-5);
+  --dsh-viz-track: var(--color-chart-track);
+}

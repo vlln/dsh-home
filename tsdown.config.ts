@@ -23,7 +23,13 @@ export default [
     clean: false,
     external: [/@deepseek-ai\/dsh-client-/, /^react(-dom)?($|\/)/],
     // Layout engine and its drag/resize dependencies ship inside this client half.
-    noExternal: [/react-grid-layout/, /react-draggable/, /react-resizable/, /react-lifecycles-compat/, /resize-observer-polyfill/, /fast-equals/, /clsx/, /prop-types/, /react-is/, /object-assign/],
+    noExternal: [
+      /react-grid-layout/, /react-draggable/, /react-resizable/, /react-lifecycles-compat/,
+      /resize-observer-polyfill/, /fast-equals/, /clsx/, /prop-types/, /react-is/, /object-assign/,
+      // Vendored BoardUI components and their runtime.
+      /^react-aria-components/, /^@react-aria\//, /^@react-stately\//, /^@internationalized\//,
+      /^@remixicon\//, /^tailwind-merge/, /^@swc\/helpers/,
+    ],
     outputOptions: {
       entryFileNames: 'client.js',
       banner: 'window.__ModuleLoader__.load({ id: "@vlln/dsh-home", factory: (require) => {',

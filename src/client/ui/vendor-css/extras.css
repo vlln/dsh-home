@@ -1,0 +1,91 @@
+/* Ported pieces of BoardUI's `styles/globals.css` that the vendored components
+ * actually rely on, minus everything that belongs to a page shell: no
+ * preflight, no `body`/`html` rules, no theme-switch transition, no landing
+ * page effects. dsh-home renders inside the host document and must not restyle
+ * anything outside `.dsh-home`.
+ *
+ * Upstream items: `globals` (custom variants, shimmer, Recharts tweaks).
+
+/* ---------------------------------------------------------------------------
+ * Variants
+ *
+ * Upstream flips dark with a `.dark` class on the root. The host flips
+ * `body[data-ds-dark-theme]`, so the variant is rewritten to that boundary:
+ * a `dark:` utility then applies anywhere inside a dark document.
+ * ------------------------------------------------------------------------- */
+@custom-variant dark (&:where(body[data-ds-dark-theme], body[data-ds-dark-theme] *));
+
+/* Resolve the nearest direction boundary, including nested LTR regions. */
+@custom-variant rtl (&:dir(rtl));
+@custom-variant ltr (&:dir(ltr));
+
+/* ---------------------------------------------------------------------------
+ * Shimmering label — agent-progress / thinking states
+ * ------------------------------------------------------------------------- */
+@keyframes ai-chat-text-shimmer {
+  from {
+    background-position: 200% center;
+  }
+
+  to {
+    background-position: -100% center;
+  }
+}
+
+.agent-progress-loading-text {
+  color: transparent;
+  background-image: linear-gradient(
+    100deg,
+    var(--color-text-secondary) 16%,
+    var(--color-text-secondary) 38%,
+    var(--color-text-primary) 50%,
+    var(--color-text-secondary) 62%,
+    var(--color-text-secondary) 84%
+  );
+  background-position: 200% center;
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: ai-chat-text-shimmer 3.4s linear infinite;
+  will-change: background-position;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-progress-loading-text {
+    animation: none;
+    background-image: none;
+    color: var(--color-text-secondary);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Numbers that change in place fade instead of snapping.
+ * ------------------------------------------------------------------------- */
+@keyframes number-fade {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-number-fade {
+  animation: number-fade 220ms ease-out;
+}
+
+/* ---------------------------------------------------------------------------
+ * Recharts: keep SVG axes in physical order (data, not layout) and drop the
+ * UA focus box; every chart card draws its own focus feedback.
+ * ------------------------------------------------------------------------- */
+.recharts-wrapper {
+  direction: ltr;
+}
+
+.recharts-wrapper:focus,
+.recharts-wrapper:focus-visible,
+.recharts-wrapper :focus,
+.recharts-wrapper :focus-visible {
+  outline: none;
+}

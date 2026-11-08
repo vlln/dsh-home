@@ -1,7 +1,7 @@
 {
   "name": "@vlln/dsh-home",
   "description": "DSH 任务工作台：跨工作目录的最近会话、会话状态、可编排小组件与时间统计。",
-  "version": "0.53.2",
+  "version": "0.54.0",
   "type": "module",
   "main": "lib/index.mjs",
   "icon": "./icon.svg",
@@ -47,11 +47,13 @@
     "dsh": ">=0.2.0"
   },
   "scripts": {
-    "build": "tsdown --config ./tsdown.config.ts && tsc -p tsconfig.widgets.json",
+    "build": "npm run build:css && tsdown --config ./tsdown.config.ts && tsc -p tsconfig.widgets.json",
     "test": "node --experimental-strip-types --test",
     "typecheck": "tsc --noEmit",
     "test:host": "node scripts/verify-host.mjs --run",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "build:css": "node scripts/build-css.mjs",
+    "vendor": "node scripts/vendor-boardui.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-api-workspace-controller": "0.2.1-rc.5",
@@ -63,10 +65,12 @@
     "@deepseek-ai/dsh-client-ui-sidebar": "0.2.1-rc.5",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.5",
     "@deepseek-ai/dsh-client-ui-workspace": "0.2.1-rc.5",
+    "@tailwindcss/cli": "^4.3.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "playwright": "1.58.2",
     "react-grid-layout": "2.2.3",
+    "tailwindcss": "^4.3.5",
     "tsdown": "0.22.2",
     "typescript": "^5.9.3"
   },
@@ -87,5 +91,10 @@
   "homepage": "https://github.com/vlln/dsh-home#readme",
   "bugs": {
     "url": "https://github.com/vlln/dsh-home/issues"
+  },
+  "dependencies": {
+    "@remixicon/react": "^4.9.0",
+    "react-aria-components": "^1.22.1",
+    "tailwind-merge": "^3.7.0"
   }
 }
