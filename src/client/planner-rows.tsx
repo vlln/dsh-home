@@ -39,16 +39,16 @@ export function PlannerRow({ item, today, t, readOnly, editing, showDay = true, 
   }
   const time = showTime ? itemTime(item) : ''
   const dayLabel = showDay && item.day !== today ? itemDayLabel(item, today, t) : ''
-  return <li className="dsh-todo-item" data-done={item.done ? 'true' : 'false'}>
+  return <li className="dsh-todo-item flex items-start gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-background-secondary-default" data-done={item.done ? 'true' : 'false'}>
     <button type="button" className="dsh-todo-check" role="checkbox" aria-checked={item.done}
       aria-label={item.title} disabled={readOnly} onClick={onToggle}>
       <span className="dsh-todo-tick" aria-hidden="true" />
     </button>
-    <button type="button" className="dsh-todo-main" disabled={readOnly} onClick={onEdit}
+    <button type="button" className="dsh-todo-main min-w-0 flex-1 text-start" disabled={readOnly} onClick={onEdit}
       title={item.note === '' ? undefined : item.note}>
       {item.priority > 0 && <span className="dsh-priority" data-priority={item.priority} aria-hidden="true" />}
-      <span className="dsh-todo-title">{item.title}</span>
-      {(time !== '' || dayLabel !== '') && <span className="dsh-todo-meta">
+      <span className="dsh-todo-title block truncate text-body-medium text-text-primary">{item.title}</span>
+      {(time !== '' || dayLabel !== '') && <span className="dsh-todo-meta mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-caption-1-medium text-text-tertiary">
         {time !== '' && <span className="dsh-todo-time">{time}</span>}
         {dayLabel !== '' && <span className="dsh-todo-day">{dayLabel}</span>}
       </span>}
