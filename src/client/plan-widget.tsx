@@ -10,6 +10,7 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
+import { CardEmpty } from './ui/index.ts'
 import { useHomeData, todayKey, useNow } from './home-data.ts'
 import { ItemEditor, emptyDraft, type ItemFields } from './item-editor.tsx'
 import { itemsOnDay } from './planner-model.ts'
@@ -96,7 +97,7 @@ function PlanBody({ data, today, now, t, readOnly, showDone, onToggle, onUpdate,
   return <div className="dsh-plan">
     <div className="dsh-plan-scroll">
       {timed.length === 0
-        ? <p className="dsh-todo-empty">{t('plan.empty')}</p>
+        ? <CardEmpty title={t('plan.empty')} />
         : <ul className="dsh-plan-list">{timeline}</ul>}
       {free.length > 0 && <section className="dsh-todo-group" data-group="free">
         <h4 className="dsh-todo-heading">{t('plan.unscheduled')}<span className="dsh-todo-count">{free.length}</span></h4>

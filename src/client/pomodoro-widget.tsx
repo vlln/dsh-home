@@ -65,7 +65,7 @@ function PomodoroBody({ pomodoro, today, t, readOnly, onStart, onPause, onSkip, 
           strokeDasharray={`${Math.max(0.001, progress).toFixed(4)} 1`} transform="rotate(-90 60 60)" />
       </svg>
       <div className="dsh-ring-inner flex flex-col items-center gap-0.5">
-        <span className="dsh-ring-value text-[30px] leading-none font-semibold tracking-tight tabular-nums text-text-primary" role="timer">{formatClock(snapshot.remainingMs)}</span>
+        <span className="dsh-ring-value text-title-1-medium tabular-nums text-text-primary" role="timer">{formatClock(snapshot.remainingMs)}</span>
         <span className="dsh-ring-caption text-caption-1-medium text-text-tertiary">{t(snapshot.phase === 'focus' ? 'pomodoro.focus' : 'pomodoro.break')}</span>
       </div>
     </div>

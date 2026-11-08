@@ -96,7 +96,7 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
           { key: 'cache', value: today.cacheRead, tone: PART_TONE.cache },
           { key: 'output', value: today.output, tone: PART_TONE.output },
         ]}
-        center={<span className="text-caption-1-semibold tabular-nums text-text-secondary" title={t('usage.hit')}>{total === 0 || hit === null ? '—' : percent(hit)}</span>} />
+        center={<span className="text-caption-1-semibold tabular-nums text-text-primary" title={t('usage.hit')}>{total === 0 || hit === null ? '—' : percent(hit)}</span>} />
     </div>
     {week && <div className="mt-auto flex flex-col gap-1.5">
       <SparkBars items={days.map(day => {

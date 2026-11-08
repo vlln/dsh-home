@@ -5,6 +5,7 @@ import { useVisibleRows } from './fit-rows.ts'
 import { pinnedSessionRows } from './pinned-model.ts'
 import { cwdLabels, recentSessionStatus } from './session-model.ts'
 import { SessionRow } from './session-row.tsx'
+import { CardEmpty } from './ui/index.ts'
 export function PinnedBody() {
   const { state, t, actions, statuses, statusSource } = useBuiltin()
   const pins = state.nativePins
@@ -19,7 +20,7 @@ export function PinnedBody() {
     <div className="dsh-pinned-summary"><strong>{t('pinned.count', { count: rows.length })}</strong>
       <span>{shown.length < rows.length ? t('pinned.visible', { shown: shown.length, total: rows.length }) : t('pinned.order')}</span></div>
     {pins?.status === 'error' && rows.length > 0 && <p className="dsh-muted" role="alert">{t('pinned.error')}</p>}
-    {rows.length === 0 ? <div className="dsh-empty" role="status"><span>{t(stateKey)}</span>{pins?.status === 'ready' && <span className="dsh-muted">{t('pinned.hint')}</span>}</div>
+    {rows.length === 0 ? <CardEmpty title={t(stateKey)} detail={pins?.status === 'ready' ? t('pinned.hint') : undefined} />
       : <div className="dsh-rows dsh-pinned-rows" ref={rowsRef}>{shown.map(session => <SessionRow
         key={session.id}
         session={session}

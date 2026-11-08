@@ -44,9 +44,9 @@ function QuoteSettings({ config, onConfigChange }: WidgetSettingsProps<QuoteConf
 
 function QuoteBody({ text, t }: { text: string; t: Translate }): ReactNode {
   return <div className="dsh-quote flex h-full min-h-0 flex-col justify-center gap-2 px-1">
-    <span className="text-[34px] leading-none font-semibold text-chart-4" aria-hidden="true">“</span>
+    <span className="text-display-4-semibold leading-none text-chart-4" aria-hidden="true">“</span>
     <p className="dsh-quote-text m-0 line-clamp-[10] text-body-regular leading-relaxed text-text-primary">{text}</p>
-    <span className="text-[10px] leading-none text-text-tertiary">{t('quote.daily')}</span>
+    <span className="text-caption-1-medium text-text-tertiary">{t('quote.daily')}</span>
   </div>
 }
 

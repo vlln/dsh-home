@@ -35,7 +35,7 @@ function Bars({ days, t, todayKey }: { days: readonly DayBucket[]; t: Translate;
       <TooltipTrigger delay={60}>{bar}<Tooltip>{item.label}</Tooltip></TooltipTrigger>
     )} className="h-20" />
     {/* 30 天不再逐日写 30 个数字：每 5 天一个刻度，最后一天始终保留。 */}
-    <div className="flex gap-1 text-center text-[10px] leading-none text-text-tertiary" aria-hidden="true">
+    <div className="flex gap-1 text-center text-caption-1-medium text-text-tertiary" aria-hidden="true">
       {days.map((day, index) => <span key={day.key} className="flex-1 truncate">{
         days.length > 14 && (index % 5 !== 0) && index !== days.length - 1 ? '' : day.key.slice(8)
       }</span>)}

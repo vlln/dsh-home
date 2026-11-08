@@ -10,6 +10,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
+import { CardEmpty } from './ui/index.ts'
 import { todayKey, useHomeData } from './home-data.ts'
 import { habitDue, habitMarked, habitStreak } from './planner-model.ts'
 import { plannerPreview } from './planner-preview.ts'
@@ -67,7 +68,7 @@ function HabitBody({ habits, today, t, readOnly, showAll, onMark, onDelete, onCr
   }
   return <div className="dsh-habit">
     <div className="dsh-habit-scroll">
-      {visible.length === 0 && <p className="dsh-todo-empty">{t('habit.empty')}</p>}
+      {visible.length === 0 && <CardEmpty title={t('habit.empty')} />}
       <ul className="dsh-habit-list flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
         {visible.map(habit => {
           const marked = habitMarked(habit, today)
