@@ -204,6 +204,12 @@ async function stableShot(page, filename) {
   await page.screenshot({ path: path.join(artifacts, filename), fullPage: true, animations: 'disabled' })
 }
 const editorOf = page => page.locator('[contenteditable="true"][role="textbox"]').first()
+/** The toggle is only labelled "Open sidebar" while collapsed. */
+async function ensureSidebarOpen(page) {
+  const open = page.getByRole('button', { name: 'Open sidebar' })
+  if (await open.isVisible().catch(() => false)) await open.click()
+}
+
 async function visualCases(page) {
   for (const locale of ['zh', 'en']) {
     await rpc(page, 'settings/update', { ns: 'locale', patch: { preference: locale } })
@@ -235,7 +241,7 @@ async function visualCases(page) {
 async function layoutCases(page) {
   await rpc(page, 'settings/update', { ns: 'locale', patch: { preference: 'en' } })
   await page.reload(); await openHome(page)
-  await page.locator('.dsh-expand').click()
+  await ensureSidebarOpen(page)
   await page.getByRole('button', { name: 'Edit layout', exact: true }).click()
   const recent = page.locator('[data-widget-id="recent"]')
   await recent.getByRole('button', { name: 'Size: L', exact: true }).click()
@@ -244,7 +250,7 @@ async function layoutCases(page) {
   await eventually(async () => (await homeApi(page, 'layout.get')).layout?.hidden?.includes('recent'), 'hidden durable write')
   await page.reload(); await openHomeWithoutRecent(page)
   assert.equal(await page.locator('[data-widget-id="recent"]').count(), 0)
-  await page.locator('.dsh-expand').click()
+  await ensureSidebarOpen(page)
   await page.getByRole('button', { name: 'Edit layout', exact: true }).click()
   await page.getByRole('button', { name: /^Widgets/ }).click()
   await page.locator('.dsh-tray-item').filter({ hasText: 'Recent sessions' }).click()
