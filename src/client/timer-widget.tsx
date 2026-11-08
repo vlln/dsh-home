@@ -15,6 +15,7 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { useHomeData, useNow } from './home-data.ts'
 import { formatClock, timerElapsed } from './focus-model.ts'
+import { Button, Chip } from './ui/index.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
@@ -199,19 +200,27 @@ function TimerBody({ elapsed, targetMs, running, readOnly, t, onPreview, onCommi
     <TimerDial targetMs={target} fraction={fraction} displayMs={display} reached={reached}
       editable={editable} t={t} onPreview={onPreview} onCommit={onCommit} />
     <div className="dsh-timer-presets" role="group" aria-label={t('timer.presets')}>
-      {PRESETS.map(minutes => <button type="button" key={minutes} className="dsh-timer-preset"
-        disabled={!editable} data-active={Math.round(target / 60_000) === minutes ? 'true' : undefined}
-        aria-pressed={Math.round(target / 60_000) === minutes}
-        onClick={() => { onPreview(minutes * 60_000); onCommit(minutes * 60_000) }}>{t('timer.preset', { n: minutes })}</button>)}
+      {PRESETS.map(minutes => {
+        const active = Math.round(target / 60_000) === minutes
+        return <Chip key={minutes} variant="caption" color={active ? 'blue' : 'neutral'}
+          className={active ? 'ring-1 ring-chart-4/40' : undefined}
+          aria-pressed={active} role="button" tabIndex={editable ? 0 : -1}
+          onClick={() => { if (!editable) return; onPreview(minutes * 60_000); onCommit(minutes * 60_000) }}
+          onKeyDown={event => {
+            if (!editable || (event.key !== 'Enter' && event.key !== ' ')) return
+            event.preventDefault()
+            onPreview(minutes * 60_000); onCommit(minutes * 60_000)
+          }}>{t('timer.preset', { n: minutes })}</Chip>
+      })}
     </div>
     <div className="dsh-timer-actions">
       {/* Idle: one button. Started: two choices. Reached: start over or clear. */}
       {idle
-        ? <button type="button" className="dsh-timer-button dsh-timer-primary" disabled={readOnly} onClick={onStart}>{t('timer.start')}</button>
+        ? <Button variant="primary" size="small" disabled={readOnly} onClick={onStart}>{t('timer.start')}</Button>
         : <>
-          <button type="button" className="dsh-timer-button dsh-timer-primary" disabled={readOnly}
-            onClick={reached ? onRestart : running ? onPause : onStart}>{primary}</button>
-          <button type="button" className="dsh-timer-button" disabled={readOnly} onClick={onReset}>{t('timer.reset')}</button>
+          <Button variant="primary" size="small" disabled={readOnly}
+            onClick={reached ? onRestart : running ? onPause : onStart}>{primary}</Button>
+          <Button variant="ghost" size="xs" disabled={readOnly} onClick={onReset}>{t('timer.reset')}</Button>
         </>}
     </div>
   </div>

@@ -12,6 +12,7 @@ import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { useHomeData, todayKey, useNow } from './home-data.ts'
 import { completedToday, formatClock, pomodoroSnapshot } from './focus-model.ts'
+import { Button, Chip } from './ui/index.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
@@ -50,30 +51,30 @@ function PomodoroBody({ pomodoro, today, t, readOnly, onStart, onPause, onSkip, 
   const snapshot = pomodoroSnapshot(pomodoro, now)
   const rounds = completedToday(pomodoro, today)
   const progress = snapshot.durationMs === 0 ? 0 : Math.min(1, (snapshot.durationMs - snapshot.remainingMs) / snapshot.durationMs)
-  return <div className="dsh-pomodoro" data-phase={snapshot.phase}>
-    <div className="dsh-pomodoro-head">
-      <span className="dsh-chip">
+  return <div className="dsh-pomodoro flex h-full min-h-0 flex-col items-center justify-between gap-2" data-phase={snapshot.phase}>
+    <div className="dsh-pomodoro-head flex w-full items-center justify-between gap-2">
+      <Chip variant="caption" color="blue">
         {snapshot.phase === 'focus' ? t('pomodoro.focus') : t('pomodoro.break')}
-      </span>
-      <span className="dsh-pomodoro-rounds">{t('pomodoro.rounds', { count: rounds })}</span>
+      </Chip>
+      <span className="dsh-pomodoro-rounds text-caption-1-medium text-text-tertiary">{t('pomodoro.rounds', { count: rounds })}</span>
     </div>
     <div className="dsh-ring" data-running={running ? 'true' : 'false'}>
       <svg className="dsh-ring-svg" viewBox="0 0 120 120" aria-hidden="true">
-        <circle className="dsh-ring-track" cx="60" cy="60" r="52" />
-        <circle className="dsh-ring-progress" cx="60" cy="60" r="52" pathLength="1"
+        <circle className="dsh-ring-track stroke-chart-track" cx="60" cy="60" r="52" />
+        <circle className="dsh-ring-progress stroke-chart-4 transition-[stroke-dasharray] duration-500 ease-out" cx="60" cy="60" r="52" pathLength="1"
           strokeDasharray={`${Math.max(0.001, progress).toFixed(4)} 1`} transform="rotate(-90 60 60)" />
       </svg>
-      <div className="dsh-ring-inner">
-        <span className="dsh-ring-value" role="timer">{formatClock(snapshot.remainingMs)}</span>
-        <span className="dsh-ring-caption">{t(snapshot.phase === 'focus' ? 'pomodoro.focus' : 'pomodoro.break')}</span>
+      <div className="dsh-ring-inner flex flex-col items-center gap-0.5">
+        <span className="dsh-ring-value text-[30px] leading-none font-semibold tracking-tight tabular-nums text-text-primary" role="timer">{formatClock(snapshot.remainingMs)}</span>
+        <span className="dsh-ring-caption text-caption-1-medium text-text-tertiary">{t(snapshot.phase === 'focus' ? 'pomodoro.focus' : 'pomodoro.break')}</span>
       </div>
     </div>
-    <div className="dsh-timer-actions">
-      <button type="button" className="dsh-timer-button dsh-timer-primary" disabled={readOnly} onClick={running ? onPause : onStart}>
+    <div className="dsh-timer-actions flex w-full items-center justify-center gap-1.5">
+      <Button variant="primary" size="small" disabled={readOnly} onClick={running ? onPause : onStart}>
         {running ? t('timer.pause') : t('pomodoro.start')}
-      </button>
-      <button type="button" className="dsh-timer-button" disabled={readOnly} onClick={onSkip}>{t('pomodoro.skip')}</button>
-      <button type="button" className="dsh-timer-button" disabled={readOnly} onClick={onReset}>{t('timer.reset')}</button>
+      </Button>
+      <Button variant="secondary" size="xs" disabled={readOnly} onClick={onSkip}>{t('pomodoro.skip')}</Button>
+      <Button variant="ghost" size="xs" disabled={readOnly} onClick={onReset}>{t('timer.reset')}</Button>
     </div>
   </div>
 }

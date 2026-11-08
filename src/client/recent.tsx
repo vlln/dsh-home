@@ -40,7 +40,7 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
   return (
     <div className="dsh-recent" data-status-source={source}>
       {empty === null ? (
-        <ol className="dsh-recent-list">
+        <ol className="dsh-recent-list flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
           {shown.map(session => {
             const title = session.title ?? t('recent.untitled')
             const workspace = session.cwd === undefined ? t('recent.unknownCwd') : labels.get(session.cwd) ?? session.cwd
@@ -49,20 +49,20 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
             const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
             return (
               <li key={session.id}>
-                <button type="button" className="dsh-recent-item" data-session-id={session.id} data-status={status}
+                <button type="button" className="dsh-recent-item flex w-full min-w-0 flex-col gap-1 rounded-xl px-2 py-1.5 text-start transition-colors duration-150 hover:bg-background-secondary-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" data-session-id={session.id} data-status={status}
                   aria-label={`${title} · ${workspace} · ${statusLabel} · ${trailing}`}
                   onClick={() => { actions.openSession(session.id) }}>
-                  <span className="dsh-recent-top">
-                    <span className="dsh-recent-dot" role="img" aria-label={statusLabel} title={statusLabel}>
+                  <span className="dsh-recent-top flex min-w-0 items-baseline gap-2">
+                    <span className="dsh-recent-dot mt-1 flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
                       <StateDot state={sessionDotState(status)} />
                     </span>
-                    <span className="dsh-recent-title" title={title}>{title}</span>
-                    <span className="dsh-recent-time">{trailing}</span>
+                    <span className="dsh-recent-title min-w-0 flex-1 truncate text-body-medium text-text-primary" title={title}>{title}</span>
+                    <span className="dsh-recent-time flex-none text-caption-1-medium tabular-nums text-text-tertiary">{trailing}</span>
                   </span>
-                  <span className="dsh-recent-meta">
+                  <span className="dsh-recent-meta flex min-w-0 items-center gap-1">
                     <WorkspacePill label={workspace} cwd={session.cwd ?? workspace}
                       title={session.cwd} unknown={session.cwd === undefined} />
-                    {isWaiting(status) && <span className="dsh-recent-state">{statusLabel}</span>}
+                    {isWaiting(status) && <span className="dsh-recent-state text-[10px] leading-none text-status-yellow-text">{statusLabel}</span>}
                   </span>
                 </button>
               </li>
@@ -73,7 +73,7 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
         <div className="dsh-empty" role="status">{t(loadError && all.length === 0 ? 'error.load' : `recent.${empty}`)}</div>
       )}
 
-      <div className="dsh-recent-footer">
+      <div className="dsh-recent-footer mt-1 flex items-center gap-2 border-t-0 pt-1 text-caption-1-medium text-text-tertiary">
         <span className="dsh-muted" role="status">{shown.length === all.length
           ? t('recent.countAll', { n: all.length })
           : t('recent.count', { shown: shown.length, total: all.length })}</span>

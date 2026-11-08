@@ -17,6 +17,7 @@ import { RecentBody } from './recent.tsx'
 import { PinnedBody } from './pinned-widget.tsx'
 import { dayCoverage, localDayWindow } from './widget-visual-model.ts'
 import { WorkspacePill } from './workspace-pill.tsx'
+import { Button, CardEmpty, Meter } from './ui/index.ts'
 import { useVisibleRows } from './fit-rows.ts'
 import { useHoverTip } from './hover-tip.tsx'
 import type { SessionStatusMap } from './session-model.ts'
@@ -91,20 +92,15 @@ function IconRhythm() {
 
 /** 空的友好态（不画灰框，只给一句话 + 可选动作）。 */
 function Empty({ children, action }: { children: ReactNode; action?: ReactNode }) {
-  return (
-    <div className="dsh-empty">
-      <span>{children}</span>
-      {action}
-    </div>
-  )
+  return <CardEmpty title={children} action={action} />
 }
 
 /** 空态里的主行动（开个新会话）。 */
 function StartAction({ t, actions }: Pick<WidgetProps, 't' | 'actions'>) {
   return (
-    <button type="button" className="dsh-empty-action" onClick={() => { actions.startSession() }}>
+    <Button variant="primary" size="xs" onClick={() => { actions.startSession() }}>
       {t('widget.empty.action')}
-    </button>
+    </Button>
   )
 }
 
@@ -254,27 +250,28 @@ function AreasBody({ t, data, actions }: WidgetProps) {
   const restMs = rest.reduce((sum, group) => sum + group.ms, 0)
   const restSessions = rest.reduce((sum, group) => sum + group.sessions, 0)
   return (
-    <div className="dsh-rows dsh-area-rows" ref={listRef}>
+    <div className="dsh-rows dsh-area-rows flex min-h-0 flex-1 flex-col gap-2" ref={listRef}>
       {rows.map(group => {
         const meta = (
-          <span className="dsh-row-meta">
+          <span className="dsh-row-meta text-caption-1-medium text-text-tertiary">
             {t('widget.areas.row', { dur: formatDuration(group.ms, t), sessions: group.sessions })}
           </span>
         )
         const title = (
-          <span className="dsh-row-top">
+          <span className="dsh-row-top flex min-w-0 items-center justify-between gap-2">
             <WorkspacePill label={group.name} cwd={group.cwd} title={group.cwd} />
-            <span className="dsh-area-duration">{formatDuration(group.ms, t)}</span>
+            <span className="dsh-area-duration flex-none text-caption-1-semibold tabular-nums text-text-primary">{formatDuration(group.ms, t)}</span>
           </span>
         )
-        const bar = <span className="dsh-area-track" aria-hidden="true"><span style={{ width: `${sorted[0]!.ms > 0 ? group.ms / sorted[0]!.ms * 100 : 0}%` }} /></span>
+        const bar = <Meter className="dsh-area-track" ratio={sorted[0]!.ms > 0 ? group.ms / sorted[0]!.ms : 0}
+          label={t('widget.areas.row', { dur: formatDuration(group.ms, t), sessions: group.sessions })} />
         return group.topLevelId === undefined
           ? <div key={group.name} className="dsh-row dsh-row-static">{title}{bar}{meta}</div>
           : (
             <button
               key={group.name}
               type="button"
-              className="dsh-row"
+              className="dsh-row flex flex-col gap-1 rounded-xl px-2 py-1.5 text-start transition-colors hover:bg-background-secondary-default"
               onClick={() => { actions.openSession(group.topLevelId as string) }}
             >
               {title}

@@ -37,14 +37,14 @@ export function NotesContent(props: WidgetContentProps<NotesConfig>): ReactNode 
     const shown = editable ? draft : config.text
     const [shownTitle, ...shownRest] = shown.split('\n')
     const shownBody = shownRest.join('\n').replace(/^\n+/u, '')
-    return <div className="dsh-note" data-empty={shown.trim() === '' ? 'true' : 'false'} data-editable={editable ? 'true' : 'false'}
+    return <div className="dsh-note flex h-full min-h-0 flex-col gap-1" data-empty={shown.trim() === '' ? 'true' : 'false'} data-editable={editable ? 'true' : 'false'}
       role={editable ? 'button' : undefined} tabIndex={editable ? 0 : undefined} aria-label={editable ? t('notes.edit') : undefined}
       onClick={editable ? begin : undefined} onKeyDown={editable ? event => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); begin() }
       } : undefined}>
-      {(shownTitle ?? '').trim() !== '' && <h3 className="dsh-note-title">{shownTitle}</h3>}
-      {shownBody.trim() !== '' && <p className="dsh-note-body">{shownBody}</p>}
-      {shown.trim() === '' && <p className="dsh-note-title" data-placeholder="true">{t('notes.placeholder')}</p>}
+      {(shownTitle ?? '').trim() !== '' && <h3 className="dsh-note-title text-body-medium text-text-primary">{shownTitle}</h3>}
+      {shownBody.trim() !== '' && <p className="dsh-note-body line-clamp-[12] text-body-regular text-text-secondary">{shownBody}</p>}
+      {shown.trim() === '' && <p className="dsh-note-title text-body-regular text-text-tertiary" data-placeholder="true">{t('notes.placeholder')}</p>}
     </div>
   }
   return <div className="dsh-note" data-editing="true">
@@ -81,17 +81,17 @@ export function ClockContent(props: WidgetContentProps<ClockConfig>): ReactNode 
   const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
   const zones = config.timeZone !== '' && !CLOCK_ZONES.includes(config.timeZone)
     ? [config.timeZone, ...CLOCK_ZONES] : CLOCK_ZONES
-  return <div className="dsh-personal-clock">
-    <div className="dsh-personal-clock-display">
-      <time className="dsh-personal-clock-time" dateTime={new Date(now).toISOString()} aria-label={time}>
+  return <div className="dsh-personal-clock flex h-full min-h-0 flex-col justify-between gap-2">
+    <div className="dsh-personal-clock-display flex items-end justify-between gap-3">
+      <time className="dsh-personal-clock-time text-[46px] leading-none font-semibold tracking-tight tabular-nums text-text-primary" dateTime={new Date(now).toISOString()} aria-label={time}>
         {timeParts.map((part, index) => <span key={index} data-part={part.type} aria-hidden="true">{part.value}</span>)}
       </time>
-      <div className="dsh-personal-clock-date" role="img" aria-label={date} title={date}>
-        <span className="dsh-personal-clock-day" aria-hidden="true">{day}</span>
-        <span className="dsh-personal-clock-month" aria-hidden="true">{month}</span>
+      <div className="dsh-personal-clock-date flex flex-none flex-col items-center rounded-2xl border border-border-button-default px-2.5 py-1" role="img" aria-label={date} title={date}>
+        <span className="dsh-personal-clock-day text-body-medium leading-none text-text-primary" aria-hidden="true">{day}</span>
+        <span className="dsh-personal-clock-month text-[10px] leading-tight text-text-tertiary" aria-hidden="true">{month}</span>
       </div>
     </div>
-    <div className="dsh-personal-clock-zone">
+    <div className="dsh-personal-clock-zone text-caption-1-medium text-text-tertiary">
       {/* One option, chosen from a list: no typing, no dialog, no editable heading. */}
       <select className="dsh-quiet-select dsh-clock-zone" aria-label={t('clock.timeZone')}
         title={config.timeZone === '' ? `${t('clock.followBrowser')} · ${browserZone}` : config.timeZone}
