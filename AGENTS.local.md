@@ -6,20 +6,29 @@
 ## 定位
 
 把 DSH 左上角 logo 的点击从「开新会话」改成「打开首页」。首页 = `main` 面板（key `home`）：
-默认是三件事（回到现场 / 在等我 / 今天），可编排的网格在「更多数据与小组件」里
-（内置 4 张 + 第三方经 `home.widget` 贡献的卡）。
+所有组件统一网格；页首编辑 / 完成切换，阅读态不拖拽，编辑态正文 inert，完成等待保存。
+React Grid Layout 负责跟手和缩放；自定义 compactor 从拖起快照生成可逆局部碰撞让位，不全局压实。
+候选吸附带迟滞；碰撞落点稳定停留 500ms 才按指针所在边缘四向让位，离开/换格/换方向重计，提前放手回快照。
+鼠标边缘滚屏；positions 按列数断点保存二维坐标。
+旧 focusOrder/order 由兼容模型迁移；所有组件经 `homeWidgets` 注册，旧 `home.widget` 只走适配层。
+实例/配置/布局的持久化与错误边界、回归入口见 `docs/workbench-development.md`；公开契约见 `docs/widget-development.md`。
 
 ## 结构
 
 ```
 src/index.mjs        Node half：活动账本 + 同源围栏路由 /plugins/dsh-home/api
-src/ledger.mjs       纯折叠：事件 → 天桶 + 活动簇（单测覆盖）
+src/ledger.mjs       纯折叠：事件 → 天桶 + 活动簇 + 人工消息 UTC 分钟计数（单测覆盖）
+src/activity.mjs     工作足迹：浏览器时区归日、目录筛选与按日会话明细
 src/state.mjs        state.json（布局/偏好，写得勤）+ ledger.json（会话聚合，写得少）
 src/trust.mjs        Origin/Host 同源围栏（照 dsh-pr-inbox）
 src/client/index.tsx apply：字典、面板、侧栏条目、logo 入口
-src/client/page.tsx  三件事 + 「更多」网格 + 编辑态 + 拖拽
-src/client/focus.tsx 回到现场 / 在等我 / 今天（默认视图；排序由 page 包一层）
-src/client/reorder.tsx 拖拽排序（window 监听 + 保留落点 + rAF 滚动 + 禁选中）
+src/client/page.tsx  通用组件目录/实例/外壳与编辑态，不判断业务组件 ID
+src/client/widget-contract.ts 公共类型契约（构建生成仅类型的 widgets 导出）
+src/client/widget-registry.ts 定义校验、生命周期、JSON 与配置迁移
+src/client/builtin-registration.tsx 内置类型注册及私有数据上下文适配
+src/client/widget-settings.tsx 容器持有设置草稿与保存/取消
+src/client/focus.tsx 回到现场 / 在等我的业务内容
+src/client/spatial-grid.tsx 跟手/缩放/悬停碰撞事务；reorder 是历史实现
 src/client/boundary.tsx 单卡错误边界（第三方 widget 抛错只坏一张）
 src/client/widgets.tsx 内置卡（只画卡内，外壳由 page 提供）
 src/client/store.ts  快照/会话目录/布局/编辑态，useSyncExternalStore 契约
@@ -37,10 +46,10 @@ src/client/styles.ts 注入式样式表（前缀 dsh-home，只用 --dsw-* token
 2. **账本读 `ctx.sessionPersistence`，不直接解压 `sessions/**.jsonl.zstd`**：日志是
    多帧 zstd + v0→v4 迁移 + 撕裂尾部，全归官方后端管。实测 `zstdDecompressSync`
    只解第一帧（一条 60KB 的日志解出 167 字节），绕过官方就是自找格式债。
-3. **布局只存覆盖**：`{ order, size, hidden }` 里只出现用户动过的项；默认排布由内置表
-   + `home.widget` 注册顺序合成，所以卸载一个 widget 包不会毁掉别人的布局。
-4. **默认是三件事，网格是 opt-in**（decisions/0005）：报表会衰减、N=1 时六张卡五张空、
-   布局编辑器维护成本最高而使用频率最低。首页先解决"接着干什么"。
+3. **类型不拥有实例**：注册表只提供定义，状态显式保存实例与配置；布局以 instanceId 定位。
+   注销类型保留缺失占位和配置，删除实例才清理其布局；新安装只进入目录，不自动填桌面。
+4. **统一编辑面**：所有组件共用网格与 order，页首编辑 / 完成，阅读态无拖拽。
+   旧双区设计（decisions/0005）是历史取舍；当前规则以工程文档为准。
 5. **记忆是首页的一部分**：`prefs.lastSeenAt` 支撑「自上次以来」，`prefs.dismissed`
    让 dismiss 只静音到下一次有新活动。没有记忆的 home 只是海报。
 6. **折叠口径带版本号**（`FOLD_VERSION`）：改口径 → 整个账本重折；否则 revision 没变的旧
@@ -84,10 +93,11 @@ home（源不动）。
 ## 命令
 
 ```sh
-pnpm install          # 只装 tsdown/typescript/@types/react
+pnpm install          # 构建工具、匹配宿主的类型 SDK、浏览器回归依赖
 pnpm run build        # lib/index.mjs + lib/client.js（banner/footer 已配）
-node --test           # 账本口径 7 个用例
-pnpm pack             # vlln-dsh-home-<ver>.tgz → 装进隔离 home
+pnpm test             # 账本、最近列表、字典、布局与生命周期契约
+pnpm run typecheck    # 匹配 SDK 的严格类型检查
+npm pack              # 本地安装包；不是 npm 发布
 ```
 
 重装到隔离实例（**Node 半边改动必须重启进程**；client 半边装完刷新即可）：
@@ -159,3 +169,18 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
 - 周报导出（按工作区的工时表）。
 - snooze（"两小时后再提醒"）与"批量标记已读"。
 - logo 入口做成配置项（首页 / 新会话），并配一个快捷键入口。
+
+## 第四轮（视觉层重建，0.54）的取舍
+
+- **vendored 目录按"用没用过"裁剪，不按"要不要"保留**：`scripts/prune-vendor.mjs` 以**导出名**判定
+  使用（widget 从 `ui/index.ts` import 过的名字才算用过），顺着 `index.ts` 找会把所有再导出都算成
+  被使用，永远删不掉。`ui/index.ts` 中间那段是 `gen-ui-index.mjs` 生成的，`vendor`/`prune` 都重写它，
+  所以两边都不会留下悬空导出。`prepack` 先 prune 再 build；`check:assets` 里带 `--check`。
+- **`--dsh-*` 颜色角色已退役**（decisions/0006）：颜色/字号一律 `theme.css` 的语义 token；只剩
+  `--dsh-home-board-width`、`--dsh-activity-*` 这类几何变量。`check-assets` 第四条规则会挡回旧名字。
+- **BoardUI 的 `ghost` 是浅色底块，不是透明**：筛选行/安静按钮要么用 `secondary`，要么显式
+  `bg-transparent text-text-secondary`。把它当"无底色"用，会得到一排蓝胶囊。
+- **动效不许动 transform**：卡片位置由 React Grid Layout 用 transform 写，入场只动 opacity/filter；
+  总开关是 `html[data-motion="off"]`，截图与 Playwright 断言都靠它。
+- **同版本号装包会复用旧产物**：`dsh plugin add` 会说 "Already up to date"。验证脚本必须先删 profile
+  里的副本并比对 `lib/client.js` 的 sha256（`.work/dsh-home/relaunch.sh` 已经这么做了）。
