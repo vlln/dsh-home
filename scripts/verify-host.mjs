@@ -271,36 +271,28 @@ async function openHomeWithoutRecent(page) {
   await page.locator('.dsh-home').waitFor()
 }
 async function recentCases(page) {
-  // Explicit synthetic ledger route only. Catalog/Session APIs remain real.
-  const now = Date.now()
-  const rows = Array.from({ length: 14 }, (_, i) => ({ id: `verify-ledger-${i}`, cwd: path.join(WORKSPACE, i % 2 ? 'alpha' : 'beta'), createdAt: now - 90_000 - i * 1000, lastAt: now - i * 1000, turns: 1, runMs: 1000, activeMs: 2000, todayMs: 2000, todayTurns: 1, clusters: [], lastUserText: `Synthetic verification fixture ${i}` }))
-  rows.push({ ...rows[0], id: 'verify-child', parentSessionId: 'verify-ledger-0', origin: 'subagent' })
-  const handler = async route => {
-    const body = route.request().postDataJSON()
-    if (body.op !== 'snapshot') return route.continue()
-    const bucket = { activeMs: 28000, runMs: 14000, turns: 14, sessions: 14 }
-    await route.fulfill({ json: { ok: true, value: { generatedAt: now, scannedAt: now, scanning: false, progress: { done: 14, total: 14 }, sessionCount: 14, days: [], today: bucket, week: bucket, sessions: rows } } })
+  // No synthetic ledger. The card is fixed at five rows and has no search box or
+  // directory filter (docs/design-system.md 9), and a faked feed drifted from the
+  // real request path twice. Assert against the snapshot the host actually serves.
+  const snapshot = await homeApi(page, 'snapshot')
+  const sessions = Array.isArray(snapshot?.sessions) ? snapshot.sessions : []
+  const topLevel = sessions.filter(session => session.parentSessionId === undefined)
+  const expected = Math.min(5, topLevel.length)
+  await page.reload(); await openHome(page)
+  const card = page.locator('[data-widget-id="recent"]')
+  await card.waitFor()
+  // The card decides its own capacity from measured height, so assert the shape
+  // (at least one row, never more than five) rather than one exact number.
+  await eventually(async () => {
+    const shown = await card.locator('[data-session-id]').count()
+    return shown >= 1 && shown <= 5
+  }, `recent shows 1..5 rows (${topLevel.length} sessions available)`)
+  const child = sessions.find(session => session.parentSessionId !== undefined)
+  if (child !== undefined) {
+    assert.equal(await card.locator(`[data-session-id="${child.id}"]`).count(), 0, 'subagent session must not appear')
   }
-  await page.route('**/plugins/dsh-home/api', handler)
-  try {
-    await page.reload(); await openHome(page)
-    const card = page.locator('[data-widget-id="recent"]')
-    await eventually(async () => (await card.locator('.dsh-session-row').count()) >= 6, 'synthetic recent rows')
-    assert.equal(await card.locator('[data-session-id="verify-child"]').count(), 0)
-    await card.locator('input[type="search"]').fill('verify-ledger-13')
-    await card.locator('[data-session-id="verify-ledger-13"]').waitFor()
-    assert.equal(await card.locator('.dsh-session-row').count(), 1)
-    await card.locator('input[type="search"]').fill('')
-    await card.locator('select').selectOption(`:${path.join(WORKSPACE, 'alpha')}`)
-    await eventually(async () => (await card.locator('.dsh-session-row').count()) === 7, 'directory filtering')
-    await card.locator('select').selectOption('')
-    const before = await card.locator('.dsh-session-row').count()
-    await card.getByRole('button', { name: /Show .*more/ }).click()
-    assert((await card.locator('.dsh-session-row').count()) > before)
-    await stableShot(page, 'recent-synthetic-multisession.png')
-    await card.screenshot({ path: path.join(artifacts, 'recent-synthetic-card.png'), animations: 'disabled' })
-    check('synthetic ledger UI search/directory/child exclusion/show more', { synthetic: true })
-  } finally { await page.unroute('**/plugins/dsh-home/api', handler) }
+  await card.screenshot({ path: path.join(artifacts, 'recent-real-card.png'), animations: 'disabled' })
+  check('recent card shows the real snapshot, capped at five, no subagent rows', { sessions: sessions.length, shown: await card.locator('[data-session-id]').count() })
 }
 async function iconCase(page) {
   const plugins = page.getByRole('button', { name: /^(Plugins|插件)$/ }).first()
