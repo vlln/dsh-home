@@ -1,18 +1,20 @@
-# styles.ts 的孤儿规则候选
+# styles.ts 的孤儿规则候选（已修正）
 
-生成方式：抓 `styles.ts` 里所有 `.dsh-*` 选择器，减去 `src/client/*.tsx` 中出现的类名。
-**这是候选，不是判决**：类名可能在运行时拼接（如 `dsh-${state}`），删除前必须按组核对、
-删完跑 `check:assets` + `npm test` + 整页截图。
+统计口径：抓 `styles.ts` 里的 `.dsh-*` 选择器，减去**消费者**中的出现——消费者包括
+`src/client/**/*.ts` 与 `*.tsx`，但**排除** `*-styles.ts` / `styles.ts` 自身（否则定义即被算作使用）
+与 `src/client/ui/`（那一层只吃 Tailwind 类）。
 
-共 139 个类，其中 62 个在 tsx 里找不到。
+> 第一版清单是 62 个，因为只扫了 `*.tsx`：`debris-burst.ts`、`store.ts` 这类 `.ts` 消费者被漏掉，
+> 于是把仍在用的类（如 `dsh-debris-*`）算成了孤儿。修正后是 **35 个**。
+
+共 116 个类，其中 35 个找不到消费者。
+
+**仍是候选，不是判决**：类名可能运行时拼接，删除前按组核对，删完跑四项验证。
 
 | 前缀组 | 个数 | 类名 |
 |---|---|---|
-| `dsh-focus-*` | 13 | `dsh-focus`, `dsh-focus-actions`, `dsh-focus-empty`, `dsh-focus-empty-text`, `dsh-focus-eyebrow`, `dsh-focus-eyebrow-row` … |
-| `dsh-active-*` | 10 | `dsh-active`, `dsh-active-band`, `dsh-active-band-empty`, `dsh-active-bar`, `dsh-active-bars`, `dsh-active-col` … |
 | `dsh-tray-*` | 8 | `dsh-tray`, `dsh-tray-glyph`, `dsh-tray-head`, `dsh-tray-item`, `dsh-tray-list`, `dsh-tray-name` … |
 | `dsh-manager-*` | 4 | `dsh-manager-actions`, `dsh-manager-description`, `dsh-manager-heading`, `dsh-manager-info` |
-| `dsh-debris-*` | 3 | `dsh-debris`, `dsh-debris-halo`, `dsh-debris-particle` |
 | `dsh-home-*` | 3 | `dsh-home-dot`, `dsh-home-grid`, `dsh-home-heading` |
 | `dsh-w-*` | 3 | `dsh-w-extra`, `dsh-w-facts`, `dsh-w-skeleton` |
 | `dsh-instance-*` | 2 | `dsh-instance-item`, `dsh-instance-list` |
@@ -29,4 +31,3 @@
 | `dsh-skeleton-*` | 1 | `dsh-skeleton` |
 | `dsh-spin-*` | 1 | `dsh-spin` |
 | `dsh-widget-*` | 1 | `dsh-widget-drag-cover` |
-| `dsh-ws-*` | 1 | `dsh-ws-pill` |
