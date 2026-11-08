@@ -22,6 +22,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SITE = path.resolve(ROOT, '../.work/dsh-home')
 const HOME = path.join(SITE, 'dsh')
 const WORKSPACE = path.join(SITE, 'workspace')
+const EXPECTED = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version
 const PORT = 3186
 const ORIGIN = `http://127.0.0.1:${PORT}`
 const argv = process.argv.slice(2)
@@ -67,7 +68,7 @@ async function prepare() {
   const marker = path.join(SITE, '.verify-host-owned.json')
   if (!existsSync(marker)) {
     const entries = await readdir(SITE)
-    assert(entries.every(name => /^vlln-dsh-home-0\.4\.0\.tgz$/.test(name)), 'First use accepts only an empty verification site or the supplied 0.4.0 tarball')
+    assert(entries.every(name => name === `vlln-dsh-home-${EXPECTED}.tgz`), `First use accepts only an empty verification site or the supplied ${EXPECTED} tarball`)
   }
   await createOwned(marker, JSON.stringify({ owner: '@vlln/dsh-home verify-host', port: PORT }, null, 2) + '\n')
   for (const dir of [HOME, WORKSPACE, artifacts, path.join(SITE, 'os-home'), path.join(WORKSPACE, 'alpha'), path.join(WORKSPACE, 'beta')]) {
@@ -354,7 +355,7 @@ async function execute() {
   const manifestPath = path.join(pkgDir, 'package.json')
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
   assert.equal(manifest.name, '@vlln/dsh-home')
-  assert.equal(manifest.version, '0.4.0', 'Require the explicitly requested 0.4.0 artifact')
+  assert.equal(manifest.version, EXPECTED, `Require the explicitly requested ${EXPECTED} artifact`)
   const entryPath = path.resolve(pkgDir, manifest.main)
   assert(entryPath.startsWith(`${pkgDir}${path.sep}`))
   const expectedHashes = Object.fromEntries(await Promise.all(['lib/index.mjs', 'lib/client.js', 'icon.svg'].map(async name => [name, createHash('sha256').update(await readFile(path.join(pkgDir, name))).digest('hex')])))
@@ -362,7 +363,7 @@ async function execute() {
   const pattern = /(const|let|var) inject = \[[^\]]*\]/
   assert(pattern.test(source), 'Cannot inject negative-control dependency into built entry')
   await writeFile(entryPath, source.replace(pattern, 'const inject = ["webServer", "verifyHostDefinitelyMissingService"]'))
-  manifest.version = '0.4.0-verify-negative'
+  manifest.version = `${EXPECTED}-verify-negative`
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n')
   const packed = await command('npm', ['pack', '--ignore-scripts', '--pack-destination', unpack], 'pack-negative', { cwd: pkgDir })
   const negativeTar = path.join(unpack, packed.trim().split('\n').findLast(line => line.endsWith('.tgz')))
@@ -384,7 +385,7 @@ async function execute() {
   const resolver = createRequire(path.join(HOME, 'profiles/web/package.json'))
   const installedManifest = resolver.resolve('@vlln/dsh-home/package.json')
   const installed = JSON.parse(await readFile(installedManifest, 'utf8'))
-  assert.equal(installed.version, '0.4.0')
+  assert.equal(installed.version, EXPECTED)
   for (const [name, expected] of Object.entries(expectedHashes)) {
     const actual = createHash('sha256').update(await readFile(path.join(path.dirname(installedManifest), name))).digest('hex')
     assert.equal(actual, expected, `Installed artifact mismatch: ${name}`)
@@ -435,7 +436,7 @@ try {
   assert(argv.every((arg, i) => ['--prepare', '--run', '--tarball', '--skip-negative', '--only-tail'].includes(arg) || argv[i - 1] === '--tarball'), 'Unknown argument')
   await prepare()
   if (run) await execute()
-  else console.log('Prepared only: no install, server, browser or credential access. Supply --tarball <0.4.0.tgz> --run through a managed background job.')
+  else console.log('Prepared only: no install, server, browser or credential access. Supply --tarball <vlln-dsh-home-${EXPECTED}.tgz> --run through a managed background job.')
 } catch (error) {
   const message = redact(error.stack ?? error)
   report.failures.push(message)
