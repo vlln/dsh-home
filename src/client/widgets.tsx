@@ -16,7 +16,6 @@ import { formatDuration, hhmm, shortcutHint, shortDay, type Translate } from './
 import { RecentBody } from './recent.tsx'
 import { PinnedBody } from './pinned-widget.tsx'
 import { dayCoverage, localDayWindow } from './widget-visual-model.ts'
-import { WorkspacePill } from './workspace-pill.tsx'
 import { Button, CardEmpty, cx, Meter, SparkBars } from './ui/index.ts'
 import { useVisibleRows } from './fit-rows.ts'
 import { useHoverTip } from './hover-tip.tsx'
@@ -248,21 +247,20 @@ function AreasBody({ t, data, actions }: WidgetProps) {
   return (
     <div className="dsh-rows dsh-area-rows flex min-h-0 flex-1 flex-col gap-2" ref={listRef}>
       {rows.map(group => {
-        const meta = (
-          <span className="dsh-row-meta text-caption-1-medium text-text-tertiary">
-            {t('widget.areas.row', { dur: formatDuration(group.ms, t), sessions: group.sessions })}
-          </span>
-        )
+        // One row, one number: name and duration share a line, the bar is the same
+        // number drawn as length, and the session count rides in the label's title.
+        // The row used to repeat "25 min" three times (top-right, under the bar, and
+        // again in the bar's aria-label), which is what made this card feel noisy.
         const title = (
           <span className="dsh-row-top flex min-w-0 items-center justify-between gap-2">
-            <WorkspacePill label={group.name} cwd={group.cwd} title={group.cwd} />
-            <span className="dsh-area-duration flex-none text-caption-1-semibold tabular-nums text-text-primary">{formatDuration(group.ms, t)}</span>
+            <span className="min-w-0 truncate text-body-medium text-text-primary" title={group.cwd}>{group.name}</span>
+            <span className="dsh-area-duration flex-none text-caption-1-medium tabular-nums text-text-secondary">{formatDuration(group.ms, t)}</span>
           </span>
         )
         const bar = <Meter className="dsh-area-track" ratio={sorted[0]!.ms > 0 ? group.ms / sorted[0]!.ms : 0}
           label={t('widget.areas.row', { dur: formatDuration(group.ms, t), sessions: group.sessions })} />
         return group.topLevelId === undefined
-          ? <div key={group.name} className="dsh-row dsh-row-static">{title}{bar}{meta}</div>
+          ? <div key={group.name} className="dsh-row dsh-row-static">{title}{bar}</div>
           : (
             <button
               key={group.name}
@@ -272,7 +270,6 @@ function AreasBody({ t, data, actions }: WidgetProps) {
             >
               {title}
               {bar}
-              {meta}
             </button>
           )
       })}

@@ -59,10 +59,15 @@ test('the chosen view wins while it has rows; an empty choice falls back to the 
   assert.equal(effectiveGroup({ running: 0, waiting: 0, done: 0 }, 'waiting'), 'waiting')
 })
 
-test('workspace capsules carry no colour identity: the standard has one capsule fill', async () => {
-  const pill = await (await import('node:fs/promises')).readFile(new URL('../src/client/workspace-pill.tsx', import.meta.url), 'utf8')
-  const standard = await (await import('node:fs/promises')).readFile(new URL('../src/client/styles.ts', import.meta.url), 'utf8')
-  assert.doesNotMatch(pill, /data-hue/)
-  // One capsule fill, and it comes from the semantic token layer (0006).
-  assert.match(standard, /\.dsh-ws-pill \{[^}]*background: var\(--color-background-tertiary-default\)/s)
+test('a workspace name is context, not a tag: rows carry it as dim text', async () => {
+  // The 10px capsule is gone. It cost a second line per row, and a column of them read as
+  // a stack of tags rather than as "which directory". Rows now carry the workspace as
+  // plain tertiary text on the same line, with no colour of its own.
+  const row = await (await import('node:fs/promises')).readFile(new URL('../src/client/session-row.tsx', import.meta.url), 'utf8')
+  const recent = await (await import('node:fs/promises')).readFile(new URL('../src/client/recent.tsx', import.meta.url), 'utf8')
+  for (const source of [row, recent]) {
+    assert.doesNotMatch(source, /WorkspacePill|dsh-ws-pill/)
+    assert.doesNotMatch(source, /data-hue/)
+    assert.match(source, /text-text-tertiary/)
+  }
 })

@@ -26,7 +26,7 @@ test('every colour role is defined once, in design-system.ts', async () => {
     }
   }
   // Shared primitives live in one place; modules only style their own layout.
-  const primitives = ['\\.dsh-ws-pill', '\\.dsh-chip', '\\.dsh-quiet-select', '\\.dsh-hover-tip', '\\.dsh-status-chip']
+  const primitives = ['\\.dsh-chip', '\\.dsh-quiet-select', '\\.dsh-hover-tip', '\\.dsh-status-chip']
   for (const name of styleModules) {
     const source = await read(name)
     for (const primitive of primitives) {
@@ -71,7 +71,7 @@ test('digest cards never scroll and never page', async () => {
 test('the shared widget classes are defined once and documented', () => {
   // After B4 the stylesheet is styles.ts, which also carries layout rules, so
   // this pins the handful of classes the document actually owns.
-  const shared = ['dsh-ws-pill', 'dsh-chip', 'dsh-status-dot', 'dsh-status-chip', 'dsh-status-count', 'dsh-quiet-select', 'dsh-hover-tip', 'dsh-track']
+  const shared = ['dsh-chip', 'dsh-status-dot', 'dsh-status-chip', 'dsh-status-count', 'dsh-quiet-select', 'dsh-hover-tip', 'dsh-track']
   for (const name of shared) {
     assert.ok(standard.includes('.' + name), `styles.ts must define .${name}`)
     assert.ok(doc.includes(name), `docs/design-system.md must document .${name}`)

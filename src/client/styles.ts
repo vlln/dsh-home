@@ -417,7 +417,6 @@ export const CSS = `
 }
 .dsh-recent-time { flex: none; font: var(--dsw-font-xxxs-11); color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
 .dsh-recent-meta { display: flex; align-items: center; gap: 6px; min-width: 0; padding-inline-start: 14px; }
-.dsh-recent-meta .dsh-ws-pill { max-width: 62%; }
 .dsh-recent-state {
   flex: none; padding: 1px 8px; border-radius: 999px; corner-shape: round;
   background: color-mix(in srgb, var(--color-status-yellow-text) 12%, transparent); color: var(--color-status-yellow-text);
@@ -574,23 +573,6 @@ const designSystemStyles = `
 }
 
 /* 工作区胶囊：统一中性色。颜色不编码目录身份，只有文字说明它是哪个工作区。 */
-.dsh-ws-pill {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 38%;
-  padding: 1px 8px;
-  border-radius: 999px;
-  corner-shape: round;
-  background: var(--color-background-tertiary-default);
-  color: var(--color-text-secondary);
-  font: var(--dsw-font-xxs-strong-12);
-  line-height: 16px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dsh-ws-pill[data-unknown="true"] { background: transparent; box-shadow: inset 0 0 0 .5px var(--dsw-alias-border-l3); color: var(--dsw-alias-label-tertiary); }
-
 /* 安静的状态胶囊：选中用墨色，未选中只是浅底；状态含义由文字承担。 */
 .dsh-chip {
   display: inline-flex;
