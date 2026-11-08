@@ -180,8 +180,8 @@ html[data-motion="off"] * {
 
 body[data-ds-dark-theme] {
   --dsh-canvas: #0e0e10;
-  --dsh-card: #171719;
-  --dsh-card-hover: #1b1b1e;
+  --dsh-card: #161618;
+  --dsh-card-hover: #1a1a1d;
   --dsh-sunken: #26262a;
   --dsh-hairline: rgb(255 255 255 / 0.08);
 }
