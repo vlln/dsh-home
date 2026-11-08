@@ -8,7 +8,6 @@
  * 免得把一个四行的组件撑高。
  */
 import type { ReactNode } from 'react'
-import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useBuiltin } from './builtin-registration.tsx'
 import { formatDuration, shortDay, type Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
@@ -16,6 +15,7 @@ import type { WidgetContentProps } from './widget-contract.ts'
 import type { DayBucket, LedgerSnapshot } from './api.ts'
 import { ACTIVE_DAY_COUNT as DAY_COUNT, ACTIVE_RANGES as RANGES, activePreviewData, migrateActiveConfig, validateActiveConfig, type ActiveConfig } from './active-model.ts'
 import { IconBars } from './widget-glyphs.tsx'
+import { CardBody, CardHero, CardMeta, SegmentedControl, SegmentedControlItem, SparkBars, Tooltip, TooltipTrigger, type VizItem } from './ui/index.ts'
 
 function barLabel(day: DayBucket, t: Translate): string {
   return `${shortDay(day.key)} · ${formatDuration(day.activeMs, t)}`
@@ -23,23 +23,24 @@ function barLabel(day: DayBucket, t: Translate): string {
 
 function Bars({ days, t, todayKey }: { days: readonly DayBucket[]; t: Translate; todayKey: string }): ReactNode {
   const peak = Math.max(1, ...days.map(day => day.activeMs))
-  return <>
-    <div className="dsh-rhythm dsh-active-bars" role="group" aria-label={t('active.chart')}>
-      {days.map(day => (
-        <Tooltip key={day.key} label={barLabel(day, t)} side="top" portal delayMs={60} maxWidth={220}>
-          <span className="dsh-rhythm-col dsh-active-col" tabIndex={0} role="img" aria-label={barLabel(day, t)}>
-            <span className="dsh-rhythm-bar dsh-active-bar" data-today={day.key === todayKey ? 'true' : 'false'}
-              data-zero={day.activeMs > 0 ? 'false' : 'true'}
-              style={{ height: `${Math.max(day.activeMs > 0 ? 4 : 1, (day.activeMs / peak) * 100)}%` }} />
-          </span>
-        </Tooltip>
-      ))}
-    </div>
+  const items: VizItem[] = days.map(day => ({
+    key: day.key,
+    ratio: day.activeMs / peak,
+    label: barLabel(day, t),
+    emphasis: day.key === todayKey,
+    empty: day.activeMs === 0,
+  }))
+  return <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+    <SparkBars items={items} wrap={(item, bar) => (
+      <TooltipTrigger delay={60}>{bar}<Tooltip>{item.label}</Tooltip></TooltipTrigger>
+    )} />
     {/* 30 天不再逐日写 30 个数字：每 5 天一个刻度，最后一天始终保留。 */}
-    <div className="dsh-rhythm-days dsh-active-days" data-dense={days.length > 14 ? 'true' : undefined} aria-hidden="true">
-      {days.map((day, index) => <span key={day.key}>{days.length > 14 && (index % 5 !== 0) && index !== days.length - 1 ? '' : day.key.slice(8)}</span>)}
+    <div className="flex gap-1 text-center text-[10px] leading-none text-text-tertiary" aria-hidden="true">
+      {days.map((day, index) => <span key={day.key} className="flex-1 truncate">{
+        days.length > 14 && (index % 5 !== 0) && index !== days.length - 1 ? '' : day.key.slice(8)
+      }</span>)}
     </div>
-  </>
+  </div>
 }
 
 function ActiveBody({ config, saveConfig, preview }: WidgetContentProps<ActiveConfig>): ReactNode {
@@ -50,18 +51,27 @@ function ActiveBody({ config, saveConfig, preview }: WidgetContentProps<ActiveCo
   const window = days.slice(-DAY_COUNT[range])
   const total = window.reduce((sum, day) => sum + day.activeMs, 0)
   const todayKey = window[window.length - 1]?.key ?? ''
-  return <div className="dsh-active" data-range={range}>
-    <div className="dsh-active-toolbar" role="group" aria-label={t('active.range')}>
-      {RANGES.map(value => <button key={value} type="button" className="dsh-chip dsh-active-range"
-        data-active={value === range} aria-pressed={value === range} disabled={saveConfig === undefined}
-        onClick={() => { void saveConfig?.({ range: value }) }}>{t(`active.${value}`)}</button>)}
-    </div>
-    <div className="dsh-active-hero">
-      <span className="dsh-number">{formatDuration(total, t)}</span>
-      <span className="dsh-label">{t('active.total', { range: t(`active.${range}`) })}</span>
+  return <CardBody>
+    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <CardHero value={formatDuration(total, t)} />
+        <CardMeta>{t('active.total', { range: t(`active.${range}`) })}</CardMeta>
+      </div>
+      <SegmentedControl
+        aria-label={t('active.range')}
+        selectedKeys={[range]}
+        onSelectionChange={keys => {
+          const next = [...keys][0]
+          if (saveConfig !== undefined && next !== undefined && next !== range) void saveConfig({ range: next as ActiveConfig['range'] })
+        }}
+        isDisabled={saveConfig === undefined}
+        className="flex-none"
+      >
+        {RANGES.map(value => <SegmentedControlItem key={value} id={value}>{t(`active.${value}`)}</SegmentedControlItem>)}
+      </SegmentedControl>
     </div>
     <Bars days={window} t={t} todayKey={todayKey} />
-  </div>
+  </CardBody>
 }
 
 export function registerActiveWidget(registry: HomeWidgetRegistry, t: Translate): () => void {

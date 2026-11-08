@@ -285,7 +285,9 @@ export function HomePage(props: HomePageProps): ReactNode {
                 await store.saveInstanceConfig(instance.instanceId, definition, config)
               } } : {}),
             }
-            return <section key={instance.instanceId} className="dsh-w dsh-home-widget" data-widget-id={instance.instanceId} data-widget-type={instance.typeId} data-size={widgetProps.size}
+            return <section key={instance.instanceId}
+              className="dsh-w dsh-home-widget flex flex-col gap-2.5 rounded-3xl border border-border-button-default bg-background-primary-default p-4 shadow-card transition-shadow duration-200"
+              data-widget-id={instance.instanceId} data-widget-type={instance.typeId} data-size={widgetProps.size}
               data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
               <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!writable || busy || interacting} gripDisabled={!writable || busy}
                 icon={definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition}/></CardBoundary>}

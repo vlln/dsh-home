@@ -20,6 +20,7 @@ import {
 import { SessionRow } from './session-row.tsx'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
+import { CardBody, CardEmpty, SegmentedControl, SegmentedControlItem } from './ui/index.ts'
 
 export type SessionStatusConfig = { status: SessionStatusGroup | null }
 const GROUP_TYPE = '@vlln/dsh-home:running'
@@ -66,19 +67,28 @@ export function SessionStatusContent(props: WidgetContentProps<SessionStatusConf
   const shown = rows.filter(row => row.group === group)
   const canChoose = props.saveConfig !== undefined && props.preview === undefined
   const open = (id: string): void => { actions.openSession(id) }
-  return <div className="dsh-session-status" data-status-source={statusSource} data-group={group}>
-    <div className="dsh-status-filter" role="group" aria-label={t('sessionStatus.filter')}>
-      {SESSION_STATUS_GROUPS.map(value => <button key={value} type="button" className="dsh-status-chip"
-        data-group={value} data-active={value === group} aria-pressed={value === group}
-        disabled={!canChoose} onClick={() => { void props.saveConfig?.({ status: value }) }}>
-        <i className="dsh-status-dot" aria-hidden="true" />
-        <span>{t(`sessionStatus.group.${value}`)}</span>
-        <span className="dsh-status-count" aria-hidden="true">{counts[value]}</span>
-      </button>)}
-    </div>
+  return <div className="dsh-session-status flex h-full min-h-0 flex-col" data-status-source={statusSource} data-group={group}>
+    <SegmentedControl
+      aria-label={t('sessionStatus.filter')}
+      selectedKeys={[group]}
+      onSelectionChange={keys => {
+        const next = [...keys][0]
+        if (canChoose && next !== undefined && next !== group) void props.saveConfig?.({ status: next as SessionStatusGroup })
+      }}
+      isDisabled={!canChoose}
+      className="self-start"
+    >
+      {SESSION_STATUS_GROUPS.map(value => <SegmentedControlItem key={value} id={value}>
+        <span className="flex items-center gap-1.5">
+          <i className={['size-1.5 flex-none rounded-full', DOT_TONE[value]].join(' ')} aria-hidden="true" />
+          <span>{t(`sessionStatus.group.${value}`)}</span>
+          <span className="tabular-nums text-text-tertiary">{counts[value]}</span>
+        </span>
+      </SegmentedControlItem>)}
+    </SegmentedControl>
     {shown.length === 0
-      ? <p className="dsh-empty dsh-status-empty" role="status">{t(`sessionStatus.empty.${group}`)}</p>
-      : <div className="dsh-rows dsh-status-rows">
+      ? <CardEmpty title={t(`sessionStatus.empty.${group}`)} className="flex-1" />
+      : <div className="dsh-rows dsh-status-rows mt-1 flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
         {shown.map(row => <SessionRow
           key={row.session.id}
           session={row.session}
@@ -93,8 +103,15 @@ export function SessionStatusContent(props: WidgetContentProps<SessionStatusConf
           onDismiss={group === 'waiting' ? () => { store.dismiss(row.session.id) } : undefined}
         />)}
       </div>}
-    {statusSource !== 'runtime' && <p className="dsh-muted">{t('sessionStatus.noStatus')}</p>}
+    {statusSource !== 'runtime' && <p className="dsh-muted mt-1 text-caption-1-medium text-text-tertiary">{t('sessionStatus.noStatus')}</p>}
   </div>
+}
+
+/** 三个视图的点色只表示语义：在跑绿、在等你琥珀、未读蓝。 */
+const DOT_TONE: Record<SessionStatusGroup, string> = {
+  running: 'bg-status-lime-text',
+  waiting: 'bg-status-yellow-text',
+  done: 'bg-chart-4',
 }
 
 export function registerSessionStatusWidget(registry: HomeWidgetRegistry, t: Translate): () => void {
