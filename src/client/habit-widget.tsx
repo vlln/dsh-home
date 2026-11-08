@@ -68,12 +68,12 @@ function HabitBody({ habits, today, t, readOnly, showAll, onMark, onDelete, onCr
   return <div className="dsh-habit">
     <div className="dsh-habit-scroll">
       {visible.length === 0 && <p className="dsh-todo-empty">{t('habit.empty')}</p>}
-      <ul className="dsh-habit-list">
+      <ul className="dsh-habit-list flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
         {visible.map(habit => {
           const marked = habitMarked(habit, today)
           const streak = habitStreak(habit, today)
           const isDue = habitDue(habit, today)
-          return <li key={habit.id} className="dsh-habit-row" data-marked={marked ? 'true' : 'false'}
+          return <li key={habit.id} className="dsh-habit-row flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-background-secondary-default" data-marked={marked ? 'true' : 'false'}
             data-due={isDue ? 'true' : 'false'} data-hue={habitHue(habit.id)}>
             <button type="button" className="dsh-habit-mark" role="checkbox" aria-checked={marked}
               aria-label={habit.title} disabled={readOnly} onClick={() => onMark?.(habit, !marked)}>

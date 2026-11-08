@@ -54,13 +54,13 @@ function PictureBody({ config, t, fallback }: { config: PictureConfig; t: Transl
   const [failed, setFailed] = useState<string | null>(null)
   const source = pictureSource(fallback ?? config.src)
   if (source.kind === 'none') {
-    return <div className="dsh-picture-empty" role="status">
+    return <div className="dsh-picture-empty flex h-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border-button-default text-caption-1-medium text-text-tertiary" role="status">
       <span className="dsh-picture-empty-glyph" aria-hidden="true">▧</span>
       <span>{t('picture.empty')}</span>
     </div>
   }
   if (failed === source.url) {
-    return <div className="dsh-picture-empty" role="status">
+    return <div className="dsh-picture-empty flex h-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border-button-default text-caption-1-medium text-text-tertiary" role="status">
       <span className="dsh-picture-empty-glyph" aria-hidden="true">▧</span>
       <span>{t('picture.failed')}</span>
       {source.kind === 'local' && <span className="dsh-picture-path">{config.src}</span>}
@@ -69,7 +69,7 @@ function PictureBody({ config, t, fallback }: { config: PictureConfig; t: Transl
   return <figure className="dsh-picture">
     <img src={source.url} alt={config.title === '' ? t('picture.alt') : config.title}
       style={{ objectFit: config.fit }} loading="lazy" decoding="async" onError={() => setFailed(source.url)} />
-    {config.title !== '' && <figcaption className="dsh-picture-caption">{config.title}</figcaption>}
+    {config.title !== '' && <figcaption className="dsh-picture-caption text-caption-1-medium">{config.title}</figcaption>}
   </figure>
 }
 
