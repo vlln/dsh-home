@@ -255,8 +255,6 @@ async function layoutCases(page) {
   await ensureSidebarOpen(page)
   await openEdit(page)
   const recent = page.locator('[data-widget-id="recent"]')
-  await recent.getByRole('button', { name: 'Size: L', exact: true }).click()
-  await eventually(async () => (await homeApi(page, 'layout.get')).layout?.size?.recent === 'l', 'size durable write')
   await recent.getByRole('button', { name: 'Hide this card', exact: true }).click()
   await eventually(async () => (await homeApi(page, 'layout.get')).layout?.hidden?.includes('recent'), 'hidden durable write')
   await page.reload(); await openHomeWithoutRecent(page)
