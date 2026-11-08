@@ -12,28 +12,28 @@ export const widgetExpressionStyles = `
 .dsh-today-hero .dsh-metric { align-items:flex-start; flex-direction:column; gap:0; min-width:0; }
 .dsh-day-dial { width:clamp(52px, 15cqi, 96px); height:auto; aspect-ratio:1; flex:none; overflow:visible; }
 .dsh-day-dial circle { fill:none; }
-.dsh-day-dial-track { stroke:var(--dsw-alias-border-l2); stroke-width:4; }
+.dsh-day-dial-track { stroke:var(--dsh-hairline); stroke-width:4; }
 .dsh-day-dial-arc { stroke:var(--color-chart-4); stroke-width:5; stroke-linecap:butt; }
 .dsh-day-dial .dsh-day-dial-now { fill:var(--color-status-yellow-text); }
-.dsh-day-dial text { fill:var(--dsw-alias-label-tertiary); font:14px var(--dsw-font-family); }
+.dsh-day-dial text { fill:var(--color-text-tertiary); font:14px var(--font-sans); }
 .dsh-home-widget .dsh-band-track { height:10px; margin-top:1px; }
-.dsh-home-widget .dsh-band-seg { opacity:.8; min-width:0; border-radius:var(--dsw-radius-xs); }
+.dsh-home-widget .dsh-band-seg { opacity:.8; min-width:0; border-radius:var(--dsh-radius-xs); }
 .dsh-home-widget .dsh-today-stats { padding-top:4px; margin-top:1px; }
-.dsh-home-widget .dsh-today-stats strong { font:var(--dsw-font-s-strong-14); color:var(--dsw-alias-label-primary); }
-.dsh-home-widget .dsh-today-longest { font:var(--dsw-font-xxxs-11); }
+.dsh-home-widget .dsh-today-stats strong { font:var(--dsh-font-s-strong-14); color:var(--color-text-primary); }
+.dsh-home-widget .dsh-today-longest { font:var(--dsh-font-xxxs-11); }
 .dsh-home-widget .dsh-rhythm-content .dsh-metric { align-items:flex-start; flex-direction:column; gap:0; }
 .dsh-home-widget .dsh-rhythm-col { background:var(--color-chart-track); }
 .dsh-home-widget .dsh-rhythm-bar { background:var(--color-chart-4); opacity:.65; }
 .dsh-home-widget .dsh-rhythm-bar[data-today="true"] { opacity:1; }
 .dsh-home-widget .dsh-area-track { height:7px; }
 .dsh-home-widget .dsh-area-track > span { background:var(--color-chart-4); opacity:.8; }
-.dsh-home-widget .dsh-pinned-summary { padding-bottom:6px; border-bottom:.5px solid var(--dsw-alias-border-l2); }
-.dsh-home-widget .dsh-pinned-summary strong { color:var(--dsw-alias-label-primary); font:var(--dsw-font-xs-strong-13); }
-.dsh-home-widget .dsh-focus-snippet { border-inline-start:3px solid var(--color-chart-4); padding-inline-start:12px; margin-block:0; color:var(--dsw-alias-label-secondary); }
-.dsh-home-widget .dsh-focus-primary { background:var(--dsw-alias-button-primary-fill); color:var(--dsw-alias-label-primary-foreground); }
-.dsh-home-widget .dsh-focus-primary:is(:hover,:focus-visible) { background:var(--dsw-alias-button-primary-hover); }
+.dsh-home-widget .dsh-pinned-summary { padding-bottom:6px; border-bottom:.5px solid var(--dsh-hairline); }
+.dsh-home-widget .dsh-pinned-summary strong { color:var(--color-text-primary); font:var(--dsh-font-xs-strong-13); }
+.dsh-home-widget .dsh-focus-snippet { border-inline-start:3px solid var(--color-chart-4); padding-inline-start:12px; margin-block:0; color:var(--color-text-secondary); }
+.dsh-home-widget .dsh-focus-primary { background:var(--color-accent-500); color:var(--color-text-white); }
+.dsh-home-widget .dsh-focus-primary:is(:hover,:focus-visible) { background:var(--color-accent-400); }
 .dsh-home-widget .dsh-quick-widget-links { padding:0; background:transparent; }
-.dsh-home-widget .dsh-quick-widget-link { background:var(--dsw-alias-bg-module-platform); }
+.dsh-home-widget .dsh-quick-widget-link { background:var(--dsh-card); }
 /* Content adapts within saved rectangles; whitespace is not an excuse to
    clip text, invent data or resize the widget. */
 .dsh-home-widget .dsh-focus-title { white-space:normal; overflow-wrap:anywhere; }

@@ -116,6 +116,29 @@ function checkRegistrationContract(files) {
   return failures
 }
 
+/**
+ * The host's token vocabulary is not the board's.
+ *
+ * The board used to read `var(--dsw-*)` from the host while also carrying BoardUI's
+ * own tokens. Two vocabularies meant two palettes: cards ended up darker than the
+ * page they sat on, and every new card had to guess which one to speak. The bridge
+ * that translated them was removed with the last reader; this rule keeps it removed.
+ */
+function checkNoHostTokens(files) {
+  const failures = []
+  for (const file of files) {
+    if (file.endsWith('.md')) continue
+    const source = readFileSync(file, 'utf8')
+    const rel = path.relative(ROOT, file)
+    for (const line of source.split('\n')) {
+      if (line.includes('var(--dsw-') || line.includes('var(--dsw-')) {
+        failures.push(`${rel}: host token "${line.trim().slice(0, 80)}" — use a board token from theme.css`)
+      }
+    }
+  }
+  return failures
+}
+
 export function runChecks({ compiled = false } = {}) {
   const files = walk(CLIENT)
   const groups = {
@@ -123,6 +146,7 @@ export function runChecks({ compiled = false } = {}) {
     'no literal colour': checkNoLiteralColour(files),
     'registration contract': checkRegistrationContract(files),
     'retired token vocabulary': checkNoRetiredTokens(files),
+    'no host token vocabulary': checkNoHostTokens(files),
   }
   const failures = Object.values(groups).flat()
 

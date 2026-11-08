@@ -7,7 +7,7 @@
  *
  * 约定：
  * - 组件只吃 Tailwind 语义类（`text-text-secondary`、`bg-background-secondary-default`），
- *   不写十六进制、不写 `--dsw-*`。
+ *   不写十六进制、不写宿主 token（`--dsw-*` 在这里已经不存在）。
  * - 图标传组件引用（`leadingIcon={RiAddLine}`），不传元素。
  * - **不要给这些组件传 `ref`**：BoardUI 用 React 19 的 ref-as-prop 写法，宿主是
  *   React 18，`ref` 会被 React 丢掉。需要 DOM 时包一层 div 再挂 ref。

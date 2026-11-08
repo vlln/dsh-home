@@ -1,9 +1,9 @@
 /**
  * 首页样式：一段注入到 `<head>` 的样式表（前缀 `dsh-home-`）。
  *
- * 只消费语义 token（`--dsw-alias-*` / `--dsw-specific-*` / `--dsw-radius-*`），
+ * 只消费 `theme.css` 的语义 token 与本文件的 `.dsh-*` 类，
  * 不写死颜色、不定义第二套主题——深色模式由宿主在 `<body>` 上切 alias 自动成立。
- * 圆角按角色取档：独立内容卡 R20（`--dsw-radius-xl`），行/芯片 R8/R12，胶囊 999px
+ * 圆角按角色取档：独立内容卡 R20（`--dsh-radius-xl`），行/芯片 R8/R12，胶囊 999px
  * 并显式 `corner-shape: round`。
  *
  * @module @vlln/dsh-home/client/styles
@@ -36,7 +36,7 @@ export const CSS = `
      A board that still fits is centred by the auto margins on .dsh-home-inner. */
   overflow-x: auto;
   overflow-y: auto;
-  background: var(--dsh-canvas, var(--dsw-alias-bg-base));
+  background: var(--dsh-canvas, var(--dsh-canvas));
   /* No padding here: the sticky header's containing block would start below it and
      let card content show through above the header while scrolled. The clearance
      lives in the header's own padding instead (see .dsh-home-head). */
@@ -44,8 +44,8 @@ export const CSS = `
   padding-right: 24px;
   padding-bottom: 40px;
   padding-left: max(24px, var(--dsh-frame-leading-clearance, 0px));
-  color: var(--dsw-alias-label-primary);
-  scrollbar-color: var(--dsw-alias-scrollbar-thumb, var(--dsw-alias-border-l3)) transparent;
+  color: var(--color-text-primary);
+  scrollbar-color: var(--color-border-button-hover, var(--color-border-button-default)) transparent;
 }
 .dsh-home * { box-sizing: border-box; }
 /* A fixed-pixel board, centred when the window is wider. Widget width never depends
@@ -66,7 +66,7 @@ export const CSS = `
   top: 0;
   z-index: 8;
   padding: calc(var(--dsh-frame-top-clearance, 0px) + 16px) 0 16px;
-  background: var(--dsh-canvas, var(--dsw-alias-bg-base));
+  background: var(--dsh-canvas, var(--dsh-canvas));
 }
 .dsh-home-title-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
 .dsh-home-updated { font-size: 13px; line-height: 20px; color: var(--color-text-tertiary); }
@@ -92,9 +92,9 @@ export const CSS = `
 /* Drag-to-delete target. Fixed to the top of the viewport so it stays reachable no
    matter how far the board is scrolled or how wide it is; it exists only while a card
    is being dragged, and the grid arms it from the live pointer position. */
-.dsh-home-delete-zone { position: fixed; top: calc(var(--dsh-frame-top-clearance, 0px) + 12px); left: 50%; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; border: 1px dashed var(--dsw-alias-border-l4); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary); box-shadow: var(--dsw-shadow-lv2); font: var(--dsw-font-xs-13); pointer-events: none; user-select: none; }
+.dsh-home-delete-zone { position: fixed; top: calc(var(--dsh-frame-top-clearance, 0px) + 12px); left: 50%; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; border: 1px dashed var(--color-border-button-hover); background: var(--dsh-card); color: var(--color-text-secondary); box-shadow: var(--dsh-shadow-lv2); font: var(--dsh-font-xs-13); pointer-events: none; user-select: none; }
 .dsh-home-delete-zone svg { flex: none; }
-.dsh-home-delete-zone[data-armed="true"] { border-style: solid; border-color: var(--color-text-error-primary); background: var(--dsw-alias-interactive-bg-hover-danger); color: var(--color-text-error-primary); }
+.dsh-home-delete-zone[data-armed="true"] { border-style: solid; border-color: var(--color-text-error-primary); background: var(--dsh-hover-danger); color: var(--color-text-error-primary); }
 .dsh-home-delete-zone-armed { display: none; }
 .dsh-home-delete-zone[data-armed="true"] .dsh-home-delete-zone-idle { display: none; }
 .dsh-home-delete-zone[data-armed="true"] .dsh-home-delete-zone-armed { display: inline; }
@@ -145,7 +145,7 @@ export const CSS = `
   color: var(--color-text-primary);
 }
 .dsh-label { font-size: 12px; line-height: 16px; color: var(--color-text-tertiary); }
-.dsh-muted { font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-caption); }
+.dsh-muted { font-size: 11px; line-height: 16px; color: var(--color-text-tertiary); }
 .dsh-metric { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 
 .dsh-rows { display: flex; flex-direction: column; gap: 2px; }
@@ -157,17 +157,17 @@ export const CSS = `
   margin: 0;
   padding: 7px 8px;
   border: none;
-  border-radius: var(--dsw-radius-md);
+  border-radius: var(--dsh-radius-md);
   background: transparent;
   text-align: left;
   cursor: pointer;
   font: inherit;
   color: inherit;
 }
-.dsh-row:hover { background: var(--dsw-alias-interactive-bg-hover); }
-.dsh-row:active { background: var(--dsw-alias-interactive-bg-active); }
+.dsh-row:hover { background: var(--dsh-hover); }
+.dsh-row:active { background: var(--dsh-active); }
 .dsh-row:focus-visible {
-  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4));
+  outline: var(--dsh-focus-ring-width, 2px) solid var(--dsh-focus-ring-color, var(--color-chart-4));
   outline-offset: 1px;
 }
 .dsh-row-static { cursor: default; }
@@ -176,18 +176,18 @@ export const CSS = `
 .dsh-row-title {
   font-size: 13px;
   line-height: 19px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
 }
-.dsh-row-meta { font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); }
+.dsh-row-meta { font-size: 11px; line-height: 16px; color: var(--color-text-tertiary); }
 .dsh-band-track {
   position: relative;
   height: 26px;
-  border-radius: var(--dsw-radius-sm);
-  background: var(--dsw-alias-bg-skeleton);
+  border-radius: var(--dsh-radius-sm);
+  background: var(--dsh-sunken);
   overflow: hidden;
 }
 .dsh-band-seg {
@@ -214,7 +214,7 @@ export const CSS = `
   margin-top: -2px;
   font-size: 9px;
   line-height: 12px;
-  color: var(--dsw-alias-label-caption);
+  color: var(--color-text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -234,12 +234,12 @@ export const CSS = `
   margin-top: -2px;
   font-size: 9px;
   line-height: 12px;
-  color: var(--dsw-alias-label-caption);
+  color: var(--color-text-tertiary);
 }
 .dsh-rhythm-days span { flex: 1 1 0; min-width: 0; text-align: center; overflow: hidden; }
 
 .dsh-quick { display: flex; flex-direction: column; gap: 8px; }
-.dsh-key { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
+.dsh-key { font-size: 11px; color: var(--color-text-tertiary); }
 
 .dsh-edit-bar {
   margin-top: 16px;
@@ -249,13 +249,13 @@ export const CSS = `
   gap: 10px;
   flex-wrap: wrap;
 }
-.dsh-edit-hint { font-size: 12px; color: var(--dsw-alias-label-tertiary); }
+.dsh-edit-hint { font-size: 12px; color: var(--color-text-tertiary); }
 .dsh-edit-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 @keyframes dsh-home-spin { to { transform: rotate(360deg); } }
 @keyframes dsh-home-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .dsh-w { animation: dsh-home-rise 200ms ease-out both; }
-.dsh-w:hover { border-color: var(--dsw-alias-border-l4); }
+.dsh-w:hover { border-color: var(--color-border-button-hover); }
 .dsh-band-seg { transition: opacity 120ms ease-out; }
 .dsh-band-seg:hover { opacity: 1; }
 .dsh-rhythm-col:hover .dsh-rhythm-bar { opacity: 1; }
@@ -283,9 +283,9 @@ export const CSS = `
   gap: 2px;
   margin-left: auto;
   padding: 2px;
-  border-radius: var(--dsw-radius-md);
-  background: var(--dsw-alias-bg-layer-2);
-  box-shadow: inset 0 0 0 0.5px var(--dsw-alias-border-l2);
+  border-radius: var(--dsh-radius-md);
+  background: var(--dsh-card-hover);
+  box-shadow: inset 0 0 0 0.5px var(--dsh-hairline);
 }
 .dsh-tool {
   display: inline-flex;
@@ -295,22 +295,22 @@ export const CSS = `
   min-width: 24px;
   padding: 0 6px;
   border: none;
-  border-radius: var(--dsw-radius-sm);
+  border-radius: var(--dsh-radius-sm);
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--color-text-secondary);
   font: inherit;
   font-size: 11px;
   cursor: pointer;
 }
-.dsh-tool:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.dsh-tool:hover { background: var(--dsh-hover); color: var(--color-text-primary); }
 .dsh-tool:focus-visible {
-  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4));
+  outline: var(--dsh-focus-ring-width, 2px) solid var(--dsh-focus-ring-color, var(--color-chart-4));
   outline-offset: 1px;
 }
 .dsh-tool[data-active="true"] {
-  background: var(--dsw-alias-button-ghost-active-fill);
-  color: var(--dsw-alias-label-primary);
-  box-shadow: inset 0 0 0 1px var(--dsw-alias-button-ghost-active-border);
+  background: var(--dsh-hover-strong);
+  color: var(--color-text-primary);
+  box-shadow: inset 0 0 0 1px var(--color-border-button-hover);
 }
 .dsh-drag { cursor: grab; touch-action: none; }
 /* 阅读态常显一个半透明把手（曾经做成"悬停才出现"，用户根本没发现）；
@@ -334,14 +334,14 @@ export const CSS = `
   text-align: center;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--color-text-tertiary);
 }
 .dsh-error {
   margin-top: 16px;
   padding: 12px 14px;
-  border-radius: var(--dsw-radius-lg);
+  border-radius: var(--dsh-radius-lg);
   background: color-mix(in srgb, var(--color-text-error-primary) 10%, transparent);
-  color: var(--dsw-alias-label-secondary);
+  color: var(--color-text-secondary);
   font-size: 12px;
   display: flex;
   align-items: center;
@@ -355,14 +355,14 @@ export const CSS = `
 /* Registry directory, instance management and host-owned settings drafts. */
 .dsh-workbench-notice {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0;
-  padding: 12px 14px; border-radius: var(--dsw-radius-lg);
-  background: color-mix(in srgb, var(--color-status-yellow-text) 12%, transparent); color: var(--dsw-alias-label-secondary);
+  padding: 12px 14px; border-radius: var(--dsh-radius-lg);
+  background: color-mix(in srgb, var(--color-status-yellow-text) 12%, transparent); color: var(--color-text-secondary);
   font-size: var(--dsh-content-font-size-secondary, 13px); line-height: 1.6;
 }
 .dsh-workbench-notice > span { overflow-wrap: anywhere; }
 .dsh-widget-own-editor { display: flex; justify-content: flex-end; margin-top: 8px; }
 .dsh-widget-config-modal .dsh-widget-settings { margin: 0; padding: 0; border: 0; }
-.dsh-widget-settings { margin-top: 16px; padding-top: 4px; border-top: 0.5px solid var(--dsw-alias-border-l3); }
+.dsh-widget-settings { margin-top: 16px; padding-top: 4px; border-top: 0.5px solid var(--color-border-button-default); }
 .dsh-settings-fields { margin: 12px 0; min-width: 0; }
 /* Fill only the content flex box, excluding the shell header and padding. The
    observer reports this available viewport, independent of overflowing children. */
@@ -377,15 +377,15 @@ export const CSS = `
   width: 100%;
   min-height: 36px;
   padding: 6px 10px;
-  border: 0.5px solid var(--dsw-alias-border-l3);
-  border-radius: var(--dsw-radius-md);
-  color: var(--dsw-alias-label-primary);
-  background: var(--dsw-specific-input-major);
+  border: 0.5px solid var(--color-border-button-default);
+  border-radius: var(--dsh-radius-md);
+  color: var(--color-text-primary);
+  background: var(--dsh-sunken);
   font: inherit;
   font-size: var(--dsh-content-font-size-secondary, 13px);
 }
 .dsh-home-select:focus-visible {
-  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4));
+  outline: var(--dsh-focus-ring-width, 2px) solid var(--dsh-focus-ring-color, var(--color-chart-4));
   outline-offset: 2px;
 }
 /* Recent sessions: five tall entries. Line one carries the title and the time, line
@@ -405,22 +405,22 @@ export const CSS = `
 .dsh-recent-item {
   display: flex; flex-direction: column; justify-content: center; gap: 3px;
   box-sizing: border-box; width: 100%; min-width: 0;
-  margin: 0; padding: 2px 10px; border: 0; border-radius: var(--dsw-radius-md);
+  margin: 0; padding: 2px 10px; border: 0; border-radius: var(--dsh-radius-md);
   background: transparent; color: inherit; font: inherit; text-align: start; cursor: pointer;
 }
 .dsh-recent-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .dsh-recent-dot { flex: none; display: inline-flex; align-items: center; }
 .dsh-recent-title {
-  flex: 1 1 auto; min-width: 0; color: var(--dsw-alias-label-primary);
-  font: var(--dsw-font-s-strong-14); line-height: 18px;
+  flex: 1 1 auto; min-width: 0; color: var(--color-text-primary);
+  font: var(--dsh-font-s-strong-14); line-height: 18px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.dsh-recent-time { flex: none; font: var(--dsw-font-xxxs-11); color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
+.dsh-recent-time { flex: none; font: var(--dsh-font-xxxs-11); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
 .dsh-recent-meta { display: flex; align-items: center; gap: 6px; min-width: 0; padding-inline-start: 14px; }
 .dsh-recent-state {
   flex: none; padding: 1px 8px; border-radius: 999px; corner-shape: round;
   background: color-mix(in srgb, var(--color-status-yellow-text) 12%, transparent); color: var(--color-status-yellow-text);
-  font: var(--dsw-font-xxxs-11); font-weight: 600; white-space: nowrap;
+  font: var(--dsh-font-xxxs-11); font-weight: 600; white-space: nowrap;
 }
 /* One-line session row: state dot, workspace capsule, session title, time.
    The dot leads so a column can be scanned by state before reading a word. */
@@ -428,8 +428,8 @@ export const CSS = `
 .dsh-session-row { flex: 1 1 auto; flex-direction: row; align-items: center; gap: 8px; padding: 4px 8px; min-width: 0; }
 .dsh-session-line[data-dismissible="true"] .dsh-session-row { padding-inline-end: 26px; }
 .dsh-session-status { order: -1; flex: none; display: inline-flex; align-items: center; }
-.dsh-session-title { flex: 1 1 auto; min-width: 0; color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dsh-session-trailing { flex: none; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
+.dsh-session-title { flex: 1 1 auto; min-width: 0; color: var(--color-text-primary); font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dsh-session-trailing { flex: none; font-size: 11px; line-height: 16px; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
 .dsh-session-dismiss { position: absolute; inset-inline-end: 2px; top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity 120ms ease-out; }
 .dsh-session-line:hover .dsh-session-dismiss,
 .dsh-session-line:focus-within .dsh-session-dismiss { opacity: 1; }
@@ -448,8 +448,8 @@ export const CSS = `
   content: ''; position: absolute; top: 0; bottom: 0; width: 2px; border-radius: 2px; pointer-events: none; opacity: 0;
   background: linear-gradient(to bottom,
     transparent calc(var(--dsh-canvas-grip-y, 50%) - 36px),
-    var(--dsw-alias-scrollbar-bg-l1) calc(var(--dsh-canvas-grip-y, 50%) - 8px),
-    var(--dsw-alias-scrollbar-bg-l1) calc(var(--dsh-canvas-grip-y, 50%) + 8px),
+    var(--dsh-sunken) calc(var(--dsh-canvas-grip-y, 50%) - 8px),
+    var(--dsh-sunken) calc(var(--dsh-canvas-grip-y, 50%) + 8px),
     transparent calc(var(--dsh-canvas-grip-y, 50%) + 36px));
   transition: opacity 120ms ease-out;
 }
@@ -457,7 +457,7 @@ export const CSS = `
 .dsh-canvas-grip[data-side="right"]::after { left: 3px; }
 .dsh-canvas-grip[data-dragging]::after { opacity: 1; }
 .dsh-canvas-grip[data-dragging] { z-index: 10; }
-.dsh-canvas-grip:focus-visible { outline: 2px solid var(--color-chart-4); outline-offset: -2px; border-radius: var(--dsw-radius-sm); }
+.dsh-canvas-grip:focus-visible { outline: 2px solid var(--color-chart-4); outline-offset: -2px; border-radius: var(--dsh-radius-sm); }
 @media (hover: hover) { .dsh-canvas-grip:hover::after { opacity: 1; } }
 /* The edge must track the pointer exactly, so the board does not ease into a new width. */
 .dsh-home[data-resizing] .react-grid-layout,
@@ -484,11 +484,11 @@ export const CSS = `
 .dsh-home .react-grid-item > .dsh-home-widget-content { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .dsh-home .react-grid-item.react-draggable-dragging,
 .dsh-home .react-grid-item.resizing { transition: none; z-index: 10; will-change: transform; }
-.dsh-home .react-grid-item.react-draggable-dragging { box-shadow: var(--dsw-shadow-lv3, 0 8px 24px var(--dsw-alias-border-l3)); border-color: var(--color-chart-4); opacity: 0.96; }
-.dsh-home .react-grid-item.react-grid-placeholder { background: color-mix(in srgb, var(--color-chart-4) 14%, transparent); border: 2px dashed var(--color-chart-4); border-radius: var(--dsw-radius-xl); z-index: 1; pointer-events: none; transition: none; }
+.dsh-home .react-grid-item.react-draggable-dragging { box-shadow: var(--dsh-shadow-lv3, 0 8px 24px var(--color-border-button-default)); border-color: var(--color-chart-4); opacity: 0.96; }
+.dsh-home .react-grid-item.react-grid-placeholder { background: color-mix(in srgb, var(--color-chart-4) 14%, transparent); border: 2px dashed var(--color-chart-4); border-radius: var(--dsh-radius-xl); z-index: 1; pointer-events: none; transition: none; }
 .dsh-home .dsh-spatial-grid[data-hover-pending="true"] .react-grid-placeholder {
-  border-color: var(--dsw-alias-label-tertiary);
-  background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 8%, transparent);
+  border-color: var(--color-text-tertiary);
+  background: color-mix(in srgb, var(--color-text-tertiary) 8%, transparent);
 }
 .dsh-home .dsh-spatial-grid[data-drop-rejected="true"] .react-grid-placeholder {
   border-color: var(--color-text-error-primary);
@@ -497,10 +497,10 @@ export const CSS = `
 /* Widget dimensions are not user-editable. RGL resizing stays disabled. */
 .dsh-home-widget .dsh-tools { flex:none; }
 .dsh-home-widget .dsh-w-head .dsh-w-title { flex:1 1 100px; }
-.dsh-home[data-editing="true"] .dsh-home-widget { border-style: solid; border-color: var(--dsw-alias-border-l3); }
+.dsh-home[data-editing="true"] .dsh-home-widget { border-style: solid; border-color: var(--color-border-button-default); }
 .dsh-home[data-editing="true"] .dsh-home-widget-content { opacity: 1; }
 .dsh-home[data-editing="true"] .dsh-widget-grip { touch-action: none; cursor: grab; }
-.dsh-home[data-editing="true"] .dsh-spatial-grid { background-image: radial-gradient(circle, var(--dsw-alias-border-l3) 1px, transparent 1px); background-size: 16px 16px; }
+.dsh-home[data-editing="true"] .dsh-spatial-grid { background-image: radial-gradient(circle, var(--color-border-button-default) 1px, transparent 1px); background-size: 16px 16px; }
 .dsh-home .dsh-tools { background: transparent; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .dsh-home .react-grid-layout, .dsh-home .react-grid-item { transition: none; } }
 
@@ -569,7 +569,7 @@ const designSystemStyles = `
   font-weight: 600;
   letter-spacing: -.03em;
   font-variant-numeric: tabular-nums;
-  color: var(--dsw-alias-label-primary);
+  color: var(--color-text-primary);
 }
 
 /* 工作区胶囊：统一中性色。颜色不编码目录身份，只有文字说明它是哪个工作区。 */
@@ -583,8 +583,8 @@ const designSystemStyles = `
   border: none;
   border-radius: 999px;
   corner-shape: round;
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
+  background: var(--dsh-hover);
+  color: var(--color-text-secondary);
   font: inherit;
   font-size: 11px;
   line-height: 16px;
@@ -592,9 +592,9 @@ const designSystemStyles = `
   white-space: nowrap;
   cursor: pointer;
 }
-.dsh-chip:hover { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
-.dsh-chip[data-active="true"] { background: var(--dsw-alias-label-primary); color: var(--dsw-alias-label-primary-foreground); }
-.dsh-chip:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4)); outline-offset: 1px; }
+.dsh-chip:hover { background: var(--dsh-active); color: var(--color-text-primary); }
+.dsh-chip[data-active="true"] { background: var(--color-text-primary); color: var(--color-text-white); }
+.dsh-chip:focus-visible { outline: var(--dsh-focus-ring-width, 2px) solid var(--dsh-focus-ring-color, var(--color-chart-4)); outline-offset: 1px; }
 .dsh-chip[data-tone="warn"] { background: color-mix(in srgb, var(--color-status-yellow-text) 12%, transparent); color: var(--color-status-yellow-text); }
 .dsh-chip[data-tone="danger"] { background: color-mix(in srgb, var(--color-text-error-primary) 12%, transparent); color: var(--color-text-error-primary); }
 .dsh-chip[data-tone="accent"] { background: color-mix(in srgb, var(--color-chart-4) 12%, transparent); color: var(--color-chart-4); }
@@ -604,7 +604,7 @@ const designSystemStyles = `
 .dsh-status-chip[data-group="running"] { --dsh-dot-color: var(--color-status-lime-text); }
 .dsh-status-chip[data-group="waiting"] { --dsh-dot-color: var(--color-status-yellow-text); }
 .dsh-status-chip[data-group="done"] { --dsh-dot-color: var(--color-chart-4); }
-.dsh-status-dot { width: 6px; height: 6px; flex: none; border-radius: 50%; clip-path: circle(50%); background: var(--dsh-dot-color, var(--dsw-alias-label-tertiary)); }
+.dsh-status-dot { width: 6px; height: 6px; flex: none; border-radius: 50%; clip-path: circle(50%); background: var(--dsh-dot-color, var(--color-text-tertiary)); }
 .dsh-status-chip {
   display: inline-flex;
   align-items: center;
@@ -614,17 +614,17 @@ const designSystemStyles = `
   border: 0;
   border-radius: 999px;
   corner-shape: round;
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
+  background: var(--dsh-hover);
+  color: var(--color-text-secondary);
   font: inherit;
   font-size: 11px;
   line-height: 16px;
   font-weight: 600;
   cursor: pointer;
 }
-.dsh-status-chip:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-active); color: var(--dsw-alias-label-primary); }
+.dsh-status-chip:hover:not(:disabled) { background: var(--dsh-active); color: var(--color-text-primary); }
 .dsh-status-chip:disabled { cursor: default; }
-.dsh-status-chip[data-active="true"] { background: var(--dsw-alias-label-primary); color: var(--dsw-alias-label-primary-foreground); }
+.dsh-status-chip[data-active="true"] { background: var(--color-text-primary); color: var(--color-text-white); }
 .dsh-status-count { font-variant-numeric: tabular-nums; opacity: .65; }
 .dsh-status-chip[data-active="true"] .dsh-status-count { opacity: 1; }
 
@@ -638,8 +638,8 @@ const designSystemStyles = `
   border: 0;
   border-radius: 0;
   background-color: transparent;
-  color: var(--dsw-alias-label-tertiary);
-  font-family: var(--dsw-font-family);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-sans);
   font-size: 11px;
   line-height: 20px;
   cursor: pointer;
@@ -651,8 +651,8 @@ const designSystemStyles = `
   transition: color 120ms ease-out;
   text-overflow: ellipsis;
 }
-.dsh-quiet-select:is(:hover, :focus-visible) { color: var(--dsw-alias-label-secondary); }
-.dsh-quiet-select:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4)); outline-offset: 2px; border-radius: var(--dsw-radius-xs); }
+.dsh-quiet-select:is(:hover, :focus-visible) { color: var(--color-text-secondary); }
+.dsh-quiet-select:focus-visible { outline: var(--dsh-focus-ring-width, 2px) solid var(--dsh-focus-ring-color, var(--color-chart-4)); outline-offset: 2px; border-radius: var(--dsh-radius-xs); }
 .dsh-quiet-select:disabled { opacity: .7; cursor: default; }
 
 /* 悬停提示：跟随指针的小气泡，Portal 到 body，不被卡片裁剪。 */
@@ -661,14 +661,14 @@ const designSystemStyles = `
   z-index: 1000;
   max-width: 240px;
   padding: 4px 8px;
-  border-radius: var(--dsw-radius-sm);
-  background: var(--dsw-alias-label-primary);
-  color: var(--dsw-alias-label-primary-foreground);
-  font: var(--dsw-font-xxxs-11);
+  border-radius: var(--dsh-radius-sm);
+  background: var(--color-text-primary);
+  color: var(--color-text-white);
+  font: var(--dsh-font-xxxs-11);
   line-height: 16px;
   white-space: pre-line;
   pointer-events: none;
-  box-shadow: var(--dsw-shadow-lv2);
+  box-shadow: var(--dsh-shadow-lv2);
 }
 
 /* 数据轨道：所有条形图共用同一条中性轨道。 */

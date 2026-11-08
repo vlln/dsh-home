@@ -83,12 +83,12 @@ export function ClockContent(props: WidgetContentProps<ClockConfig>): ReactNode 
     ? [config.timeZone, ...CLOCK_ZONES] : CLOCK_ZONES
   return <div className="dsh-personal-clock flex h-full min-h-0 flex-col justify-between gap-2">
     <div className="dsh-personal-clock-display flex items-end justify-between gap-3">
-      <time className="dsh-personal-clock-time text-[46px] leading-none font-semibold tracking-tight tabular-nums text-text-primary" dateTime={new Date(now).toISOString()} aria-label={time}>
+      <time className="dsh-personal-clock-time text-display-3-semibold tabular-nums text-text-primary" dateTime={new Date(now).toISOString()} aria-label={time}>
         {timeParts.map((part, index) => <span key={index} data-part={part.type} aria-hidden="true">{part.value}</span>)}
       </time>
-      <div className="dsh-personal-clock-date flex flex-none flex-col items-center rounded-2xl border border-border-button-default px-2.5 py-1" role="img" aria-label={date} title={date}>
-        <span className="dsh-personal-clock-day text-body-medium leading-none text-text-primary" aria-hidden="true">{day}</span>
-        <span className="dsh-personal-clock-month text-[10px] leading-tight text-text-tertiary" aria-hidden="true">{month}</span>
+      <div className="dsh-personal-clock-date flex flex-none flex-col items-center rounded-xl bg-[var(--dsh-sunken)] px-2.5 py-1.5" role="img" aria-label={date} title={date}>
+        <span className="dsh-personal-clock-day text-title-2-medium leading-none tabular-nums text-text-primary" aria-hidden="true">{day}</span>
+        <span className="dsh-personal-clock-month text-caption-1-medium leading-tight text-text-tertiary" aria-hidden="true">{month}</span>
       </div>
     </div>
     <div className="dsh-personal-clock-zone text-caption-1-medium text-text-tertiary">

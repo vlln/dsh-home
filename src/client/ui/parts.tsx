@@ -39,8 +39,11 @@ export function CardHero({ value, unit, tone = 'default', className }: {
     warning: 'text-status-yellow-text',
     danger: 'text-text-error-primary',
   }[tone]
-  return <div className={cx('flex min-w-0 items-baseline gap-1', className)}>
-    <span className={cx('animate-number-fade text-display-4-semibold tabular-nums tracking-tight', color)}>{value}</span>
+  // 24/500 with tabular numerals, unit on the same baseline — the same recipe as
+  // `.dsh-metric-value` in theme.css. It used to be 32/600, which made one card's
+  // number twice the size of its neighbour's for no reason.
+  return <div className={cx('flex min-w-0 items-baseline gap-1.5', className)}>
+    <span className={cx('animate-number-fade text-title-1-medium tabular-nums tracking-tight', color)}>{value}</span>
     {unit !== undefined && <span className="text-caption-1-medium text-text-tertiary">{unit}</span>}
   </div>
 }
