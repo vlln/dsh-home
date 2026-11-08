@@ -63,13 +63,13 @@ export const plannerStyles = `
 .dsh-plan, .dsh-calendar, .dsh-habit { display:flex; flex-direction:column; height:100%; min-height:0; gap:6px; }
 .dsh-plan-scroll, .dsh-habit-scroll { flex:1 1 auto; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:10px; scrollbar-width:thin; }
 .dsh-plan-list { display:flex; flex-direction:column; gap:2px; margin:0; padding:0; list-style:none; }
-.dsh-plan-block { display:flex; align-items:flex-start; gap:10px; padding:2px 0; }
-.dsh-plan-time { flex:0 0 78px; padding-top:3px; color:var(--color-text-tertiary); font-size:11px; line-height:18px; font-variant-numeric:tabular-nums; }
+.dsh-plan-block { display:flex; align-items:center; gap:10px; padding:2px 0; min-width:0; }
+.dsh-plan-time { flex:0 0 72px; }
 .dsh-plan-block .dsh-todo-list { flex:1 1 auto; min-width:0; }
 .dsh-plan-block[data-done="true"] .dsh-plan-time { color:var(--color-text-tertiary); }
 .dsh-plan-rule { display:none; }
 .dsh-plan-now { display:flex; align-items:center; gap:10px; padding:2px 0; }
-.dsh-plan-now-time { flex:0 0 78px; color:var(--color-chart-4); font-size:11px; line-height:14px; font-weight:600; font-variant-numeric:tabular-nums; }
+.dsh-plan-now-time { flex:0 0 72px; color:var(--color-chart-4); font:var(--dsh-font-xxs-strong-12); }
 .dsh-plan-now-rule { flex:1 1 auto; height:2px; border-radius:1px; background:var(--color-chart-4); }
 .dsh-plan-now-rule::before { content:''; display:block; width:7px; height:7px; margin-top:-2.5px; clip-path:circle(50%); border-radius:50%; background:var(--color-chart-4); }
 .dsh-plan-hint { margin:0 2px; color:var(--color-text-tertiary); font-size:12px; line-height:18px; }

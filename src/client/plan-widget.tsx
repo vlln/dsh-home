@@ -81,9 +81,15 @@ function PlanBody({ data, today, now, t, readOnly, showDone, onToggle, onUpdate,
         <span className="dsh-plan-now-rule" aria-hidden="true" />
       </li>)
     }
+    // A timeline block is a row with the clock in the leading slot: same three parts as
+    // every other row (time · title · reading), with the hour rail as the only bespoke
+    // decoration. The old block put the time in its own column and the row underneath,
+    // which made a one-line item two lines tall.
     timeline.push(<li key={item.id} className="dsh-plan-block" data-done={item.done ? 'true' : 'false'}>
-      <span className="dsh-plan-time">{clockOf(item.start ?? '')}{item.end !== null ? `–${item.end}` : ''}</span>
-      <ul className="dsh-todo-list">{rowFor(item)}</ul>
+      <span className="dsh-plan-time shrink-0 text-caption-1-medium tabular-nums text-text-tertiary">
+        {clockOf(item.start ?? '')}{item.end !== null ? `–${item.end}` : ''}
+      </span>
+      <span className="min-w-0 flex-1">{rowFor(item)}</span>
       <span className="dsh-plan-rule" aria-hidden="true" />
     </li>)
   }
