@@ -1,5 +1,5 @@
 /** Durable widget identities. Registry availability never determines stored instances. */
-export const BUILTIN_WIDGET_IDS = Object.freeze(['recent', 'today', 'running', 'areas', 'rhythm', 'quick'])
+export const BUILTIN_WIDGET_IDS = Object.freeze(['recent', 'today', 'running', 'rhythm'])
 /**
  * 已下线类型 → 替代类型（`null` 表示没有替代）。
  *
@@ -11,6 +11,11 @@ export const RETIRED_WIDGET_TYPES = Object.freeze({
   '@vlln/dsh-home:tasks': null,
   '@vlln/dsh-home:resume': null,
   '@vlln/dsh-home:queue': '@vlln/dsh-home:running',
+  // Removed from the product: the shortcut list duplicated the sidebar's own
+  // "New session" and the session status card, and the per-workspace breakdown
+  // said the same thing as "Recent sessions" with worse resolution.
+  '@vlln/dsh-home:quick': null,
+  '@vlln/dsh-home:areas': null,
 })
 
 /**

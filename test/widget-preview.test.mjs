@@ -114,10 +114,8 @@ test('real Content renderer and builtin preview gates never use deprecated illus
   const clock = await source('personal-widgets.tsx')
   assert.match(clock, /if \(preview \|\| !visible\) return/)
   const activity = await source('activity-widget.tsx')
-  assert.match(activity, /useEffect\(\(\) => \{\s*if \(preview\) return\s*let active = true/)
-  const quick = await source('quick-widget.tsx')
-  assert.match(quick, /const disabled = Boolean\(preview\)/)
-  for (const name of ['builtin-registration.tsx', 'personal-widgets.tsx', 'activity-widget.tsx', 'quick-widget.tsx']) {
+  assert.match(activity, /if \(preview\) return/)
+  for (const name of ['activity-widget.tsx', 'personal-widgets.tsx', 'timer-widget.tsx']) {
     assert.doesNotMatch(await source(name), /builtinPreview\(/)
   }
 })

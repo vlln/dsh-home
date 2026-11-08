@@ -50,14 +50,16 @@ export function SessionRow({
       data-status={status}
       aria-label={`${title} · ${workspace} · ${statusLabel}`}
       onClick={onOpen}
-      trailing={trailing}
+      trailing={<>
+        <span className="dsh-session-workspace max-w-40 truncate text-caption-1-medium text-text-tertiary" title={workspaceTitle ?? workspace}>{workspace}</span>
+        <span className="tabular-nums">{trailing}</span>
+      </>}
     >
       <span className="flex min-w-0 items-center gap-2">
         <span className="dsh-session-status flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
           <StateDot state={DOT[status]} />
         </span>
         <span className="dsh-session-title truncate text-text-primary" title={title}>{title}</span>
-        <span className="dsh-session-workspace shrink-0 truncate text-caption-1-medium text-text-tertiary" title={workspaceTitle ?? workspace}>{workspace}</span>
         {reason !== undefined && <Chip variant="caption" color="yellow">{reason}</Chip>}
       </span>
     </RowButton>

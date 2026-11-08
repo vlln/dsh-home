@@ -85,14 +85,16 @@
  * version claiming one palette while the page rendered another.
  * ------------------------------------------------------------------------- */
 :root {
-  --color-chart-1: var(--color-pink-600);
-  --color-chart-1-active: var(--color-pink-700);
+  --color-chart-1: var(--color-teal-600);
+  --color-chart-1-active: var(--color-teal-700);
   --color-chart-2: var(--color-lime-600);
   --color-chart-2-active: var(--color-lime-700);
   --color-chart-3: var(--color-violet-600);
   --color-chart-3-active: var(--color-violet-700);
-  --color-chart-4: var(--color-teal-600);
-  --color-chart-4-active: var(--color-teal-700);
+  /* Slot 4 is the single-series default, so it is the accent itself: bars, rings
+   * and meters read as the same theme as the buttons instead of a foreign hue. */
+  --color-chart-4: var(--color-accent-500);
+  --color-chart-4-active: var(--color-accent-600);
   --color-chart-5: var(--color-amber-600);
   --color-chart-5-active: var(--color-amber-700);
 }
@@ -100,14 +102,14 @@
 /* On a dark card the 600 step is the one that loses its chroma; the same design
    system shifts one step brighter instead of inventing a second palette. */
 body[data-ds-dark-theme] {
-  --color-chart-1: var(--color-pink-400);
-  --color-chart-1-active: var(--color-pink-500);
+  --color-chart-1: var(--color-teal-400);
+  --color-chart-1-active: var(--color-teal-500);
   --color-chart-2: var(--color-lime-400);
   --color-chart-2-active: var(--color-lime-500);
   --color-chart-3: var(--color-violet-400);
   --color-chart-3-active: var(--color-violet-500);
-  --color-chart-4: var(--color-teal-400);
-  --color-chart-4-active: var(--color-teal-500);
+  --color-chart-4: var(--color-accent-400);
+  --color-chart-4-active: var(--color-accent-500);
   --color-chart-5: var(--color-amber-400);
   --color-chart-5-active: var(--color-amber-500);
 }
@@ -203,6 +205,11 @@ html[data-motion="off"] * {
   /* A white card on a near-white page needs an edge; a #161618 card on a #0e0e10
    * page does not. The line is what changes between themes, not the ladder's shape. */
   --dsh-card-line: rgb(0 0 0 / 0.07);
+  /* Hover readouts are the one surface that inverts: a tooltip must never be the
+   * same value as the card under it. Colouring it with `text-primary` was a bug in
+   * dark, where that token IS near-white — a white box with white text. */
+  --dsh-tip-bg: #17171a;
+  --dsh-tip-fg: #fafafa;
 
   --dsh-card-radius: 16px;
   --dsh-card-pad: 16px;
@@ -217,6 +224,8 @@ body[data-ds-dark-theme] {
   /* Invisible, not absent: it keeps the card's box 2px smaller in both themes so a
    * theme flip cannot reflow the board. */
   --dsh-card-line: transparent;
+  --dsh-tip-bg: #2c2c33;
+  --dsh-tip-fg: #f4f4f6;
 }
 
 /* ---------------------------------------------------------------------------

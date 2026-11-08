@@ -27,7 +27,6 @@ test('content patterns use container geometry without hiding outer overflow or a
   const builtin = await readFile(new URL('../src/client/builtin-registration.tsx', import.meta.url), 'utf8')
   const personal = await readFile(new URL('../src/client/personal-styles.ts', import.meta.url), 'utf8')
   assert.match(widgets, /dsh-today-stats/)
-  assert.match(widgets, /dsh-area-track/)
   assert.match(widgets, /dsh-rhythm-content/)
   assert.match(builtin, /size, width, height/)
   assert.match(widgetRefinementStyles, /container-type:inline-size/)

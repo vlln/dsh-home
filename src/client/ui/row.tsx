@@ -31,7 +31,7 @@ export interface RowProps {
 function Body({ children, trailing }: Pick<RowProps, 'children' | 'trailing'>): ReactNode {
   return <>
     <span className="min-w-0 flex-1 truncate">{children}</span>
-    {trailing !== undefined && <span className="shrink-0 text-caption-1-medium tabular-nums text-text-tertiary">{trailing}</span>}
+    {trailing !== undefined && <span className="flex shrink-0 items-center gap-2 text-caption-1-medium tabular-nums text-text-tertiary">{trailing}</span>}
   </>
 }
 

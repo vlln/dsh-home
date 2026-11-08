@@ -118,7 +118,7 @@ export function legacyInstanceProjection(typeId: string, id: string, layout: { p
   const old: Record<string, { size: 's' | 'm'; height: number }> = {
     recent: { size: 's', height: 7 }, tasks: { size: 's', height: 8 }, today: { size: 'm', height: 4 },
     running: { size: 's', height: 4 }, areas: { size: 's', height: 4 }, rhythm: { size: 'm', height: 4 },
-    resume: { size: 'm', height: 4 }, queue: { size: 's', height: 4 }, quick: { size: 's', height: 4 },
+    resume: { size: 'm', height: 4 }, queue: { size: 's', height: 4 },
     notes: { size: 's', height: 6 }, clock: { size: 's', height: 4 }, activity: { size: 'm', height: 6 },
   }
   const key = typeId.startsWith('@vlln/dsh-home:') ? typeId.slice('@vlln/dsh-home:'.length) : ''

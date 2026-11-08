@@ -26,9 +26,6 @@ test('preview cannot receive durable config capability', () => {
   assert.equal(props.preview.data, null)
 })
 test('builtins choose editors themselves and retain forms without shell registration', async () => {
-  const quick = await source('quick-widget.tsx')
-  assert.match(quick, /<WidgetConfigEditor/)
-  assert.doesNotMatch(quick, /Settings: QuickSettings/)
   // Notes, clock, timer and footprints edit inside the card: no dialog, no shell form.
   for (const name of ['personal-widgets.tsx', 'timer-widget.tsx', 'activity-widget.tsx']) {
     const text = await source(name)

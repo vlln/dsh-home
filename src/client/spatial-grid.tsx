@@ -13,7 +13,6 @@ import type { GridRect } from './api.ts'
 import { canPlace, type SpatialItem } from './spatial-model.ts'
 import { advanceHover, type HoverIntent } from './hover-intent.ts'
 import { pinDraggedItem, placementAccepted } from './drag-visual.ts'
-import { compactSpatialLayout } from './spatial-model.ts'
 import { canvasContentHeight, clampCanvasLeft, clampCanvasScroll, EDIT_CANVAS_MIN_HEIGHT, extendCanvasHeight } from './canvas-extent.ts'
 
 export interface SpatialGridProps {
@@ -375,13 +374,11 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
       return
     }
     desktopRelease.current?.()
-    const moved = session?.preview ?? items(value, cols)
-    // Pack upward on release, the way every dashboard grid does: leaving the hole the
-    // user dragged a card out of makes the board look like it lost a tile. A gesture is
-    // free to pass through overlapping/partial states, so a layout that cannot be
-    // compacted (should not happen, but the solver is the authority) is committed as-is.
-    let result = moved
-    try { result = compactSpatialLayout(moved, cols) } catch { result = moved }
+    // Free placement, deliberately: a card stays where it was dropped. Packing on
+    // release made the board un-arrangeable — you could not leave a gap or put a card
+    // beside a tall one, because it snapped back to the top on the next frame. Packing
+    // is an explicit action ("Tidy layout"), never a side effect of letting go.
+    const result = session?.preview ?? items(value, cols)
     const restoreEngine = session?.pending || session?.rejected
     clearHover()
     active.current = false

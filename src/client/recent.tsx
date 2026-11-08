@@ -52,15 +52,18 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
                 {/* One line per session: state dot, title, workspace, time. The workspace
                     used to be a 10px capsule on a second line, which cost 20px of height
                     per row and read as a tag rather than as context. */}
-                <RowButton onClick={() => { actions.openSession(session.id) }} trailing={trailing}
+                <RowButton onClick={() => { actions.openSession(session.id) }}
                   data-session-id={session.id} data-status={status}
-                  aria-label={`${title} · ${workspace} · ${statusLabel} · ${trailing}`}>
+                  aria-label={`${title} · ${workspace} · ${statusLabel} · ${trailing}`}
+                  trailing={<>
+                    <span className="dsh-recent-workspace max-w-40 truncate text-caption-1-medium text-text-tertiary">{workspace}</span>
+                    <span className="tabular-nums">{trailing}</span>
+                  </>}>
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="dsh-recent-dot flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
                       <StateDot state={sessionDotState(status)} />
                     </span>
                     <span className="dsh-recent-title truncate">{title}</span>
-                    <span className="dsh-recent-workspace shrink-0 truncate text-caption-1-medium text-text-tertiary">{workspace}</span>
                     {isWaiting(status) && <span className="dsh-recent-state shrink-0 text-caption-1-medium text-status-yellow-text">{statusLabel}</span>}
                   </span>
                 </RowButton>

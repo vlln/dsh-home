@@ -98,8 +98,6 @@ export const widgetRefinementStyles = `
 .dsh-pinned-rows .dsh-row + .dsh-row { border-top:.5px solid var(--dsh-hairline); }
 
 /* Task choices remain choices; the only primary action still prepares a draft. */
-.dsh-home-widget .dsh-quick-widget-links { background:var(--dsh-card); border:0; border-radius:var(--dsh-radius-md); padding:4px; }
-.dsh-home-widget .dsh-quick-widget > .dsh-widget-own-editor { justify-content:flex-start; padding-top:6px; }
 .dsh-home-widget .dsh-personal-clock { min-height:100%; }
 .dsh-home-widget .dsh-activity-secondary { font-variant-numeric:tabular-nums; }
 .dsh-home-widget .dsh-activity-legend { padding-top:2px; border-top:.5px solid var(--dsh-hairline); }

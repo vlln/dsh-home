@@ -67,7 +67,7 @@ export function SessionStatusContent(props: WidgetContentProps<SessionStatusConf
   const shown = rows.filter(row => row.group === group)
   const canChoose = props.saveConfig !== undefined && props.preview === undefined
   const open = (id: string): void => { actions.openSession(id) }
-  return <div className="dsh-session-status flex h-full min-h-0 flex-col" data-status-source={statusSource} data-group={group}>
+  return <div className="dsh-status-card flex h-full min-h-0 flex-col" data-status-source={statusSource} data-group={group}>
     <SegmentedControl
       aria-label={t('sessionStatus.filter')}
       selectedKeys={[group]}

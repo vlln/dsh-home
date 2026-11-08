@@ -32,8 +32,6 @@ export const widgetExpressionStyles = `
 .dsh-home-widget .dsh-focus-snippet { border-inline-start:3px solid var(--color-chart-4); padding-inline-start:12px; margin-block:0; color:var(--color-text-secondary); }
 .dsh-home-widget .dsh-focus-primary { background:var(--color-accent-500); color:var(--color-text-white); }
 .dsh-home-widget .dsh-focus-primary:is(:hover,:focus-visible) { background:var(--color-accent-400); }
-.dsh-home-widget .dsh-quick-widget-links { padding:0; background:transparent; }
-.dsh-home-widget .dsh-quick-widget-link { background:var(--dsh-card); }
 /* Content adapts within saved rectangles; whitespace is not an excuse to
    clip text, invent data or resize the widget. */
 .dsh-home-widget .dsh-focus-title { white-space:normal; overflow-wrap:anywhere; }
@@ -41,16 +39,12 @@ export const widgetExpressionStyles = `
 .dsh-home-widget .dsh-focus-actions { margin-top:auto; }
 .dsh-home-widget .dsh-today-timeline { min-width:0; }
 .dsh-home-widget .dsh-today-content[data-roomy="true"] { gap:8px; justify-content:space-between; }
-.dsh-home-widget .dsh-quick-widget { display:flex; flex-direction:column; min-height:100%; }
-.dsh-home-widget .dsh-quick-widget > .dsh-widget-own-editor { margin-top:auto; }
-.dsh-home-widget .dsh-quick-widget > .dsh-muted { margin-top:4px; }
 @container widget (min-width:560px) {
   .dsh-home-widget .dsh-today-content { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); grid-template-rows:auto auto; gap:6px 24px; align-content:center; }
   .dsh-today-content .dsh-today-hero { grid-column:1; grid-row:1 / span 2; }
   .dsh-today-content .dsh-today-timeline { grid-column:2; grid-row:1; align-self:end; }
   .dsh-home-widget .dsh-today-content .dsh-today-stats { grid-column:2; grid-row:2; align-self:start; }
   .dsh-today-content .dsh-today-longest { grid-column:1 / -1; }
-  .dsh-home-widget .dsh-quick-widget-links { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @container widget (max-width:280px) {
   .dsh-day-dial { width:48px; }

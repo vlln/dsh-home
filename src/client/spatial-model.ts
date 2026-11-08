@@ -8,11 +8,9 @@
  * Twelve columns by twelve rows, tiled with no gap — the shape is the point.
  */
 export const DEFAULT_BOARD: Readonly<Record<string, { x: number; y: number; w: number; h: number }>> = Object.freeze({
-  recent: { x: 0, y: 0, w: 4, h: 8 },
+  recent: { x: 0, y: 0, w: 4, h: 6 },
   today: { x: 4, y: 0, w: 8, h: 4 },
-  running: { x: 4, y: 4, w: 4, h: 4 },
-  areas: { x: 8, y: 4, w: 4, h: 4 },
-  quick: { x: 0, y: 8, w: 4, h: 4 },
+  running: { x: 4, y: 4, w: 8, h: 4 },
   rhythm: { x: 4, y: 8, w: 8, h: 4 },
 })
 import type { GridRect, Layout, WidgetSize } from './api.ts'
@@ -247,8 +245,11 @@ export function buildSpatialLayout(
   // screen ended up looking like: two empty rows at the top and a hole on the right.
   // A fresh board therefore starts from a composed 12-column tiling; any card the
   // tiling does not name still falls through to auto-placement below.
+  // Authored on the 12-column board and only applied there: per-widget width presets are
+  // 4/8/12, so a projected 7/13-column composition cannot exist. A wider canvas is the
+  // user's own layout and keeps plain first-fit placement.
   const allBuiltin = metas.length >= 4 && metas.every(meta => DEFAULT_BOARD[meta.id] !== undefined)
-  if (allBuiltin && Object.keys(saved).length === 0) {
+  if (cols === 12 && allBuiltin && Object.keys(saved).length === 0) {
     // The tiling is authored on a 12-column board, but the canvas width is the user's
     // choice (12..32 columns). Map the 12-column *boundaries* onto the real column
     // count instead of scaling widths: an interval mapping keeps every card disjoint,

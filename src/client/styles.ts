@@ -12,7 +12,6 @@
 import { activityStyles } from './activity-styles.ts'
 import { personalStyles } from './personal-styles.ts'
 import { plannerStyles } from './planner-styles.ts'
-import { quickStyles } from './quick-styles.ts'
 import { galleryStyles } from './gallery-styles.ts'
 import { libraryStyles } from './library-styles.ts'
 import { widgetRefinementStyles } from './widget-refinement-styles.ts'
@@ -238,7 +237,6 @@ export const CSS = `
 }
 .dsh-rhythm-days span { flex: 1 1 0; min-width: 0; text-align: center; overflow: hidden; }
 
-.dsh-quick { display: flex; flex-direction: column; gap: 8px; }
 .dsh-key { font-size: 11px; color: var(--color-text-tertiary); }
 
 .dsh-edit-bar {
@@ -539,7 +537,7 @@ export function injectStyles(): () => void {
   if (existing !== null) return () => {}
   const element = document.createElement('style')
   element.id = STYLE_ID
-  const legacy = designSystemStyles + CSS + activityStyles + personalStyles + plannerStyles + quickStyles + galleryStyles + libraryStyles + widgetRefinementStyles + widgetExpressionStyles
+  const legacy = designSystemStyles + CSS + activityStyles + personalStyles + plannerStyles + galleryStyles + libraryStyles + widgetRefinementStyles + widgetExpressionStyles
   element.textContent =
     '@layer dsh-reset, dsh-legacy, theme, base, components, utilities;\n' +
     themeCss +
@@ -662,8 +660,9 @@ const designSystemStyles = `
   max-width: 240px;
   padding: 4px 8px;
   border-radius: var(--dsh-radius-sm);
-  background: var(--color-text-primary);
-  color: var(--color-text-white);
+  background: var(--dsh-tip-bg);
+  color: var(--dsh-tip-fg);
+  border: 1px solid var(--dsh-hairline);
   font: var(--dsh-font-xxxs-11);
   line-height: 16px;
   white-space: pre-line;

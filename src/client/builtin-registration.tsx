@@ -5,7 +5,6 @@ import { BUILTIN_WIDGETS, type WidgetActions, type WidgetProps } from './widgets
 import { registerActivityWidget } from './activity-widget.tsx'
 import { registerActiveWidget } from './active-widget.tsx'
 import { registerPersonalWidgets } from './personal-widgets.tsx'
-import { registerQuickWidget } from './quick-widget.tsx'
 import { registerTodoWidget } from './todo-widget.tsx'
 import { registerPlanWidget } from './plan-widget.tsx'
 import { registerCalendarWidget } from './calendar-widget.tsx'
@@ -114,8 +113,7 @@ const BUILTIN_SIZING: Record<string, WidgetSizing> = {
   // 最近会话是一份窄列表：5 条、每条两行，4 列正好；8/12 列只会把标题拉成一条长带。
   recent: { default: { w:4,h:8 }, supported: [{w:4,h:8},{w:4,h:10}] },
   today: { default: { w:8,h:4 }, supported: [{w:4,h:4},{w:8,h:4}] },
-  areas: { default: { w:4,h:6 }, supported: [{w:4,h:6},{w:8,h:6},{w:8,h:8}] },
-  rhythm: { default: { w:8,h:4 }, supported: [{w:4,h:4},{w:8,h:4},{w:12,h:6}] },
+  rhythm: { default: { w:12,h:4 }, supported: [{w:4,h:4},{w:8,h:4},{w:12,h:4},{w:12,h:6}] },
 }
 export function registerBuiltins(registry: HomeWidgetRegistry, t: Translate): () => void {
   const disposers = BUILTIN_WIDGETS.map(widget => {
@@ -133,6 +131,6 @@ export function registerBuiltins(registry: HomeWidgetRegistry, t: Translate): ()
       configVersion: 1, defaultConfig: () => ({}), validateConfig: () => true, Content,
     })
   })
-  disposers.push(registerActivityWidget(registry, t), registerActiveWidget(registry, t), registerPersonalWidgets(registry, t), registerQuickWidget(registry, t), registerSessionStatusWidget(registry, t), registerTodoWidget(registry, t), registerPlanWidget(registry, t), registerCalendarWidget(registry, t), registerHabitWidget(registry, t), registerTimerWidget(registry, t), registerPomodoroWidget(registry, t), registerCountdownWidget(registry, t), registerUsageWidget(registry, t), registerQuoteWidget(registry, t), registerPictureWidget(registry, t), registerBalanceWidget(registry, t))
+  disposers.push(registerActivityWidget(registry, t), registerActiveWidget(registry, t), registerPersonalWidgets(registry, t), registerSessionStatusWidget(registry, t), registerTodoWidget(registry, t), registerPlanWidget(registry, t), registerCalendarWidget(registry, t), registerHabitWidget(registry, t), registerTimerWidget(registry, t), registerPomodoroWidget(registry, t), registerCountdownWidget(registry, t), registerUsageWidget(registry, t), registerQuoteWidget(registry, t), registerPictureWidget(registry, t), registerBalanceWidget(registry, t))
   return () => { for (const off of disposers.reverse()) off() }
 }

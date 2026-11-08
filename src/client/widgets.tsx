@@ -199,94 +199,6 @@ function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
   )
 }
 
-function AreasBody({ t, data, actions }: WidgetProps) {
-  const listRef = useRef<HTMLDivElement>(null)
-  const capacity = useVisibleRows(listRef, '.dsh-row')
-  const groups = new Map<string, {
-    name: string
-    cwd: string
-    ms: number
-    sessions: number
-    lastAt: number
-    topLevelId?: string
-  }>()
-  // 子代理会话也算进它的工作区（时长归因要能对得上「今天」的总数）；
-  // 但点击只开顶层会话，只有子代理的组不可点。
-  for (const session of data?.sessions ?? []) {
-    if (session.todayMs <= 0 && session.todayTurns <= 0) continue
-    const key = session.cwd ?? ''
-    const name = key.split('/').filter(Boolean).pop() ?? t('unit.unknown')
-    const group = groups.get(key) ?? { name, cwd: key, ms: 0, sessions: 0, lastAt: 0 }
-    group.ms += session.todayMs
-    group.sessions += 1
-    const topLevelSession = session.parentSessionId === undefined && session.origin !== 'subagent'
-    if (topLevelSession && session.lastAt >= group.lastAt) {
-      group.lastAt = session.lastAt
-      group.topLevelId = session.id
-    }
-    groups.set(key, group)
-  }
-  const sorted = [...groups.values()].sort((left, right) => right.ms - left.ms)
-  if (sorted.length === 0) {
-    // A zero is data. An empty card with one grey line is a hole in the board, so the
-    // card states its own metric and then explains what would fill it.
-    return <div className="flex h-full min-h-0 flex-col gap-2">
-      <div className="dsh-metric">
-        <span className="dsh-number">0</span>
-        <span className="dsh-label">{t('widget.areas.unit')}</span>
-      </div>
-      <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.areas.empty')}</Empty>
-    </div>
-  }
-  // 按实测高度留下能放下的行，最后一行合并为「其他 N 个工作区」；卡片里不出现滚动条。
-  const limit = capacity ?? sorted.length
-  const rows = sorted.length > limit ? sorted.slice(0, Math.max(0, limit - 1)) : sorted
-  const rest = sorted.slice(rows.length)
-  const restMs = rest.reduce((sum, group) => sum + group.ms, 0)
-  const restSessions = rest.reduce((sum, group) => sum + group.sessions, 0)
-  return (
-    <div className="dsh-rows dsh-area-rows flex min-h-0 flex-1 flex-col gap-2" ref={listRef}>
-      {rows.map(group => {
-        // One row, one number: name and duration share a line, the bar is the same
-        // number drawn as length, and the session count rides in the label's title.
-        // The row used to repeat "25 min" three times (top-right, under the bar, and
-        // again in the bar's aria-label), which is what made this card feel noisy.
-        const title = (
-          <span className="dsh-row-top flex min-w-0 items-center justify-between gap-2">
-            <span className="min-w-0 truncate text-body-medium text-text-primary" title={group.cwd}>{group.name}</span>
-            <span className="dsh-area-duration flex-none text-caption-1-medium tabular-nums text-text-secondary">{formatDuration(group.ms, t)}</span>
-          </span>
-        )
-        const bar = <Meter className="dsh-area-track" ratio={sorted[0]!.ms > 0 ? group.ms / sorted[0]!.ms : 0}
-          label={t('widget.areas.row', { dur: formatDuration(group.ms, t), sessions: group.sessions })} />
-        return group.topLevelId === undefined
-          ? <div key={group.name} className="dsh-row dsh-row-static">{title}{bar}</div>
-          : (
-            <button
-              key={group.name}
-              type="button"
-              className="dsh-row flex flex-col gap-1 rounded-xl px-2 py-1.5 text-start transition-colors hover:bg-background-secondary-default"
-              onClick={() => { actions.openSession(group.topLevelId as string) }}
-            >
-              {title}
-              {bar}
-            </button>
-          )
-      })}
-      {rest.length > 0 && (
-        <div className="dsh-row dsh-row-static">
-          <span className="dsh-row-top">
-            <span className="dsh-row-title">{t('widget.areas.others', { count: rest.length })}</span>
-          </span>
-          <span className="dsh-row-meta">
-            {t('widget.areas.row', { dur: formatDuration(restMs, t), sessions: restSessions })}
-          </span>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function RhythmBody({ t, data }: WidgetProps) {
   // 账本保留 30 天（最近的 30 天窗口要用），这张卡只画最近 14 天。
   const days = (data?.days ?? []).slice(-14)
@@ -333,10 +245,6 @@ export const BUILTIN_WIDGETS: readonly BuiltinWidget[] = [
   {
     id: 'today', order: 20, defaultSize: 'm', defaultHeight: 4, Glyph: IconToday,
     title: t => t('widget.today.title'), body: TodayBody,
-  },
-  {
-    id: 'areas', order: 40, defaultSize: 's', defaultHeight: 4, Glyph: IconSessions,
-    title: t => t('widget.areas.title'), body: AreasBody,
   },
   {
     id: 'rhythm', order: 50, defaultSize: 'm', defaultHeight: 4, Glyph: IconRhythm,
