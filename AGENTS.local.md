@@ -199,3 +199,15 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
 "能从 openHome 一路跑到尾"；B5b 再逐条转绿，一处一 commit。
 
 判断标准：跑到尾之前不合并任何 B1–B4 的改动——没有安全网时改样式模块，等于蒙眼。
+
+### B5 续（2026-11-07 晚）
+
+- **只读降级不是权限问题**：`layout.get` 返回 `state-corrupt`，说明夹具 `state.json` 被手改坏了
+  （删退役实例时留下了指向它的布局条目）。插件按设计"保留原文件 + 只读"，这个降级行为是对的。
+  处理：把坏文件挪走让插件重建 → `{writable:true,status:'ready'}`。
+- **能读状态再动手**：`POST /plugins/dsh-home/api {op:'layout.get'}` 会连 `storage` 一起返回，
+  比 `snapshot` 有用（后者只有 `ok`）。以后查可写性直接用它。
+- **`layoutCases` 是第二个"按旧 UI 写"的段落**：改尺寸（按决策已移除）、隐藏/恢复（入口搬到 tray）
+  都过期。删掉改尺寸与其落盘等待后，撞到 "Hide this card"。
+  处理方式与 `taskCases` 不同：**这两段要重写而不是删**——布局交互是首页的核心功能，
+  删掉等于把最该保护的东西保护掉了。tray 条目有稳定的 `data-widget-type`，比卡片上的按钮好定位。
