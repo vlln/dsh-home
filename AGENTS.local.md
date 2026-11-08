@@ -255,3 +255,18 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
 | 首屏顶部空两行 | 自动排布是"第一个放得下"，尺寸不一时会留洞 | 首装用 `DEFAULT_BOARD` 拼好的 12 列 |
 
 验证站：`bash ~/Projects/DshPlugins/.work/dsh-home/relaunch.sh`（会打印带 token 的 URL）。
+
+### 装进主 GUI（2026-11-08 实测）
+
+主 profile 把插件钉在 `.work/` 下的 tarball 上，所以升级 = 换包 + 改 specifier + 重装：
+
+1. `npm version <x.y.z> --no-git-tag-version && npm run build && npm pack --pack-destination ~/Projects/DshPlugins/.work`
+2. 改 `~/.dsh/profiles/web/package.json` 里 `@vlln/dsh-home` 的 `file:` 路径（先备份该文件）。
+3. `cd ~/.dsh/profiles/web && CI=true pnpm install --no-frozen-lockfile --store-dir ~/Projects/DshPlugins/.pnpm-store --config.confirmModulesPurge=false`
+
+三个旗子都是必需的：`CI=true` + `confirmModulesPurge=false` 否则没有 TTY 会中止；
+`--no-frozen-lockfile` 否则 specifier 一变就拒绝安装。
+**它会重建整个 node_modules**，过程中会顺手删掉不在 `dsh.profile.bundles` 里的残留目录
+（这次少了一个 `dsh-provenance-lens`，它在别的 profile 里仍在，属于未登记残留）。
+装完核对 `node_modules/@vlln/dsh-home/lib/client.js` 的 sha256 与构建产物一致。
+运行中的 3080 进程仍持有旧模块，新界面要等它重启。
