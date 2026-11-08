@@ -60,7 +60,6 @@ export const CSS = `
   gap: 16px;
   flex-wrap: wrap;
 }
-.dsh-home-heading { min-width: 0; }
 .dsh-home-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
 .dsh-home-updated { font-size: 11px; color: var(--dsw-alias-label-caption); }
 .dsh-home-title {
@@ -81,7 +80,6 @@ export const CSS = `
   line-height: 20px;
   color: var(--dsw-alias-label-secondary);
 }
-.dsh-home-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--dsw-alias-label-caption); flex: none; }
 .dsh-home-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /* Drag-to-delete target. Fixed to the top of the viewport so it stays reachable no
    matter how far the board is scrolled or how wide it is; it exists only while a card
@@ -97,14 +95,6 @@ export const CSS = `
 .dsh-debris { position: fixed; z-index: 90; pointer-events: none; user-select: none; }
 .dsh-debris-particle { position: absolute; display: block; border-radius: 50%; will-change: transform, opacity; }
 .dsh-debris-halo { position: absolute; border-radius: 50%; transform-origin: center; will-change: transform, opacity; }
-
-.dsh-home-grid {
-  margin-top: 20px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  align-items: stretch;
-}
 
 .dsh-w {
   position: relative;
@@ -172,17 +162,7 @@ export const CSS = `
 .dsh-row-static { cursor: default; }
 .dsh-row-static:hover { background: transparent; }
 .dsh-row-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.dsh-row-arrow {
-  flex: none;
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--dsw-alias-label-caption);
-  opacity: 0;
-  transform: translateX(-2px);
-  transition: opacity 120ms ease-out, transform 120ms ease-out;
-}
 .dsh-row:hover .dsh-row-arrow,
-.dsh-row:focus-visible .dsh-row-arrow { opacity: 1; transform: none; }
 .dsh-row-title {
   font-size: 13px;
   line-height: 19px;
@@ -193,8 +173,6 @@ export const CSS = `
   min-width: 0;
 }
 .dsh-row-meta { font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); }
-.dsh-row-live { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--color-chart-4); }
-
 .dsh-band-track {
   position: relative;
   height: 26px;
@@ -251,33 +229,6 @@ export const CSS = `
 .dsh-rhythm-days span { flex: 1 1 0; min-width: 0; text-align: center; overflow: hidden; }
 
 .dsh-quick { display: flex; flex-direction: column; gap: 8px; }
-.dsh-quick-button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: var(--dsw-radius-md);
-  border: 0.5px solid var(--dsw-alias-border-l3);
-  background: var(--dsw-alias-bg-layer-2);
-  color: var(--dsw-alias-label-primary);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  text-align: left;
-}
-.dsh-quick-button:hover { background: var(--dsw-alias-interactive-bg-hover-solid); }
-.dsh-quick-button:focus-visible {
-  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4));
-  outline-offset: 1px;
-}
-.dsh-quick-primary {
-  background: var(--dsw-alias-button-primary-fill);
-  border-color: transparent;
-  color: var(--dsw-alias-label-primary-foreground);
-}
-.dsh-quick-primary:hover { background: var(--dsw-alias-button-primary-hover); }
 .dsh-key { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
 .dsh-quick-primary .dsh-key { color: var(--dsw-alias-label-primary-foreground); opacity: 0.72; }
 
@@ -328,23 +279,6 @@ export const CSS = `
 .dsh-tray-state { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
 
 .dsh-w-facts { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--dsw-alias-label-tertiary); }
-.dsh-icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: var(--dsw-radius-xs);
-  background: transparent;
-  color: var(--dsw-alias-label-tertiary);
-  cursor: pointer;
-}
-.dsh-icon-button:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
-.dsh-icon-button:focus-visible {
-  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4));
-  outline-offset: 1px;
-}
 @keyframes dsh-home-spin { to { transform: rotate(360deg); } }
 .dsh-spin { animation: dsh-home-spin 900ms linear infinite; }
 
@@ -541,7 +475,6 @@ export const CSS = `
 .dsh-session-line:hover .dsh-session-dismiss,
 .dsh-session-line:focus-within .dsh-session-dismiss { opacity: 1; }
 .dsh-recent-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
-.dsh-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .dsh-home-grid > .dsh-w + .dsh-w { margin-top: 0; }
 
 /* Unified mobile-widget editing surface. Only the editing shell owns gestures. */
@@ -584,7 +517,6 @@ export const CSS = `
 .dsh-widget-drag-cover { position: absolute; inset: 52px 0 0; z-index: 2; cursor: grab; touch-action: none; border-radius: inherit; }
 .dsh-home-widget[data-dragging="true"] { opacity: 0.5; outline: 2px solid var(--color-chart-4); }
 .dsh-edit-footnote { margin-top: 16px; }
-.dsh-remove-widget { color: var(--color-text-error-primary); }
 .dsh-home[data-editing="false"] .dsh-home-widget .dsh-w-head { cursor: default; }
 
 /* React Grid Layout 2.2.3 / MIT: scoped structural rules adapted from its css/styles.css.
@@ -648,14 +580,12 @@ body.dsh-home-dragging * { cursor: grabbing !important; }
 .dsh-edit-bar { margin-top: 12px; }
 
 @media (max-width: 1100px) {
-  .dsh-home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dsh-w[data-size="l"] { grid-column: span 2; }
 }
 @media (max-width: 720px) {
   .dsh-home { padding-right: 16px; padding-left: max(16px, var(--dsh-frame-leading-clearance, 0px)); }
   /* Narrow gutters: the 10px strips still fit inside the 16px padding. */
   .dsh-canvas-grip { width: 8px; }
-  .dsh-home-grid { grid-template-columns: minmax(0, 1fr); }
   .dsh-w, .dsh-w[data-size="m"], .dsh-w[data-size="l"] { grid-column: span 1; }
 }
 `
