@@ -10,6 +10,7 @@
 import { useState } from 'react'
 import type { ReactElement, ReactNode } from 'react'
 import { cx } from './lib/cx.ts'
+import { segmentAtPoint } from './ring.ts'
 
 export interface VizItem {
   key: string
@@ -142,17 +143,8 @@ export function Donut({ segments, size = 108, thickness = 12, activeKey, center,
   // Hit-testing by angle rather than by the arc element: an SVG stroke is only
   // hittable on the ring itself, and pointers mostly land inside the hole.
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>): void => {
-    if (total <= 0) return
     const rect = event.currentTarget.getBoundingClientRect()
-    const dx = event.clientX - rect.left - size / 2
-    const dy = event.clientY - rect.top - size / 2
-    const angle = (Math.atan2(dy, dx) + Math.PI / 2 + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI)
-    let cursor = 0
-    for (const segment of segments) {
-      cursor += Math.max(0, segment.value) / total
-      if (angle <= cursor) { setHovered(segment.key); return }
-    }
-    setHovered(null)
+    setHovered(segmentAtPoint(segments, event.clientX - rect.left - size / 2, event.clientY - rect.top - size / 2))
   }
   return <div className={cx('relative flex-none')} style={{ width: size, height: size }} role="img" aria-label={label}
     onPointerMove={onPointerMove} onPointerLeave={() => setHovered(null)}>
