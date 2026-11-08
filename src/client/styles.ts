@@ -465,16 +465,6 @@ export const CSS = `
   font-size: var(--dsh-content-font-size-secondary, 13px); line-height: 1.6;
 }
 .dsh-workbench-notice > span { overflow-wrap: anywhere; }
-.dsh-manager-heading { margin: 14px 0 8px; font: var(--dsw-font-s-strong-14); color: var(--dsw-alias-label-primary); }
-.dsh-widget-directory, .dsh-instance-list { display: flex; flex-direction: column; }
-.dsh-directory-item, .dsh-instance-item {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-  padding: 12px 0; border-bottom: 0.5px solid var(--dsw-alias-border-l2);
-}
-.dsh-manager-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 160px; overflow-wrap: anywhere; }
-.dsh-manager-info > strong { font: var(--dsw-font-xs-strong-13); }
-.dsh-manager-description { color: var(--dsw-alias-label-secondary); font-size: var(--dsh-content-font-size-secondary, 13px); line-height: 1.6; }
-.dsh-manager-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .dsh-widget-own-editor { display: flex; justify-content: flex-end; margin-top: 8px; }
 .dsh-widget-config-modal .dsh-widget-settings { margin: 0; padding: 0; border: 0; }
 .dsh-widget-settings { margin-top: 16px; padding-top: 4px; border-top: 0.5px solid var(--dsw-alias-border-l3); }
@@ -482,7 +472,6 @@ export const CSS = `
 /* Fill only the content flex box, excluding the shell header and padding. The
    observer reports this available viewport, independent of overflowing children. */
 .dsh-widget-viewport { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; }
-.dsh-widget-settings > .dsh-manager-actions { justify-content: flex-end; }
 .dsh-home [inert] { cursor: default; }
 .dsh-home .dsh-tool:disabled { opacity: 0.4; cursor: default; }
 
