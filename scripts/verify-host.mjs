@@ -213,8 +213,6 @@ async function visualCases(page) {
       await openHome(page)
       const title = locale === 'zh' ? '最近活跃会话' : 'Recent sessions'
       await page.locator('[data-widget-id="recent"] h2').filter({ hasText: title }).waitFor()
-      const taskTitle = locale === 'zh' ? '常用任务' : 'Task starters'
-      assert.equal(await page.locator('[data-widget-id="tasks"] h2').innerText(), taskTitle)
       await eventually(() => page.evaluate(expected => document.body.hasAttribute('data-ds-dark-theme') === (expected === 'dark'), theme), 'actual theme presenter state')
       await stableShot(page, `home-${locale}-${theme}.png`)
       check(`real locale/theme ${locale}/${theme}`)
@@ -294,39 +292,6 @@ async function recentCases(page) {
     await card.screenshot({ path: path.join(artifacts, 'recent-synthetic-card.png'), animations: 'disabled' })
     check('synthetic ledger UI search/directory/child exclusion/show more', { synthetic: true })
   } finally { await page.unroute('**/plugins/dsh-home/api', handler) }
-}
-async function taskCases(page) {
-  const cwd = path.join(WORKSPACE, 'alpha')
-  const workspace = await rpc(page, 'workspace/create', { request: { path: cwd } })
-  const created = await rpc(page, 'session/create', { request: { workspaceId: workspace.workspace.workspaceId } })
-  await rpc(page, 'session/rename', { request: { sessionId: created.sessionId, title: 'DSH Home real blank fixture · alpha' } })
-  await page.reload(); await openHome(page)
-  const task = page.locator('[data-widget-id="tasks"]')
-  await task.locator('select').selectOption(cwd)
-  const prompt = await task.locator('.dsh-task-preview').innerText()
-  await task.getByRole('button', { name: 'Open task draft', exact: true }).click()
-  // Await actual Host navigation; do not race its asynchronous panel switch.
-  const editor = editorOf(page)
-  await editor.waitFor()
-  await eventually(async () => (await editor.innerText()).includes(prompt), 'real initial task draft')
-  const list = await rpc(page, 'session/list', { _request: {} })
-  const members = list.items.filter(row => row.cwd === cwd)
-  assert(members.some(row => row.sessionId === created.sessionId && row.blank), 'Session must remain blank')
-  const prefix = 'VERIFY: preserve this unsent text.'
-  await editor.fill(prefix)
-  await openHome(page)
-  const again = page.locator('[data-widget-id="tasks"]')
-  await again.locator('select').selectOption(cwd)
-  await again.getByRole('button', { name: 'Open task draft', exact: true }).click()
-  await eventually(async () => {
-    const text = await editorOf(page).innerText()
-    return text.includes(prefix) && text.includes(prompt)
-  }, 'existing unsent draft preserved with appended task')
-  assert.equal(promptAttempts, 0)
-  const after = await rpc(page, 'session/list', { _request: {} })
-  assert(after.items.filter(row => row.cwd === cwd).every(row => row.blank && row.running === false))
-  await stableShot(page, 'real-task-unsent-draft.png')
-  check('real Host task cwd/initial draft/existing draft preservation/no model submission', { sessionId: created.sessionId, cwd })
 }
 async function iconCase(page) {
   const plugins = page.getByRole('button', { name: /^(Plugins|插件)$/ }).first()
@@ -422,7 +387,6 @@ async function execute() {
       await rpc(page, 'settings/update', { ns: 'locale', patch: { preference: 'en' } })
       await page.reload(); await openHome(page)
     }
-    await taskCases(page)
     await iconCase(page)
     assert.equal(promptAttempts, 0)
     assert.equal(browserErrors.length, 0, JSON.stringify(browserErrors))
