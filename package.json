@@ -1,7 +1,7 @@
 {
   "name": "@vlln/dsh-home",
   "description": "DSH 任务工作台：跨工作目录的最近会话、会话状态、可编排小组件与时间统计。",
-  "version": "0.56.0",
+  "version": "0.56.1",
   "type": "module",
   "main": "lib/index.mjs",
   "icon": "./icon.svg",

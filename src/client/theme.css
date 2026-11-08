@@ -66,27 +66,50 @@
 /* ---------------------------------------------------------------------------
  * Palette: data ink
  *
- * Upstream ships teal / lime / pink / sky / purple. This project reads one
- * series per card far more often than many, so the slots are re-pointed at the
- * vocabulary the board actually speaks: azure is the single-series hue (bars,
- * heat cells, rings, meters), and pink / lime / violet / cyan are what a second
- * and third series get. Slot names stay stable so components never learn hues.
+ * The slots are named chart-1…5, but what matters is which one a widget reaches
+ * for: almost every card here draws ONE series, and that series is chart-4.
+ *
+ * So chart-4 is the board's data colour, and it is teal — not blue. The chrome
+ * accent is blue (the primary button, links, focus rings), and a data colour in
+ * the same family as the accent reads as "a link that lost its underline":
+ * sky-400 bars next to a blue-600 button were the specific pair that made the
+ * light board look like it belonged to neither design system.
+ *
+ *   1 pink · 2 lime · 3 violet · 4 teal · 5 amber
+ *
+ * Colorful, mutually distinguishable, and none of them collides with blue.
+ *
+ * Declared in `:root`, NOT `@theme`, on purpose: the vendored BoardUI theme is
+ * imported unlayered, and unlayered declarations beat every layer, so an
+ * `@theme` override silently loses to upstream. That is how this file spent a
+ * version claiming one palette while the page rendered another.
  * ------------------------------------------------------------------------- */
-@theme {
-  /* 400-level, not 500. A 500 step on a #17-ish card loses about a third of its
-   * chroma to the backdrop and reads as "disabled"; 400 is what BoardUI paints
-   * data with. The -active step is the 500 one, so hover still darkens by a
-   * visible notch instead of by a haze. */
+:root {
+  --color-chart-1: var(--color-pink-600);
+  --color-chart-1-active: var(--color-pink-700);
+  --color-chart-2: var(--color-lime-600);
+  --color-chart-2-active: var(--color-lime-700);
+  --color-chart-3: var(--color-violet-600);
+  --color-chart-3-active: var(--color-violet-700);
+  --color-chart-4: var(--color-teal-600);
+  --color-chart-4-active: var(--color-teal-700);
+  --color-chart-5: var(--color-amber-600);
+  --color-chart-5-active: var(--color-amber-700);
+}
+
+/* On a dark card the 600 step is the one that loses its chroma; the same design
+   system shifts one step brighter instead of inventing a second palette. */
+body[data-ds-dark-theme] {
   --color-chart-1: var(--color-pink-400);
   --color-chart-1-active: var(--color-pink-500);
   --color-chart-2: var(--color-lime-400);
   --color-chart-2-active: var(--color-lime-500);
   --color-chart-3: var(--color-violet-400);
   --color-chart-3-active: var(--color-violet-500);
-  --color-chart-4: var(--color-blue-400);
-  --color-chart-4-active: var(--color-blue-500);
-  --color-chart-5: var(--color-cyan-400);
-  --color-chart-5-active: var(--color-cyan-500);
+  --color-chart-4: var(--color-teal-400);
+  --color-chart-4-active: var(--color-teal-500);
+  --color-chart-5: var(--color-amber-400);
+  --color-chart-5-active: var(--color-amber-500);
 }
 
 /* ---------------------------------------------------------------------------
@@ -168,11 +191,18 @@ html[data-motion="off"] * {
  * border reads as a cage, which is exactly what the previous build looked like.
  * ------------------------------------------------------------------------- */
 :root {
-  --dsh-canvas: #f4f4f5;
+  /* #fafafa is BoardUI's light page. The host paints its own content area pure
+   * white, so a #f4-ish canvas read as a grey band inside a white app — the light
+   * board looked like it belonged to a different design system than its own shell.
+   * Five points of separation plus a hairline is the whole light ladder. */
+  --dsh-canvas: #fafafa;
   --dsh-card: #ffffff;
-  --dsh-card-hover: #fafafa;
-  --dsh-sunken: #ececee;
+  --dsh-card-hover: #f9f9fa;
+  --dsh-sunken: #f0f0f2;
   --dsh-hairline: rgb(0 0 0 / 0.07);
+  /* A white card on a near-white page needs an edge; a #161618 card on a #0e0e10
+   * page does not. The line is what changes between themes, not the ladder's shape. */
+  --dsh-card-line: rgb(0 0 0 / 0.07);
 
   --dsh-card-radius: 16px;
   --dsh-card-pad: 16px;
@@ -184,6 +214,9 @@ body[data-ds-dark-theme] {
   --dsh-card-hover: #1a1a1d;
   --dsh-sunken: #26262a;
   --dsh-hairline: rgb(255 255 255 / 0.08);
+  /* Invisible, not absent: it keeps the card's box 2px smaller in both themes so a
+   * theme flip cannot reflow the board. */
+  --dsh-card-line: transparent;
 }
 
 /* ---------------------------------------------------------------------------
@@ -255,7 +288,7 @@ body[data-ds-dark-theme] {
     min-width: 0;
     min-height: 0;
     padding: var(--dsh-card-pad);
-    border: 0;
+    border: 1px solid var(--dsh-card-line);
     border-radius: var(--dsh-card-radius);
     background: var(--dsh-card);
     transition: background-color 160ms ease, box-shadow 160ms ease;
@@ -336,6 +369,13 @@ body[data-ds-dark-theme] {
  * Derive it from the sunken surface instead, so the gap to the card is fixed by
  * design rather than by two unrelated ramps.
  * ------------------------------------------------------------------------- */
+/* The empty part of a bar has to be visible on BOTH surfaces: on white a #ebebeb
+ * track is a hint, on a #161618 card the same value is invisible, so each theme
+ * names its own step. */
+:root {
+  --color-chart-track: #e6e6ea;
+}
+
 body[data-ds-dark-theme] {
   --color-chart-track: var(--dsh-sunken);
 }

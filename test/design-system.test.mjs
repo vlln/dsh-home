@@ -109,7 +109,11 @@ test('the board surface ladder keeps the card above the canvas, in both themes',
       assert.ok(ladder[order[index - 1]] < ladder[order[index]], `${name}: ${order[index - 1]} must sit below ${order[index]}`)
     }
   }
-  assert.match(theme, /\.dsh-card \{[^}]*border: 0;/s, 'cards are borderless: an outline on a lifted surface reads as a cage')
+  // Dark lifts a card without an edge; light needs one, because white on #fafafa
+  // has nothing else to separate them. The line is a token, and it is transparent
+  // in dark — so "no cage" holds there while the light card keeps its edge.
+  assert.match(theme, /\.dsh-card \{[^}]*border: 1px solid var\(--dsh-card-line\)/s)
+  assert.match(theme, /body\[data-ds-dark-theme\] \{[^}]*--dsh-card-line: transparent/s)
   assert.match(theme, /\.dsh-card \{[^}]*border-radius: var\(--dsh-card-radius\)/s)
   // The page markup must not restate the surface with utilities, or the ladder splits again.
   assert.match(page, /className="dsh-card dsh-home-widget dsh-enter"/)
