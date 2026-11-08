@@ -122,7 +122,6 @@ export const CSS = `
   color: var(--dsw-alias-label-tertiary);
   letter-spacing: 0.02em;
 }
-.dsh-w-extra { margin-left: auto; font-size: 11px; color: var(--dsw-alias-label-caption); white-space: nowrap; }
 .dsh-w-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 
 .dsh-number {
@@ -162,7 +161,6 @@ export const CSS = `
 .dsh-row-static { cursor: default; }
 .dsh-row-static:hover { background: transparent; }
 .dsh-row-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.dsh-row:hover .dsh-row-arrow,
 .dsh-row-title {
   font-size: 13px;
   line-height: 19px;
@@ -230,7 +228,6 @@ export const CSS = `
 
 .dsh-quick { display: flex; flex-direction: column; gap: 8px; }
 .dsh-key { font-size: 11px; color: var(--dsw-alias-label-tertiary); }
-.dsh-quick-primary .dsh-key { color: var(--dsw-alias-label-primary-foreground); opacity: 0.72; }
 
 .dsh-edit-bar {
   margin-top: 16px;
@@ -243,12 +240,7 @@ export const CSS = `
 .dsh-edit-hint { font-size: 12px; color: var(--dsw-alias-label-tertiary); }
 .dsh-edit-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
-.dsh-w-facts { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--dsw-alias-label-tertiary); }
 @keyframes dsh-home-spin { to { transform: rotate(360deg); } }
-.dsh-spin { animation: dsh-home-spin 900ms linear infinite; }
-
-.dsh-w-skeleton { min-height: 132px; }
-.dsh-w-skeleton .dsh-skeleton { height: 12px; }
 @keyframes dsh-home-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .dsh-w { animation: dsh-home-rise 200ms ease-out both; }
 .dsh-w:hover { border-color: var(--dsw-alias-border-l4); }
@@ -271,7 +263,6 @@ export const CSS = `
 .dsh-w[data-drop="after"]::after { right: -7px; }
 @media (prefers-reduced-motion: reduce) {
   .dsh-w { animation: none; }
-  .dsh-spin { animation: none; }
   .dsh-band-seg { transition: none; }
 }
 .dsh-tools {
@@ -344,15 +335,8 @@ export const CSS = `
   align-items: center;
   gap: 10px;
 }
-.dsh-skeleton {
-  height: 12px;
-  border-radius: var(--dsw-radius-xs);
-  background: var(--dsw-alias-bg-skeleton);
-  animation: dsh-home-pulse 1.4s ease-in-out infinite;
-}
 @keyframes dsh-home-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 @media (prefers-reduced-motion: reduce) {
-  .dsh-skeleton { animation: none; }
 }
 
 
@@ -435,12 +419,10 @@ export const CSS = `
 .dsh-session-status { order: -1; flex: none; display: inline-flex; align-items: center; }
 .dsh-session-title { flex: 1 1 auto; min-width: 0; color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dsh-session-trailing { flex: none; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
-.dsh-session-reason { flex: none; }
 .dsh-session-dismiss { position: absolute; inset-inline-end: 2px; top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity 120ms ease-out; }
 .dsh-session-line:hover .dsh-session-dismiss,
 .dsh-session-line:focus-within .dsh-session-dismiss { opacity: 1; }
 .dsh-recent-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
-.dsh-home-grid > .dsh-w + .dsh-w { margin-top: 0; }
 
 /* Unified mobile-widget editing surface. Only the editing shell owns gestures. */
 /* The clearance is inside the sticky box, so nothing can slide above the header. */
@@ -479,7 +461,6 @@ export const CSS = `
 .dsh-home[data-editing="true"] .dsh-home-widget .dsh-w-head { cursor: grab; touch-action: none; position: relative; z-index: 3; flex-wrap: wrap; }
 .dsh-home[data-editing="true"] .dsh-home-widget .dsh-tools { opacity: 1; }
 .dsh-home[data-editing="true"] .dsh-home-widget-content { opacity: 0.65; pointer-events: none; user-select: none; }
-.dsh-widget-drag-cover { position: absolute; inset: 52px 0 0; z-index: 2; cursor: grab; touch-action: none; border-radius: inherit; }
 .dsh-home-widget[data-dragging="true"] { opacity: 0.5; outline: 2px solid var(--color-chart-4); }
 .dsh-edit-footnote { margin-top: 16px; }
 .dsh-home[data-editing="false"] .dsh-home-widget .dsh-w-head { cursor: default; }
@@ -520,28 +501,6 @@ export const CSS = `
 body.dsh-home-dragging { user-select: none; cursor: grabbing; }
 body.dsh-home-dragging * { cursor: grabbing !important; }
 /* 标题行本身就是拖拽面：用户会先试着拖标题，而不是先找把手。 */
-.dsh-expand {
-  margin-top: 16px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 0.5px dashed var(--dsw-alias-border-l3);
-  border-radius: var(--dsw-radius-md);
-  background: transparent;
-  color: var(--dsw-alias-label-secondary);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.dsh-expand:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
-.dsh-expand:focus-visible {
-  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--color-chart-4));
-  outline-offset: 1px;
-}
 .dsh-edit-bar { margin-top: 12px; }
 
 @media (max-width: 1100px) {
