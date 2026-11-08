@@ -17,7 +17,7 @@ import { RecentBody } from './recent.tsx'
 import { PinnedBody } from './pinned-widget.tsx'
 import { dayCoverage, localDayWindow } from './widget-visual-model.ts'
 import { WorkspacePill } from './workspace-pill.tsx'
-import { Button, CardEmpty, Meter } from './ui/index.ts'
+import { Button, CardEmpty, cx, Meter, SparkBars } from './ui/index.ts'
 import { useVisibleRows } from './fit-rows.ts'
 import { useHoverTip } from './hover-tip.tsx'
 import type { SessionStatusMap } from './session-model.ts'
@@ -127,20 +127,6 @@ function dayMsLabel(start: number, end: number, fraction: number): string {
   return time.endsWith(':00') ? time.slice(0, 2) : time
 }
 
-/** Actual temporal coverage; no arbitrary daily goal or fake completion ring. */
-function DayDial({ segments, nowFraction, start, end }: { segments: readonly { left: number; width: number }[]; nowFraction: number; start: number; end: number }) {
-  const coverage = dayCoverage(segments)
-  const angle = nowFraction / 100 * Math.PI * 2 - Math.PI / 2
-  return <svg className="dsh-day-dial" viewBox="0 0 100 100" aria-hidden="true">
-    <circle className="dsh-day-dial-track" cx="50" cy="50" r="35" />
-    <g transform="rotate(-90 50 50)">{coverage.map((range, i) => <circle key={i} className="dsh-day-dial-arc" cx="50" cy="50" r="35" pathLength="100"
-      strokeDasharray={`${range.to - range.from} ${100 - (range.to - range.from)}`} strokeDashoffset={-range.from} />)}</g>
-    <circle className="dsh-day-dial-now" cx={50 + 35 * Math.cos(angle)} cy={50 + 35 * Math.sin(angle)} r="2.5" />
-    <text x="50" y="9" textAnchor="middle">{dayMsLabel(start, end, 0)}</text><text x="96" y="53" textAnchor="end">{dayMsLabel(start, end, .25)}</text>
-    <text x="50" y="97" textAnchor="middle">{dayMsLabel(start, end, .5)}</text><text x="4" y="53">{dayMsLabel(start, end, .75)}</text>
-  </svg>
-}
-
 function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
   const tip = useHoverTip()
   const { start, end } = localDayWindow(now)
@@ -165,10 +151,10 @@ function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
   const active = data?.today.activeMs ?? 0
   const run = data?.today.runMs ?? 0
   const hasActivity = segments.length > 0
-  if (!hasActivity && active === 0) {
-    // 一天还没开始：不要摆一个"0 分钟"的数字墙。
-    return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.today.empty', { shortcut: shortcutHint() })}</Empty>
-  }
+  // An empty day still gets the full frame — metric, rail, scale — because an empty
+  // card is a hole in the board. What it does not get is three zeroed stat columns;
+  // one line with the shortcut is the honest version of "nothing happened yet".
+  const empty = !hasActivity && active === 0
   return (
     <div className="dsh-today-content" data-roomy={(height ?? 0) >= 190}>
       <div className="dsh-today-hero">
@@ -176,38 +162,40 @@ function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
           <span className="dsh-number">{formatDuration(active, t)}</span>
           <span className="dsh-label">{t('widget.today.focused')}</span>
         </div>
-        <DayDial segments={segments} nowFraction={nowFraction} start={start} end={end} />
+        {hasActivity && <span className="dsh-today-runs text-caption-1-medium text-text-tertiary">{t('widget.today.longest', { dur: formatDuration(longest, t) })}</span>}
       </div>
-      <div className="dsh-today-timeline">{hasActivity ? (
-        <>
-          <div className="dsh-band-track" aria-label={`${t('aria.band')}: ${segments.map(segment => segment.label).join('; ')}`} role="img">
-            {segments.map((segment, index) => (
-              <span
-                key={index}
-                className="dsh-band-seg"
-                data-now={segment.live ? 'true' : 'false'}
-                style={{ left: `${segment.left}%`, width: `${segment.width}%` }}
-                {...tip.bind(segment.label)}
-              />
-            ))}
-            <span className="dsh-band-now" style={{ left: `${nowFraction}%` }} />
-          </div>
-          {tip.node}
-          <div className="dsh-band-scale" aria-hidden="true">
-            {[0, .25, .5, .75, 1].map(fraction => <span key={fraction}>{dayMsLabel(start, end, fraction)}</span>)}
-          </div>
-        </>
-      ) : (
-        <Empty action={<StartAction t={t} actions={actions} />}>
-          {t('widget.today.empty', { shortcut: shortcutHint() })}
-        </Empty>
-      )}</div>
-      <div className="dsh-today-stats">
-        <span><strong>{data?.today.sessions ?? 0}</strong><span>{t('widget.today.sessionsLabel')}</span></span>
-        <span><strong>{data?.today.turns ?? 0}</strong><span>{t('widget.today.turnsLabel')}</span></span>
-        <span><strong>{formatDuration(run, t)}</strong><span>{t('widget.today.runLabel')}</span></span>
+      <div className="dsh-today-timeline">
+        <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-chart-track"
+          aria-label={`${t('aria.band')}: ${segments.map(segment => segment.label).join('; ')}`} role="img">
+          {segments.map((segment, index) => (
+            <span
+              key={index}
+              className={cx('absolute inset-y-0 min-w-0.5 rounded-full bg-chart-4', segment.live ? 'opacity-100' : 'opacity-60 hover:opacity-100')}
+              data-now={segment.live ? 'true' : 'false'}
+              style={{ left: `${segment.left}%`, width: `${Math.max(0.4, segment.width)}%` }}
+              {...tip.bind(segment.label)}
+            />
+          ))}
+          <span className="absolute inset-y-0 w-0.5 rounded-full bg-status-yellow-text" style={{ left: `${nowFraction}%` }} />
+        </div>
+        {tip.node}
+        <div className="dsh-band-scale" aria-hidden="true">
+          {[0, .25, .5, .75, 1].map(fraction => <span key={fraction}>{dayMsLabel(start, end, fraction)}</span>)}
+        </div>
       </div>
-      {longest > 0 && <span className="dsh-muted dsh-today-longest">{t('widget.today.longest', { dur: formatDuration(longest, t) })}</span>}
+      {empty
+        ? <div className="dsh-today-empty flex flex-wrap items-center gap-2 text-caption-1-medium text-text-tertiary">
+          <span>{t('widget.today.empty', { shortcut: shortcutHint() })}</span>
+          <StartAction t={t} actions={actions} />
+        </div>
+        : <>
+          <div className="dsh-today-stats">
+            <span><strong>{data?.today.sessions ?? 0}</strong><span>{t('widget.today.sessionsLabel')}</span></span>
+            <span><strong>{data?.today.turns ?? 0}</strong><span>{t('widget.today.turnsLabel')}</span></span>
+            <span><strong>{formatDuration(run, t)}</strong><span>{t('widget.today.runLabel')}</span></span>
+          </div>
+          {longest > 0 && <span className="dsh-muted dsh-today-longest">{t('widget.today.longest', { dur: formatDuration(longest, t) })}</span>}
+        </>}
     </div>
   )
 }
@@ -241,7 +229,15 @@ function AreasBody({ t, data, actions }: WidgetProps) {
   }
   const sorted = [...groups.values()].sort((left, right) => right.ms - left.ms)
   if (sorted.length === 0) {
-    return <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.areas.empty')}</Empty>
+    // A zero is data. An empty card with one grey line is a hole in the board, so the
+    // card states its own metric and then explains what would fill it.
+    return <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="dsh-metric">
+        <span className="dsh-number">0</span>
+        <span className="dsh-label">{t('widget.areas.unit')}</span>
+      </div>
+      <Empty action={<StartAction t={t} actions={actions} />}>{t('widget.areas.empty')}</Empty>
+    </div>
   }
   // 按实测高度留下能放下的行，最后一行合并为「其他 N 个工作区」；卡片里不出现滚动条。
   const limit = capacity ?? sorted.length
@@ -298,35 +294,31 @@ function RhythmBody({ t, data }: WidgetProps) {
   // 账本保留 30 天（最近的 30 天窗口要用），这张卡只画最近 14 天。
   const days = (data?.days ?? []).slice(-14)
   if (days.length === 0) return <Empty>{t('widget.rhythm.empty')}</Empty>
-  const peak = Math.max(1, ...days.map(day => day.activeMs))
   const total = days.reduce((sum, day) => sum + day.activeMs, 0)
   const best = days.reduce((winner, day) => (day.activeMs > winner.activeMs ? day : winner), days[0]!)
   const todayKey = days[days.length - 1]?.key
+  // SparkBars owns the track, the rounding and the peak emphasis, so this card and the
+  // token card cannot drift into two different-looking bar charts again.
   return (
-    <div className="dsh-rhythm-content">
+    <div className="dsh-rhythm-content flex h-full min-h-0 flex-col gap-2">
       <div className="dsh-metric">
         <span className="dsh-number">{formatDuration(total, t)}</span>
         <span className="dsh-label">{t('widget.rhythm.totalLabel')}</span>
       </div>
-      <div className="dsh-rhythm" role="img" aria-label={t('aria.rhythm')}>
-        {days.map(day => (
-          <span key={day.key} className="dsh-rhythm-col" title={`${shortDay(day.key)} · ${formatDuration(day.activeMs, t)}`}>
-            <span
-              className="dsh-rhythm-bar"
-              data-today={day.key === todayKey ? 'true' : 'false'}
-              style={{ height: `${Math.max(day.activeMs > 0 ? 4 : 1, (day.activeMs / peak) * 100)}%` }}
-            />
-          </span>
-        ))}
+      <SparkBars items={days.map(day => ({
+        key: day.key,
+        ratio: day.activeMs / Math.max(1, best.activeMs),
+        label: `${shortDay(day.key)} · ${formatDuration(day.activeMs, t)}`,
+        empty: day.activeMs <= 0,
+        emphasis: day.key === todayKey || day.key === best.key,
+      }))} className="h-20" />
+      <div className="dsh-rhythm-days flex gap-1.5" aria-hidden="true">
+        {days.map(day => <span key={day.key} className="min-w-0 flex-1 text-center text-caption-1-medium tabular-nums text-text-tertiary">{day.key.slice(8)}</span>)}
       </div>
-      <div className="dsh-rhythm-days" aria-hidden="true">
-        {days.map(day => (
-          <span key={day.key}>{day.key.slice(8)}</span>
-        ))}
+      <div className="flex items-center justify-between gap-2 text-caption-1-medium text-text-tertiary">
+        <span>{t('widget.rhythm.peak', { dur: formatDuration(best.activeMs, t), day: shortDay(best.key) })}</span>
+        <span>{t('widget.rhythm.range')}</span>
       </div>
-      <span className="dsh-muted">
-        {t('widget.rhythm.peak', { dur: formatDuration(best.activeMs, t), day: shortDay(best.key) })}
-      </span>
     </div>
   )
 }

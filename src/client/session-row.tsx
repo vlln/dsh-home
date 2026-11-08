@@ -10,7 +10,7 @@ import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
 import { compactAgo, type Translate } from './format.ts'
 import type { RecentSession, RecentStatus } from './session-model.ts'
-import { WorkspacePill } from './workspace-pill.tsx'
+import { RowButton } from './ui/index.ts'
 import { Button, Chip } from './ui/index.ts'
 
 const DOT: Record<RecentStatus, StateDotState> = {
@@ -45,31 +45,23 @@ export function SessionRow({
   const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
   const statusLabel = t(`recent.status.${status}`)
   return <div className="group/row relative flex items-center" data-dismissible={onDismiss === undefined ? undefined : 'true'}>
-    <button
-      type="button"
-      className="dsh-row dsh-session-row flex w-full min-w-0 items-start gap-2 rounded-xl px-2 py-1.5 text-start transition-colors duration-150 hover:bg-background-secondary-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring"
+    <RowButton
       data-session-id={session.id}
       data-status={status}
       aria-label={`${title} · ${workspace} · ${statusLabel}`}
       onClick={onOpen}
+      trailing={trailing}
     >
-      <span className="dsh-session-status mt-1 flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
-        <StateDot state={DOT[status]} />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="flex min-w-0 items-baseline gap-2">
-          <span className="dsh-session-title min-w-0 flex-1 truncate text-body-medium text-text-primary" title={title}>{title}</span>
-          <span className="dsh-session-trailing flex-none text-caption-1-medium tabular-nums text-text-tertiary" aria-hidden="true">{trailing}</span>
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="dsh-session-status flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
+          <StateDot state={DOT[status]} />
         </span>
-        <span className="flex min-w-0 items-center gap-1">
-          <WorkspacePill label={workspace} cwd={workspaceTitle ?? workspace}
-            title={workspaceTitle ?? workspace} unknown={workspaceTitle === undefined} />
-          {reason !== undefined && <Chip variant="caption" color="yellow">{reason}</Chip>}
-        </span>
+        <span className="dsh-session-title truncate text-text-primary" title={title}>{title}</span>
+        <span className="dsh-session-workspace shrink-0 truncate text-caption-1-medium text-text-tertiary" title={workspaceTitle ?? workspace}>{workspace}</span>
+        {reason !== undefined && <Chip variant="caption" color="yellow">{reason}</Chip>}
       </span>
-    </button>
+    </RowButton>
     {onDismiss !== undefined && <Button variant="ghost" size="xs" className="dsh-session-dismiss ml-1 flex-none opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
       aria-label={t('queue.dismiss')} title={t('queue.dismiss')} onClick={onDismiss}>×</Button>}
   </div>
-
 }

@@ -24,7 +24,9 @@ export interface VizItem {
 }
 
 /**
- * 柱状序列。等宽列、贴底对齐；列自己可聚焦，读数交给调用方的 Tooltip。
+ * 柱状序列。每列是一条完整高度的**轨道**，值从底部填进去——这是 BoardUI 的柱子做法，
+ * 也是它看起来“被设计过”的主要原因：轨道给出刻度，填充给出读数。只有填充没有轨道时，
+ * 矮柱子就是几块悬空的色块，空值那几天则完全消失。
  *
  * `wrap` 用来给每列套一层读数触发器（Portal 气泡、键盘可达），
  * 这样图形原语不需要知道 Tooltip 的存在。
@@ -35,25 +37,28 @@ export function SparkBars({ items, wrap, className, minHeight = 4 }: {
   className?: string
   minHeight?: number
 }): ReactNode {
-  return <div className={cx('flex min-h-0 flex-1 items-end justify-center gap-1.5', className)} role="group">
+  return <div className={cx('flex min-h-0 items-stretch justify-center gap-1.5', className)} role="group">
     {items.map(item => {
       const height = item.empty === true ? 0 : Math.max(minHeight, Math.round(item.ratio * 100))
       const bar = <span
-        className={cx(
-          'w-full max-w-10 rounded-sm transition-[height,background-color] duration-300 ease-out',
-          item.empty === true
-            ? 'bg-background-tertiary-default'
-            : item.emphasis === true ? 'bg-chart-4' : 'bg-chart-4/70 hover:bg-chart-4',
-        )}
-        // Inline cap: a bar never stretches past a readable width, however wide the card is.
-        style={item.empty === true ? { height: 2, width: 24 } : { height: `${height}%`, maxWidth: 40 }}
+        className="relative flex h-full min-h-0 w-full max-w-9 items-end justify-center overflow-hidden rounded-md bg-chart-track"
         data-empty={item.empty === true ? 'true' : undefined}
-        data-emphasis={item.emphasis === true ? 'true' : undefined}
-      />
-      const column: ReactElement = <span className="flex h-full min-h-0 flex-1 flex-col justify-end" tabIndex={0} role="img" aria-label={item.label}>
+      >
+        {item.empty === true
+          ? <span className="h-px w-[58%] bg-chart-neutral" />
+          : <span
+            className={cx(
+              'w-[58%] rounded-[4px] transition-[height,background-color] duration-300 ease-out',
+              item.emphasis === true ? 'bg-chart-4' : 'bg-chart-4/75 hover:bg-chart-4',
+            )}
+            style={{ height: `${height}%` }}
+            data-emphasis={item.emphasis === true ? 'true' : undefined}
+          />}
+      </span>
+      const column: ReactElement = <span className="flex h-full min-h-0 w-full flex-col justify-end" tabIndex={0} role="img" aria-label={item.label}>
         {bar}
       </span>
-      return <div key={item.key} className="flex h-full min-h-0 flex-1 items-end justify-center">{wrap === undefined ? column : wrap(item, column)}</div>
+      return <div key={item.key} className="flex h-full min-h-0 flex-1 items-stretch justify-center">{wrap === undefined ? column : wrap(item, column)}</div>
     })}
   </div>
 }
@@ -140,6 +145,10 @@ export function Donut({ segments, size = 108, thickness = 12, activeKey, center,
   const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
   const radius = (size - thickness) / 2
   const circumference = 2 * Math.PI * radius
+  // A visible break between segments plus a round cap is what makes a ring read as
+  // composed parts rather than as one striped band. The gap is a fixed 2px of arc,
+  // so it stays proportionate at any diameter.
+  const gap = segments.filter(segment => segment.value > 0).length > 1 ? 2 : 0
   let cursor = 0
   // Hit-testing by angle rather than by the arc element: an SVG stroke is only
   // hittable on the ring itself, and pointers mostly land inside the hole.
@@ -153,12 +162,13 @@ export function Donut({ segments, size = 108, thickness = 12, activeKey, center,
       <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={thickness} className="stroke-chart-track" />
       {total > 0 && segments.map(segment => {
         const share = Math.max(0, segment.value) / total
-        const dash = `${(share * circumference).toFixed(2)} ${circumference.toFixed(2)}`
+        const arc = Math.max(0.5, share * circumference - gap)
+        const dash = `${arc.toFixed(2)} ${(circumference - arc).toFixed(2)}`
         const offset = -cursor * circumference
         cursor += share
         const tone = TONE[segment.tone]
         return <circle key={segment.key} cx={size / 2} cy={size / 2} r={radius} fill="none"
-          strokeWidth={thickness} strokeDasharray={dash} strokeDashoffset={offset} strokeLinecap="butt"
+          strokeWidth={thickness} strokeDasharray={dash} strokeDashoffset={offset} strokeLinecap="round"
           className={cx('transition-opacity duration-200', tone, effective !== null && effective !== segment.key && 'opacity-25')}
 
           transform={`rotate(-90 ${size / 2} ${size / 2})`} />

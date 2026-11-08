@@ -1,5 +1,5 @@
 /**
- * 最近会话：最近五条，每条两行——标题与时间一行，工作区胶囊与状态一行。
+ * 最近会话：最近五条，每条一行——状态点、标题、工作区、时间。
  *
  * 没有搜索框、没有工作目录下拉：4 列宽的摘要卡里这两个控件要占掉一整行 36px，把每条
  * 会话压成 28px 的单行，而这张卡本来就不是会话目录（要搜索去侧栏）。五条、每条更高，
@@ -14,7 +14,7 @@ import {
   cwdLabels, mergeRecentSessions, recentEmptyState, recentSessionStatus, RECENT_ROW_LIMIT,
 } from './session-model.ts'
 import { sessionDotState } from './session-row.tsx'
-import { WorkspacePill } from './workspace-pill.tsx'
+import { RowButton } from './ui/index.ts'
 import type { WidgetProps } from './widgets.tsx'
 
 export interface RecentProps extends WidgetProps {
@@ -49,22 +49,21 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
             const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
             return (
               <li key={session.id}>
-                <button type="button" className="dsh-recent-item flex w-full min-w-0 flex-col gap-1 rounded-xl px-2 py-1.5 text-start transition-colors duration-150 hover:bg-background-secondary-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" data-session-id={session.id} data-status={status}
-                  aria-label={`${title} · ${workspace} · ${statusLabel} · ${trailing}`}
-                  onClick={() => { actions.openSession(session.id) }}>
-                  <span className="dsh-recent-top flex min-w-0 items-baseline gap-2">
-                    <span className="dsh-recent-dot mt-1 flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
+                {/* One line per session: state dot, title, workspace, time. The workspace
+                    used to be a 10px capsule on a second line, which cost 20px of height
+                    per row and read as a tag rather than as context. */}
+                <RowButton onClick={() => { actions.openSession(session.id) }} trailing={trailing}
+                  data-session-id={session.id} data-status={status}
+                  aria-label={`${title} · ${workspace} · ${statusLabel} · ${trailing}`}>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="dsh-recent-dot flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
                       <StateDot state={sessionDotState(status)} />
                     </span>
-                    <span className="dsh-recent-title min-w-0 flex-1 truncate text-body-medium text-text-primary" title={title}>{title}</span>
-                    <span className="dsh-recent-time flex-none text-caption-1-medium tabular-nums text-text-tertiary">{trailing}</span>
+                    <span className="dsh-recent-title truncate">{title}</span>
+                    <span className="dsh-recent-workspace shrink-0 truncate text-caption-1-medium text-text-tertiary">{workspace}</span>
+                    {isWaiting(status) && <span className="dsh-recent-state shrink-0 text-caption-1-medium text-status-yellow-text">{statusLabel}</span>}
                   </span>
-                  <span className="dsh-recent-meta flex min-w-0 items-center gap-1">
-                    <WorkspacePill label={workspace} cwd={session.cwd ?? workspace}
-                      title={session.cwd} unknown={session.cwd === undefined} />
-                    {isWaiting(status) && <span className="dsh-recent-state text-[10px] leading-none text-status-yellow-text">{statusLabel}</span>}
-                  </span>
-                </button>
+                </RowButton>
               </li>
             )
           })}

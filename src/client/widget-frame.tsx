@@ -12,10 +12,10 @@ export function WidgetFrameHeader({title,t,editing,icon,onPointerDown,onNudge,on
  title:string;t:Translate;editing:boolean;icon?:ReactNode
  onPointerDown?:(event:PointerEvent<HTMLElement>)=>void;onNudge?:(key:string)=>void;onKeyDelete?:()=>void;disabled?:boolean;gripDisabled?:boolean
 }) {
- return <div className={cx('dsh-w-head flex min-h-5 items-center gap-1.5', editing && 'dsh-widget-grip')} onPointerDown={onPointerDown}>
-   <span className="dsh-widget-symbol flex size-5 flex-none items-center justify-center text-foreground-icon-tertiary" aria-hidden="true">{icon}</span>
-   <h2 className="dsh-w-title m-0 min-w-0 truncate text-body-medium font-medium text-text-primary">{title}</h2>
-   {editing && <div className="dsh-tools ml-auto flex items-center gap-0.5">
+ return <div className={cx('dsh-card-head dsh-w-head', editing && 'dsh-widget-grip')} onPointerDown={onPointerDown}>
+   {icon !== undefined && <span className="dsh-card-glyph" aria-hidden="true">{icon}</span>}
+   <h2 className="dsh-card-title dsh-w-title">{title}</h2>
+   {editing && <div className="dsh-card-tools dsh-tools">
      {/* Deletion is a drag onto the page's delete target; the grip also exposes the
          keyboard equivalent (Delete / Backspace) so pointer-free users keep a path. */}
      <Button variant="ghost" size="xs" className="dsh-tool dsh-widget-grip cursor-grab" disabled={gripDisabled ?? disabled} aria-label={t('edit.drag')} title={t('edit.drag')} onKeyDown={event=>{

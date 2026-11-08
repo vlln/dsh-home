@@ -1,17 +1,12 @@
-/** BoardUI-inspired content grammar. Accents follow semantic landmarks, never type IDs. */
+/**
+ * 卡片内容语法：只放"某张卡内部怎么排"的规则。
+ *
+ * 页面底色、卡片表面、标题行的几何都属于外壳（theme.css 的 .dsh-card 与 styles.ts），
+ * 不在这一层重写——这一层以前就是靠重写它们把上面那套盖掉的，结果同一个页面里有两份
+ * 互相打架的卡片定义。
+ */
 export const widgetExpressionStyles = `
-.dsh-home { --dsh-home-canvas-fill:color-mix(in srgb,var(--dsw-alias-bg-module-platform) 72%,var(--dsw-alias-bg-base)); background:var(--dsh-home-canvas-fill); }
-/* Sticky chrome is part of the canvas, not a white rectangular card. */
-.dsh-home .dsh-home-head { background:var(--dsh-home-canvas-fill); }
 .dsh-home .dsh-home-widget-content > .dsh-widget-viewport > .dsh-empty:only-child { min-height:100%; }
-.dsh-home .dsh-home-widget { background:var(--dsw-alias-bg-layer-1); border-color:var(--dsw-alias-border-l2); }
-/* Headings share one left slot: the glyph is a quiet mark, not a tinted tile.
-   Cards without a glyph start at the same edge as the ones with one. */
-.dsh-w-head { gap:9px; position:relative; padding-inline-start:20px; }
-.dsh-widget-symbol { position:absolute; inset-inline-start:0; top:50%; transform:translateY(-50%); display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; color:var(--dsw-alias-label-tertiary); background:transparent; }
-.dsh-widget-symbol svg { width:14px; height:14px; color:inherit; }
-.dsh-home .dsh-widget-symbol .dsh-w-glyph { color:inherit; }
-.dsh-home-widget .dsh-w-title { letter-spacing:-.015em; }
 .dsh-home-widget :is(.dsh-today-content,.dsh-rhythm-content) { gap:2px; }
 .dsh-today-hero { display:flex; align-items:center; justify-content:space-between; gap:12px; min-width:0; }
 .dsh-today-hero .dsh-metric { align-items:flex-start; flex-direction:column; gap:0; min-width:0; }

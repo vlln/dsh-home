@@ -8,10 +8,10 @@
  */
 
 import { useState } from 'react'
-import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
-import { Chip, Donut } from './ui/index.ts'
+import { Donut, SparkBars } from './ui/index.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
@@ -33,99 +33,94 @@ function validateUsageConfig(value: unknown): value is UsageConfig {
 
 export interface UsagePreviewData { today: { tokens: TokenBuckets; runMs: number }; days: DayBucket[] }
 
+/** Token 卡的三段配色，与环形、图例共用一处定义——两处写颜色迟早会漂。 */
+const PART_TONE = { input: 'chart-4', cache: 'chart-2', output: 'chart-5' } as const
+const PART_COLOR = {
+  input: 'var(--color-chart-4)',
+  cache: 'var(--color-chart-2)',
+  output: 'var(--color-chart-5)',
+} as const
+
+/** 周几：柱状图下方只放单个字母，日期留给 tooltip。 */
+function weekday(key: string): string {
+  const date = new Date(`${key}T00:00:00`)
+  return Number.isNaN(date.getTime()) ? key.slice(8) : 'SMTWTFS'[date.getDay()]!
+}
+
 function percent(value: number): string {
   return `${Math.round(value * 100)}%`
 }
 
-interface SplitPart { key: string; value: number; color: string; label: string }
-
-/** 同一个量的四段：颜色只是同一色相的浓淡，名字与数值由 tooltip 说明。 */
-function splitParts(buckets: TokenBuckets, t: Translate): SplitPart[] {
-  return [
-    { key: 'input', value: buckets.input, color: 'var(--color-chart-4)', label: t('usage.input') },
-    { key: 'cacheRead', value: buckets.cacheRead, color: 'color-mix(in srgb, var(--color-chart-4) 44%, var(--color-background-primary-default))', label: t('usage.cache') },
-    { key: 'output', value: buckets.output, color: 'color-mix(in srgb, var(--color-chart-4) 72%, var(--color-background-primary-default))', label: t('usage.output') },
-    { key: 'cacheWrite', value: buckets.cacheWrite, color: 'color-mix(in srgb, var(--color-chart-4) 18%, var(--color-background-primary-default))', label: t('usage.cacheWrite') },
-  ].filter(part => part.value > 0)
-}
-
-function donutGradient(parts: readonly SplitPart[], total: number, hover: string | null): string {
-  if (total === 0) return 'conic-gradient(color-mix(in srgb, var(--color-chart-4) 12%, transparent) 0 100%)'
-  let cursor = 0
-  const stops = parts.map(part => {
-    const from = cursor
-    cursor += (part.value / total) * 100
-    // 悬停的那一段保持原色，其余淡出：一眼看出这一块占多少。
-    const color = hover === null || hover === part.key ? part.color : `color-mix(in srgb, ${part.color} 20%, transparent)`
-    return `${color} ${from.toFixed(2)}% ${cursor.toFixed(2)}%`
-  })
-  return `conic-gradient(from -90deg, ${stops.join(', ')})`
-}
-
-/** 指针落点在圆环的哪一段：12 点方向为 0，顺时针累加。 */
-function partAt(event: ReactMouseEvent<HTMLElement>, parts: readonly SplitPart[], total: number): SplitPart | null {
-  if (total === 0) return null
-  const rect = event.currentTarget.getBoundingClientRect()
-  const angle = Math.atan2(event.clientY - (rect.top + rect.height / 2), event.clientX - (rect.left + rect.width / 2))
-  const fraction = ((angle + Math.PI / 2) / (Math.PI * 2) % 1 + 1) % 1
-  let cursor = 0
-  for (const part of parts) {
-    cursor += part.value / total
-    if (fraction < cursor) return part
-  }
-  return parts[parts.length - 1] ?? null
-}
-
+/**
+ * 用量卡：一个主值 + 一条七天轨道柱 + 一枚构成环。
+ *
+ * 上一版把「主值 / 单位 / 环形 / 三个 chip / 七根柱 / 两行脚注」全塞进一张卡，
+ * 结果六种字号互相打架、柱子没有轨道、空值那天直接消失。这里按 BoardUI 的卡片
+ * 顺序重排：指标和单位同一行，环形只说「缓存命中」，柱状只说「这七天」，其余
+ * 降级成一行图例；脚注删掉，因为它重复了柱状已经说过的话。
+ */
 function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Translate; compact: boolean; week: boolean }): ReactNode {
   const today = bucketsOf(data.today)
   const total = totalTokens(today)
-  const rate = tokensPerSecond(today, data.today.runMs)
   const hit = cacheHitRate(today)
   const days = week ? data.days.slice(-7) : []
   const peak = Math.max(1, ...days.map(day => totalTokens(bucketsOf(day))))
-  // 甜甜圈画的是「窗口构成」：默认最近七天（今天可能有 0 用量，七天则有真实数据）。
   const windowBuckets = week ? sumDays(days) : today
-  const windowHit = cacheHitRate(windowBuckets)
-  const parts = splitParts(windowBuckets, t)
-  const windowTotal = parts.reduce((sum, part) => sum + part.value, 0)
+  const windowTotal = totalTokens(windowBuckets)
   const [hover, setHover] = useState<string | null>(null)
   const tip = useHoverTip()
-  const share = (part: SplitPart): string => windowTotal === 0 ? '0%' : percent(part.value / windowTotal)
-  return <div className="dsh-usage flex h-full min-h-0 flex-col gap-2" data-compact={compact ? 'true' : 'false'}>
-    <div className="dsh-usage-hero flex items-start justify-between gap-3">
-      <div className="dsh-usage-figure flex min-w-0 flex-col gap-0.5">
-        <span className="dsh-usage-total text-display-4-semibold leading-none tabular-nums tracking-tight text-text-primary" aria-label={t('usage.today')}>{compactCount(total)}</span>
-        <span className="dsh-usage-unit text-caption-1-medium text-text-tertiary">{t('usage.today')} · {t('usage.unit')}</span>
+  const legend = [
+    { key: 'input' as const, label: t('usage.input'), value: today.input },
+    { key: 'cache' as const, label: t('usage.cache'), value: today.cacheRead },
+    { key: 'output' as const, label: t('usage.output'), value: today.output },
+  ]
+  return <div className="flex h-full min-h-0 flex-col gap-3">
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <div className="dsh-metric">
+          <span className="dsh-metric-value" aria-label={t('usage.today')}>{compactCount(total)}</span>
+          <span className="dsh-metric-unit">{t('usage.today')} · {t('usage.unit')}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {legend.map(part => <span key={part.key} className="flex items-center gap-1.5 text-caption-1-medium text-text-tertiary"
+            onPointerEnter={() => setHover(part.key)} onPointerLeave={() => setHover(null)}>
+            <i className="block size-2 flex-none rounded-full" style={{ background: PART_COLOR[part.key] }} aria-hidden="true" />
+            {part.label}
+            <b className="font-medium tabular-nums text-text-secondary">{compactCount(part.value)}</b>
+          </span>)}
+        </div>
       </div>
-      <Donut size={96} thickness={12} label={t('usage.split')}
+      <Donut size={compact ? 56 : 72} thickness={8} label={t('usage.split')} activeKey={hover}
         segments={[
-          { key: 'input', value: today.input, tone: 'chart-4' },
-          { key: 'cache', value: today.cacheRead, tone: 'chart-2' },
-          { key: 'output', value: today.output, tone: 'chart-5' },
+          { key: 'input', value: today.input, tone: PART_TONE.input },
+          { key: 'cache', value: today.cacheRead, tone: PART_TONE.cache },
+          { key: 'output', value: today.output, tone: PART_TONE.output },
         ]}
-        center={<span className="text-caption-1-semibold tabular-nums text-text-secondary">{windowTotal === 0 ? '—' : percent(1)}</span>} />
+        center={<span className="text-caption-1-semibold tabular-nums text-text-secondary" title={t('usage.hit')}>{total === 0 || hit === null ? '—' : percent(hit)}</span>} />
     </div>
-    <div className="dsh-usage-chips flex flex-wrap items-center gap-1">
-      <Chip variant="caption" color="neutral" {...tip.bind(`${t('usage.input')} · ${today.input.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--color-chart-4)' } as CSSProperties} aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></Chip>
-      <Chip variant="caption" color="neutral" {...tip.bind(`${t('usage.cache')} · ${today.cacheRead.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'color-mix(in srgb, var(--color-chart-4) 44%, var(--color-background-primary-default))' } as CSSProperties} aria-hidden="true" />{t('usage.cache')} <b>{compactCount(today.cacheRead)}</b></Chip>
-      <Chip variant="caption" color="neutral" {...tip.bind(`${t('usage.output')} · ${today.output.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'color-mix(in srgb, var(--color-chart-4) 72%, var(--color-background-primary-default))' } as CSSProperties} aria-hidden="true" />{t('usage.output')} <b>{compactCount(today.output)}</b></Chip>
-    </div>
-    {week && <div className="dsh-usage-bars" role="img" aria-label={t('usage.week')}>
-      {days.map(day => {
-        const buckets = bucketsOf(day)
-        const value = totalTokens(buckets)
-        const label = [`${day.key.slice(5)} · ${compactCount(value)} ${t('usage.unit')}`,
-          `${t('usage.input')} ${compactCount(buckets.input)} · ${t('usage.cache')} ${compactCount(buckets.cacheRead)} · ${t('usage.output')} ${compactCount(buckets.output)}`].join('\n')
-        return <span key={day.key} className="dsh-usage-col" role="img" tabIndex={0} aria-label={label} {...tip.bind(label)}>
-          <span className="dsh-usage-bar" style={{ height: `${Math.max(value > 0 ? 6 : 1, (value / peak) * 100)}%` }} />
-        </span>
-      })}
+    {week && <div className="mt-auto flex flex-col gap-1.5">
+      <SparkBars items={days.map(day => {
+      const buckets = bucketsOf(day)
+      const value = totalTokens(buckets)
+      const label = [`${day.key.slice(5)} · ${compactCount(value)} ${t('usage.unit')}`,
+        `${t('usage.input')} ${compactCount(buckets.input)} · ${t('usage.cache')} ${compactCount(buckets.cacheRead)} · ${t('usage.output')} ${compactCount(buckets.output)}`].join('\n')
+      return { key: day.key, ratio: value / peak, label, empty: value === 0, emphasis: value === peak }
+      }).reverse()} className="h-20" wrap={(item, bar) => <span className="flex w-full justify-center" {...tip.bind(item.label)}>{bar}</span>} />
+      <div className="flex gap-1.5" aria-hidden="true">
+        {[...days].reverse().map(day => <span key={day.key} className="min-w-0 flex-1 text-center text-caption-1-medium tabular-nums text-text-tertiary">{weekday(day.key)}</span>)}
+      </div>
     </div>}
     {tip.node}
-    <div className="dsh-usage-foot">
-      <span className="dsh-muted">{t('usage.rate')} <b>{rate === null ? '—' : rate.toFixed(1)}</b> {t('usage.perSecond')}</span>
-      {week && <span className="dsh-muted">{t('usage.weekTotal')} <b>{compactCount(totalTokens(sumDays(days)))}</b></span>}
-    </div>
+    {partitionNote(t, windowTotal, days)}
+  </div>
+}
+
+/** 柱状下方的口径说明：一句话说清“这七天”，不重复柱子的数。 */
+function partitionNote(t: Translate, windowTotal: number, days: readonly DayBucket[]): ReactNode {
+  if (days.length === 0) return null
+  return <div className="mt-auto flex items-center justify-between gap-2 text-caption-1-medium text-text-tertiary">
+    <span>{t('usage.week')}</span>
+    <span className="tabular-nums">{compactCount(windowTotal)} {t('usage.unit')}</span>
   </div>
 }
 

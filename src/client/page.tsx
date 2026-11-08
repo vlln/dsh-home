@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { IconTrashOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
-import { Button, CardError } from './ui/index.ts'
+import { Button, CardError, IconButton } from './ui/index.ts'
 import { formatAgo, formatDay, type Translate } from './format.ts'
 import type { WidgetActions } from './widgets.tsx'
 import type { SessionStatusMap } from './session-model.ts'
@@ -215,18 +215,19 @@ export function HomePage(props: HomePageProps): ReactNode {
     <div ref={homeRef} className="dsh-home" data-editing={editing ? 'true' : 'false'}>
       <div className="dsh-home-inner">
         <header className="dsh-home-head">
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="dsh-home-title-row flex items-center gap-2">
-              <h1 className="dsh-home-title text-title-1-semibold tracking-tight text-text-primary">{t('panel.title')}</h1>
-              {!editing && <Button variant="ghost" size="xs" aria-label={t('action.refresh')} onClick={() => { void store.refresh() }}>↻</Button>}
-              <span className="dsh-home-updated text-caption-1-medium text-text-tertiary">{editing ? t('edit.mode') : state.lastLoadedAt === null ? t('summary.scanning') : t('summary.updated', { time: formatAgo(state.lastLoadedAt, state.now, t) })}</span>
+          <div className="flex min-w-0 flex-col">
+            <div className="dsh-home-title-row">
+              <h1 className="dsh-home-title">{t('panel.title')}</h1>
             </div>
-            <div className="dsh-home-sub flex items-center gap-2 text-caption-1-medium text-text-tertiary">
+            <div className="dsh-home-sub">
               <span>{formatDay(state.now, locale())}</span>
-              {!editing && sinceCount !== null && sinceCount > 0 && <span>{t('panel.since', { count: sinceCount })}</span>}
+              {!editing && sinceCount !== null && sinceCount > 0 && <><span aria-hidden="true">·</span><span>{t('panel.since', { count: sinceCount })}</span></>}
+              <span aria-hidden="true">·</span>
+              <span className="dsh-home-updated">{editing ? t('edit.mode') : state.lastLoadedAt === null ? t('summary.scanning') : t('summary.updated', { time: formatAgo(state.lastLoadedAt, state.now, t) })}</span>
             </div>
           </div>
           <div className="dsh-home-actions" role="group" aria-label={t('aria.actions')}>
+            {!editing && <IconButton aria-label={t('action.refresh')} title={t('action.refresh')} onClick={() => { void store.refresh() }}>↻</IconButton>}
             <Button variant={editing ? 'primary' : 'secondary'} size="small" disabled={!writable || busy || interacting} aria-pressed={editing}
               onClick={() => { if (editing) void finish(); else { setEditing(true); setSaveError(false) } }}>
               {t(saving ? 'edit.saving' : editing ? 'action.done' : 'action.edit')}
@@ -286,14 +287,14 @@ export function HomePage(props: HomePageProps): ReactNode {
               } } : {}),
             }
             return <section key={instance.instanceId}
-              className="dsh-w dsh-home-widget dsh-enter flex flex-col gap-2.5 rounded-3xl border border-border-button-default bg-background-primary-default p-4 shadow-card transition-shadow duration-200"
+              className="dsh-card dsh-home-widget dsh-enter"
               style={{ '--dsh-enter-index': cardIndex } as React.CSSProperties}
               data-widget-id={instance.instanceId} data-widget-type={instance.typeId} data-size={widgetProps.size}
               data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
               <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!writable || busy || interacting} gripDisabled={!writable || busy}
                 icon={definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition}/></CardBoundary>}
                 onKeyDelete={() => requestDelete(instance.instanceId)} onNudge={key => nudge(instance.instanceId,key)} />
-              <div className="dsh-w-body dsh-home-widget-content" inert={editing || undefined}>
+              <div className="dsh-card-body dsh-home-widget-content" inert={editing || undefined}>
                 {definition === undefined ? <div className="dsh-empty" role="status">{t('widget.unavailable', { typeId: instance.typeId })}</div>
                   : <CardBoundary key={renderKey(instance, definition)} fallback={<CardError title={t('error.card')} />}>
                     <WidgetBody definition={definition} widgetProps={widgetProps} />

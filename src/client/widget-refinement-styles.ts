@@ -1,16 +1,15 @@
-/** Final, content-scoped refinement layer. Geometry, instance layout and business
- * state remain owned by the existing shell/registry; all surfaces use DSH aliases. */
+/**
+ * 卡片内部的几何补丁层：只放 display / grid / 间距 / 溢出这类**结构**规则。
+ *
+ * 字体、颜色、卡片底色一律不在这里写——那一层以前在这里重设，于是同一个页面里
+ * 有三份卡片定义（styles.ts、expression、refinement）互相盖，谁最后加载谁说了算。
+ * 表面与字号归 theme.css 的 .dsh-card，内容几何才归这里。
+ */
 export const widgetRefinementStyles = `
 /* A readable heading, then primary content, then quiet metadata. */
-.dsh-home .dsh-w-title { font:var(--dsw-font-s-strong-14); font-weight:600; color:var(--dsw-alias-label-primary); letter-spacing:0; min-width:0; overflow-wrap:anywhere; }
-.dsh-home .dsh-w-glyph { color:var(--dsw-alias-label-secondary); }
-.dsh-home-widget .dsh-row-title { font:var(--dsw-font-s-strong-14); }
-.dsh-home-widget :is(.dsh-row-meta,.dsh-label) { font:var(--dsw-font-xxs-12); }
-.dsh-home-widget .dsh-muted { color:var(--dsw-alias-label-tertiary); }
 .dsh-home-widget :is(.dsh-row,.dsh-session-row,.dsh-focus-primary,.dsh-focus-secondary,.dsh-icon-button) { transition:background-color 120ms ease-out,color 120ms ease-out; }
 .dsh-home-widget .dsh-row:focus-visible { background:var(--dsw-alias-interactive-bg-hover); }
 .dsh-home-widget .dsh-row-static:focus-visible { background:transparent; }
-.dsh-home-widget:focus-within { border-color:var(--dsw-alias-border-l4); }
 /* Existing scroll containers still own overflow. Reserve space for focus rings
    and never flex-shrink an editor into an unusable sliver in a short card. */
 .dsh-home .dsh-home-widget-content { scroll-padding-block:4px; }
@@ -19,11 +18,10 @@ export const widgetRefinementStyles = `
 
 /* A quiet outer surface, not a stack of decorated nested cards. Content owns
    its responsive structure; the shell must retain overflow as a safety net. */
-.dsh-home .dsh-home-widget { background:color-mix(in srgb,var(--dsw-alias-bg-module-platform) 65%,var(--dsw-alias-bg-layer-1)); }
 .dsh-home .dsh-widget-viewport { container-type:inline-size; container-name:widget; }
 .dsh-home-widget :is(.dsh-today-content,.dsh-rhythm-content) { display:flex; flex-direction:column; gap:4px; min-width:0; height:100%; }
 .dsh-home-widget :is(.dsh-today-content,.dsh-rhythm-content) > * { flex-shrink:0; }
-.dsh-home-widget .dsh-band-track { height:12px; margin-top:4px; background:var(--dsw-alias-bg-skeleton); }
+.dsh-home-widget .dsh-band-track { height:12px; margin-top:4px; background:var(--color-chart-track); }
 .dsh-home-widget .dsh-band-seg { opacity:.55; }
 .dsh-home-widget .dsh-band-seg[data-now="true"] { opacity:.9; }
 .dsh-home-widget .dsh-band-seg:hover { opacity:1; }

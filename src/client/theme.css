@@ -73,16 +73,20 @@
  * and third series get. Slot names stay stable so components never learn hues.
  * ------------------------------------------------------------------------- */
 @theme {
-  --color-chart-1: var(--color-pink-500);
-  --color-chart-1-active: var(--color-pink-600);
-  --color-chart-2: var(--color-lime-500);
-  --color-chart-2-active: var(--color-lime-600);
-  --color-chart-3: var(--color-violet-500);
-  --color-chart-3-active: var(--color-violet-600);
-  --color-chart-4: var(--color-blue-500);
-  --color-chart-4-active: var(--color-blue-600);
-  --color-chart-5: var(--color-cyan-500);
-  --color-chart-5-active: var(--color-cyan-600);
+  /* 400-level, not 500. A 500 step on a #17-ish card loses about a third of its
+   * chroma to the backdrop and reads as "disabled"; 400 is what BoardUI paints
+   * data with. The -active step is the 500 one, so hover still darkens by a
+   * visible notch instead of by a haze. */
+  --color-chart-1: var(--color-pink-400);
+  --color-chart-1-active: var(--color-pink-500);
+  --color-chart-2: var(--color-lime-400);
+  --color-chart-2-active: var(--color-lime-500);
+  --color-chart-3: var(--color-violet-400);
+  --color-chart-3-active: var(--color-violet-500);
+  --color-chart-4: var(--color-blue-400);
+  --color-chart-4-active: var(--color-blue-500);
+  --color-chart-5: var(--color-cyan-400);
+  --color-chart-5-active: var(--color-cyan-500);
 }
 
 /* ---------------------------------------------------------------------------
@@ -146,13 +150,148 @@ html[data-motion="off"] * {
 }
 
 /* ---------------------------------------------------------------------------
+ * Board surface
+ *
+ * dsh-home owns three surfaces, and their ORDER is the whole design:
+ *
+ *   canvas (#0e0e10)  <  card (#171719)  <  sunken/track (#26262a)
+ *
+ * The host paints its content area lighter than its own cards, so borrowing
+ * `--dsw-alias-bg-base` inverted the ladder: cards came out DARKER than the
+ * page and the board read as grey boxes sunk into grey. These three steps are
+ * dsh-home's own, tuned to BoardUI's dark dashboard (page #121212, card
+ * #171717, track #262626) and lifted by ~1 point so the canvas does not look
+ * like a hole next to the host chrome.
+ *
+ * `--dsh-hairline` is for the few places that genuinely need an edge (drop
+ * targets, the resize outline). Cards do not use it: on a 9-point lift a
+ * border reads as a cage, which is exactly what the previous build looked like.
+ * ------------------------------------------------------------------------- */
+:root {
+  --dsh-canvas: #f4f4f5;
+  --dsh-card: #ffffff;
+  --dsh-card-hover: #fafafa;
+  --dsh-sunken: #ececee;
+  --dsh-hairline: rgb(0 0 0 / 0.07);
+
+  --dsh-card-radius: 16px;
+  --dsh-card-pad: 16px;
+}
+
+body[data-ds-dark-theme] {
+  --dsh-canvas: #0e0e10;
+  --dsh-card: #171719;
+  --dsh-card-hover: #1b1b1e;
+  --dsh-sunken: #26262a;
+  --dsh-hairline: rgb(255 255 255 / 0.08);
+}
+
+/* ---------------------------------------------------------------------------
+ * Card anatomy
+ *
+ * BoardUI's card is four decisions, and they are the same four on every card:
+ *
+ *   1. header: 14/500 label in `text-secondary`, optional 14px glyph, tools
+ *      pushed to the far right — never a boxed title bar, never a 1px rule;
+ *   2. metric: 24/500 tabular numerals in `text-primary`, unit inline on the
+ *      same baseline at 12/500 `text-tertiary` (a unit on its own line reads
+ *      as a second, competing number);
+ *   3. body: fills the rest, 12px gap, no per-card padding of its own;
+ *   4. surface: 16px radius, 16px pad, no border, one step of elevation.
+ *
+ * Everything here is in `components` so a widget can still override a single
+ * property with a utility class without fighting specificity.
+ * ------------------------------------------------------------------------- */
+@layer components {
+  .dsh-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    min-height: 0;
+    padding: var(--dsh-card-pad);
+    border: 0;
+    border-radius: var(--dsh-card-radius);
+    background: var(--dsh-card);
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .dsh-card:hover {
+    background: var(--dsh-card-hover);
+  }
+
+  .dsh-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 20px;
+  }
+
+  .dsh-card-glyph {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--color-text-tertiary);
+  }
+
+  .dsh-card-title {
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: 500 14px/20px var(--font-sans);
+    color: var(--color-text-secondary);
+  }
+
+  .dsh-card-tools {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+  }
+
+  .dsh-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .dsh-metric {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .dsh-metric-value {
+    font: 500 24px/32px var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    color: var(--color-text-primary);
+  }
+
+  .dsh-metric-unit {
+    font: 500 12px/16px var(--font-sans);
+    color: var(--color-text-tertiary);
+  }
+}
+
+/* ---------------------------------------------------------------------------
  * Dark: the empty-slot track has to stay visible
  *
  * Upstream leaves `--color-chart-track` on a light neutral, which on a dark card
  * is within a few points of the surface — the heat grid read as an empty card.
- * Derive it from the text colour instead, so it keeps a constant gap from
- * whatever the dark surface is.
+ * Derive it from the sunken surface instead, so the gap to the card is fixed by
+ * design rather than by two unrelated ramps.
  * ------------------------------------------------------------------------- */
 body[data-ds-dark-theme] {
-  --color-chart-track: color-mix(in srgb, var(--color-text-primary) 16%, transparent);
+  --color-chart-track: var(--dsh-sunken);
 }

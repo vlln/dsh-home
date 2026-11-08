@@ -1,6 +1,7 @@
 /** The builtin quick type uses the public instance/settings contract without owning layout or persistence. */
 import { useEffect, useRef, useState } from 'react'
-import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Input } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, RowButton, RowLink } from './ui/index.ts'
 import { builtinPreviewData, useBuiltin } from './builtin-registration.tsx'
 import { formatAgo, shortcutHint, type Translate } from './format.ts'
 import type { WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
@@ -60,28 +61,28 @@ export function QuickContent(props: WidgetContentProps<QuickConfig>) {
         })
     }
   }
-  return <div className="dsh-quick-widget flex h-full min-h-0 flex-col gap-1.5" data-quick-instance={instance.instanceId} aria-busy={busy}>
-    <Button variant="primary" disabled={disabled} onClick={() => { actions.startSession() }} className="dsh-quick-widget-action w-full justify-start rounded-xl">
-      <span>{t('widget.quick.new')}</span><span className="dsh-key">{shortcutHint()}</span>
+  return <div className="dsh-quick-widget flex h-full min-h-0 flex-col gap-1" data-quick-instance={instance.instanceId} aria-busy={busy}>
+    <Button variant="primary" size="small" disabled={disabled} onClick={() => { actions.startSession() }} className="w-full [&>span]:w-full">
+      <span className="flex w-full items-center justify-between gap-3"><span>{t('widget.quick.new')}</span><span className="dsh-key text-text-white/70">{shortcutHint()}</span></span>
     </Button>
-    {last !== undefined && <Button variant="ghost" disabled={disabled} onClick={() => { actions.openSession(last.id) }} className="dsh-quick-widget-action w-full justify-start rounded-xl">
-      <span>{t('widget.quick.resume')}</span><span className="dsh-key">{formatAgo(last.lastAt, state.now, t)}</span>
-    </Button>}
-    {configError === null && config.links.length > 0 && <div className="dsh-quick-widget-links flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
+    {last !== undefined && <RowButton disabled={disabled} onClick={() => { actions.openSession(last.id) }} trailing={formatAgo(last.lastAt, state.now, t)}>
+      {t('widget.quick.resume')}
+    </RowButton>}
+    {configError === null && config.links.length > 0 && <div className="dsh-quick-widget-links flex min-h-0 flex-1 flex-col overflow-hidden">
       {config.links.map((link, index) => link.kind === 'url'
-        ? <a key={index} className="dsh-quick-widget-link flex items-center gap-2 rounded-xl px-2 py-1.5 text-body-medium text-text-secondary transition-colors hover:bg-background-secondary-default hover:text-text-primary" href={disabled ? undefined : link.target} target="_blank" rel="noopener noreferrer"
-          aria-disabled={disabled || undefined} tabIndex={disabled ? -1 : undefined} title={link.target}>
-          <span>{link.label}</span><span aria-hidden="true">↗</span>
-        </a>
-        : <Button key={index} variant="ghost" disabled={disabled || (link.kind === 'workdir' && actions.startTask === undefined)}
-          title={link.target} className="dsh-quick-widget-action w-full justify-start rounded-xl" onClick={() => { open(link) }}>
-          <span>{link.label}</span><span className="dsh-quick-widget-kind ml-auto text-caption-1-medium text-text-tertiary">{t(`quick.kind.${link.kind}`)}</span>
-        </Button>)}
+        ? <RowLink key={index} href={disabled ? undefined : link.target} target="_blank" rel="noopener noreferrer"
+          aria-disabled={disabled || undefined} tabIndex={disabled ? -1 : undefined} title={link.target} trailing={<span aria-hidden="true">↗</span>}>
+          {link.label}
+        </RowLink>
+        : <RowButton key={index} disabled={disabled || (link.kind === 'workdir' && actions.startTask === undefined)}
+          title={link.target} onClick={() => { open(link) }} trailing={t(`quick.kind.${link.kind}`)}>
+          {link.label}
+        </RowButton>)}
     </div>}
     {configError !== null && <p className="dsh-quick-widget-error" role="alert">{t(`quick.error.${configError}`)}</p>}
     {busy && <p className="dsh-muted" role="status">{t('quick.preparing')}</p>}
     {error !== null && <p className="dsh-quick-widget-error" role="alert">{error}</p>}
-    <span className="dsh-muted">{t('quick.hint')}</span>
+    <span className="dsh-muted mt-auto">{t('quick.hint')}</span>
     <WidgetConfigEditor t={t} widgetProps={props} title={t('widget.quick.title')} label={t('quick.edit')}
       Fields={QuickSettings} validate={validateQuickConfig} />
   </div>
@@ -114,11 +115,11 @@ export function QuickSettings({ config, onConfigChange }: WidgetSettingsProps<Qu
             onChange={event => { update(index, { target: event.target.value }) }} />
         </label>
         {error !== null && <p className="dsh-quick-widget-error" role="status">{t(`quick.error.${error}`)}</p>}
-        <Button variant="ghost" size="sm" aria-label={t('quick.removeLabel', { n: index + 1 })}
+        <Button variant="ghost" size="small" aria-label={t('quick.removeLabel', { n: index + 1 })}
           onClick={() => { onConfigChange({ links: config.links.filter((_, at) => at !== index).map(link => ({ ...link })) }) }}>{t('quick.remove')}</Button>
       </fieldset>
     })}
-    <Button variant="outline" size="sm" disabled={config.links.length >= QUICK_LIMITS.links} onClick={() => {
+    <Button variant="secondary" size="small" disabled={config.links.length >= QUICK_LIMITS.links} onClick={() => {
       if (config.links.length >= QUICK_LIMITS.links) return
       onConfigChange({ links: [...config.links.map(link => ({ ...link })), { kind: 'url', label: t('quick.newLabel'), target: '' }] })
     }}>{t('quick.add')}</Button>

@@ -36,7 +36,7 @@ export const CSS = `
      A board that still fits is centred by the auto margins on .dsh-home-inner. */
   overflow-x: auto;
   overflow-y: auto;
-  background: var(--dsw-alias-bg-base);
+  background: var(--dsh-canvas, var(--dsw-alias-bg-base));
   /* No padding here: the sticky header's containing block would start below it and
      let card content show through above the header while scrolled. The clearance
      lives in the header's own padding instead (see .dsh-home-head). */
@@ -54,30 +54,39 @@ export const CSS = `
 
 .dsh-home-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  /* The header is chrome, not a band: 16 above, 16 below, and the first card
+     starts right after it. A larger top pad reads as a missing element.
+     It is sticky so scrolled cards never show through above it; the clearance
+     lives inside the sticky box, so nothing can slide above the header. */
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  padding: calc(var(--dsh-frame-top-clearance, 0px) + 16px) 0 16px;
+  background: var(--dsh-canvas, var(--dsw-alias-bg-base));
 }
-.dsh-home-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
-.dsh-home-updated { font-size: 11px; color: var(--dsw-alias-label-caption); }
+.dsh-home-title-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.dsh-home-updated { font-size: 13px; line-height: 20px; color: var(--color-text-tertiary); }
 .dsh-home-title {
   margin: 0;
-  font-size: 22px;
-  line-height: 30px;
+  font-size: 20px;
+  line-height: 28px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--dsw-alias-label-primary);
+  color: var(--color-text-primary);
 }
 .dsh-home-sub {
-  margin-top: 6px;
+  margin-top: 2px;
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   font-size: 13px;
   line-height: 20px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--color-text-tertiary);
 }
 .dsh-home-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /* Drag-to-delete target. Fixed to the top of the viewport so it stays reachable no
@@ -95,43 +104,47 @@ export const CSS = `
 .dsh-debris-particle { position: absolute; display: block; border-radius: 50%; will-change: transform, opacity; }
 .dsh-debris-halo { position: absolute; border-radius: 50%; transform-origin: center; will-change: transform, opacity; }
 
+/* Card shell. dsh-card (in theme.css) is the real definition; this rule only
+   exists so the library drag ghost — which carries .dsh-w — inherits the same
+   surface without also being grid-positioned. */
 .dsh-w {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  padding: 14px 16px 16px;
-  border-radius: var(--dsw-radius-xl);
-  border: 0.5px solid var(--dsw-alias-settings-card-stroke);
-  background: var(--dsw-alias-settings-card-fill);
+  padding: var(--dsh-card-pad);
+  border: 0;
+  border-radius: var(--dsh-card-radius);
+  background: var(--dsh-card);
 }
 .dsh-w[data-size="m"] { grid-column: span 2; }
 .dsh-w[data-size="l"] { grid-column: span 3; }
 .dsh-w[data-dragging="true"] { opacity: 0.5; }
 .dsh-w[data-droptarget="true"] { box-shadow: inset 0 0 0 1.5px var(--color-chart-4); }
 
-.dsh-w-head { display: flex; align-items: center; gap: 8px; min-height: 18px; }
-.dsh-w-glyph { width: 14px; height: 14px; flex: none; color: var(--dsw-alias-label-tertiary); }
+/* Aliases of the card-head anatomy in theme.css, kept for the widgets that still
+   write these class names directly. */
+.dsh-w-head { display: flex; align-items: center; gap: 8px; min-height: 20px; }
+.dsh-w-glyph { width: 16px; height: 16px; flex: none; color: var(--color-text-tertiary); }
 .dsh-w-title {
   margin: 0;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 500;
-  color: var(--dsw-alias-label-tertiary);
-  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
 }
-.dsh-w-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.dsh-w-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 
 .dsh-number {
-  font-size: 22px;
-  line-height: 28px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--dsw-alias-label-primary);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
 }
-.dsh-label { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+.dsh-label { font-size: 12px; line-height: 16px; color: var(--color-text-tertiary); }
 .dsh-muted { font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-caption); }
 .dsh-metric { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 
@@ -424,8 +437,6 @@ export const CSS = `
 .dsh-recent-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
 
 /* Unified mobile-widget editing surface. Only the editing shell owns gestures. */
-/* The clearance is inside the sticky box, so nothing can slide above the header. */
-.dsh-home-head { position: sticky; top: 0; z-index: 8; background: var(--dsw-alias-bg-base); padding: calc(var(--dsh-frame-top-clearance, 0px) + 20px) 0 12px; }
 /* Edit-only board width handles, mirroring the host Conversation tab: a 10px
    col-resize strip on each side of the centred column, with a 2px glow that follows
    the captured pointer. They resize the whole board, never a widget, so they stay

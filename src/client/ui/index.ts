@@ -24,8 +24,10 @@
  * Hand-written surface: dsh-home's own primitives. Not generated.
  * ------------------------------------------------------------------------- */
 
+import { cx } from './lib/cx.ts'
+
 /** 类名合并（tailwind-merge，认识 BoardUI 的复合字号类）。 */
-export { cx } from './lib/cx.ts'
+export { cx }
 
 /** 卡片内部的四段结构（主值 / 说明 / 空态 / 错误 / 骨架）。 */
 export { CardBody, CardHero, CardMeta, CardFooter, CardEmpty, CardError, CardSkeleton } from './parts.tsx'
@@ -36,6 +38,12 @@ export type { VizItem, HeatLevel } from './viz.tsx'
 
 /** 动效原语：入场错峰与数字滚动（只动 opacity/filter，把 transform 留给网格）。 */
 export { Reveal, CountUp, useCountUp, motionEnabled } from './motion.tsx'
+
+/** 无底色图标按钮：标题行里的小图标只在这里出现，不用 ghost 变体。 */
+export { IconButton } from './icon-button.tsx'
+
+/** 列表行：主标签 + 右端读数，整行可点；卡片里的"一行一条"一律用它。 */
+export { Row, RowButton, RowLink } from './row.tsx'
 
 /* ---------------------------------------------------------------------------
  * Vendored BoardUI surface — generated, do not edit by hand.

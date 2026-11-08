@@ -56,9 +56,12 @@ export function CardFooter({ children, className }: { children: ReactNode; class
 }
 
 /**
- * 空态：一句“为什么是空的”，必要时给一个动作。
+ * 空态：一句"为什么是空的"，必要时给一个动作。
  *
- * 空态要安静——不摆零、不放插图，只解释原因；`action` 只给真正能改变结果的那一个操作。
+ * 空态要安静，也要**贴左上**。居中一块大字加一个按钮是最容易写、也最难看的一种：
+ * 卡片正文被压成一条水平线，上下各留一大块什么都没有的深色，三张空卡并排就像
+ * 页面画了三个洞。这里改成正文左对齐、行高按内容走，剩余空间留给卡片自己的图形
+ * （空轨道、空列表），而不是留给空白。
  */
 export function CardEmpty({ title, detail, action, className }: {
   title: ReactNode
@@ -66,10 +69,10 @@ export function CardEmpty({ title, detail, action, className }: {
   action?: ReactNode
   className?: string
 }): ReactNode {
-  return <div className={cx('flex h-full min-h-24 flex-col items-center justify-center gap-1.5 text-center', className)}>
+  return <div className={cx('flex min-w-0 flex-col items-start gap-1 text-left', className)}>
     <span className="text-body-medium text-text-secondary">{title}</span>
-    {detail !== undefined && <span className="max-w-[42ch] text-caption-1-medium text-text-tertiary">{detail}</span>}
-    {action !== undefined && <div className="pt-1">{action}</div>}
+    {detail !== undefined && <span className="text-caption-1-medium text-text-tertiary">{detail}</span>}
+    {action !== undefined && <div className="pt-1.5">{action}</div>}
   </div>
 }
 

@@ -36,9 +36,14 @@ test('content patterns use container geometry without hiding outer overflow or a
   assert.doesNotMatch(widgetRefinementStyles, /dsh-home-widget-content[^}]*overflow:hidden/)
   assert.match(personal, /dsh-note-input\{[^}]*min-height:100%/s)
 })
-test('refinements are theme driven, reduced-motion aware, and do not hardcode widget identities', () => {
+test('the geometry layer stays geometry: no fonts, colours or card surfaces of its own', () => {
+  // This layer used to restate the card: its background, its title font, its colours.
+  // Two other layers did the same, so the page had three competing card definitions and
+  // the last one to load won. Typography and surface now belong to theme.css (.dsh-card);
+  // a rule here that sets them again is the bug, not a refinement.
   assert.match(widgetRefinementStyles, /prefers-reduced-motion/)
-  assert.match(widgetRefinementStyles, /--dsw-font-s-strong-14/)
-  assert.match(widgetRefinementStyles, /--dsw-alias-label-primary/)
+  assert.doesNotMatch(widgetRefinementStyles, /\.dsh-w-title[^{]*\{[^}]*font/)
+  assert.doesNotMatch(widgetRefinementStyles, /dsh-home-widget\s*\{[^}]*background/)
+  assert.doesNotMatch(widgetRefinementStyles, /dsh-home-widget\s*\{[^}]*border-color/)
   assert.doesNotMatch(widgetRefinementStyles, /#[0-9a-fA-F]{3,8}\b|@vlln\/dsh-home:|data-widget-type/)
 })
