@@ -221,8 +221,13 @@ async function visualCases(page) {
   await page.setViewportSize({ width: 760, height: 1000 })
   await page.reload()
   await openHome(page)
-  const overflow = await page.locator('.dsh-home').evaluate(el => el.scrollWidth > el.clientWidth + 1)
-  assert.equal(overflow, false, 'Home horizontal overflow at 760px')
+  // The board is a fixed-width canvas (>= 960) that scrolls inside the panel by
+  // design — see docs/widget-design.md, "画布宽度可调". What must not happen is
+  // the *document* scrolling sideways.
+  const docOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
+  assert.equal(docOverflow, false, 'document scrolls sideways at 760px')
+  const boardScrolls = await page.locator('.dsh-home').evaluate(el => el.scrollWidth > el.clientWidth)
+  assert.equal(boardScrolls, true, 'the board should scroll inside the panel, not be squeezed')
   await stableShot(page, 'home-narrow.png')
   check('760px narrow layout without horizontal overflow')
   await page.setViewportSize({ width: 1440, height: 1100 })
