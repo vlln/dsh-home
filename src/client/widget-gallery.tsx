@@ -3,7 +3,8 @@ import { useCallback, useState, useRef, useEffect, useLayoutEffect } from 'react
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { flushSync } from 'react-dom'
 import { observeDragRelease } from './drag-release.ts'
-import { Button, Input, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Input, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button } from './ui/index.ts'
 import { CardBoundary } from './boundary.tsx'
 import type { Translate } from './format.ts'
 import type { RegisteredWidgetDefinition } from './widget-contract.ts'
@@ -137,25 +138,25 @@ export function WidgetGallery({ definitions, t, language, disabled, onDrag, onCl
     release=observeDragRelease(targets,{transport:'pointer',pointerId,touch:event.pointerType==='touch',onRelease:clear,onCancel:clear})
     window.addEventListener('pointermove',move,true);pending.current=clear
   }
-  return <aside ref={panel} className="dsh-library-panel" aria-label={t('gallery.addTab')} data-moving={moving?'true':undefined}>
-    <div className="dsh-library-heading" onPointerDown={beginMove} onDoubleClick={resetPosition}>
+  return <aside ref={panel} className="dsh-library-panel overflow-hidden rounded-3xl border border-border-button-default bg-background-primary-default shadow-dropdown" aria-label={t('gallery.addTab')} data-moving={moving?'true':undefined}>
+    <div className="dsh-library-heading flex items-center gap-2" onPointerDown={beginMove} onDoubleClick={resetPosition}>
       <button type="button" className="dsh-tool dsh-library-grip" aria-label={t('library.move')} title={t('library.moveHint')} onKeyDown={moveByKey}>⠿</button>
-      <h2>{t('gallery.addTab')}</h2>
-      <Button size="sm" variant="ghost" aria-label={t('library.close')} onClick={onClose}>×</Button>
+      <h2 className="min-w-0 flex-1 truncate text-body-medium text-text-primary">{t('gallery.addTab')}</h2>
+      <Button size="small" variant="secondary" aria-label={t('library.close')} onClick={onClose}>×</Button>
     </div>
-    <p className="dsh-gallery-hint">{t('library.hint')}</p>
+    <p className="dsh-gallery-hint text-caption-1-medium text-text-tertiary">{t('library.hint')}</p>
     <div className="dsh-gallery-toolbar"><Input type="search" aria-label={t('gallery.search')} placeholder={t('gallery.search')} value={search} onChange={event=>setSearch(event.target.value)}/>
-      <div className="dsh-gallery-filters" role="group" aria-label={t('gallery.filter')}>{(['all','builtin','extension'] as const).map(value=><Button key={value} size="sm" variant={source===value?'outline':'ghost'} aria-pressed={source===value} onClick={()=>setSource(value)}>{t(`gallery.${value}`)}</Button>)}</div>
+      <div className="dsh-gallery-filters" role="group" aria-label={t('gallery.filter')}>{(['all','builtin','extension'] as const).map(value=><Button key={value} size="small" variant={source===value?'secondary':'ghost'} className={source===value?undefined:'bg-transparent'} aria-pressed={source===value} onClick={()=>setSource(value)}>{t(`gallery.${value}`)}</Button>)}</div>
     </div>
     <div className="dsh-widget-directory">{filtered.map(definition=>{
       const title=galleryText(definition.title,definition.typeId),Icon=definition.icon
       return <Tooltip key={definition.typeId} portal side="left" delayMs={350} maxWidth={300} disabled={disabled || dragSource !== null} label={`${galleryText(definition.description)}\n${definition.source??definition.typeId}`}>{/* The whole card is the drag source: the preview is most of its area and
             users naturally grab it, not only the title strip. */}
-        <article className="dsh-w dsh-directory-item" data-widget-type={definition.typeId} onPointerDown={event=>begin(definition,event)}>
+        <article className="dsh-w dsh-directory-item flex flex-col gap-2 rounded-2xl border border-border-button-default bg-background-primary-default p-2.5" data-widget-type={definition.typeId} onPointerDown={event=>begin(definition,event)}>
         <WidgetFrameHeader title={title} t={t} editing disabled={disabled&&dragSource!==definition.typeId} icon={Icon?<Icon size={14}/>:undefined}/>
         <div className="dsh-library-preview" inert><CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetPreview definition={definition} t={t} language={language}/></CardBoundary></div>
       </article></Tooltip>
     })}</div>
-    {filtered.length===0&&<div className="dsh-gallery-empty" role="status">{t('gallery.noMatch')}<Button size="sm" variant="outline" onClick={()=>{setSearch('');setSource('all')}}>{t('gallery.clear')}</Button></div>}
+    {filtered.length===0&&<div className="dsh-gallery-empty" role="status">{t('gallery.noMatch')}<Button size="small" variant="secondary" onClick={()=>{setSearch('');setSource('all')}}>{t('gallery.clear')}</Button></div>}
   </aside>
 }

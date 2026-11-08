@@ -237,7 +237,7 @@ export function HomePage(props: HomePageProps): ReactNode {
             </>}
           </div>
         </header>
-        {editable && interacting && libraryDrag === null && <div ref={deleteZoneRef} className="dsh-home-delete-zone" aria-hidden="true">
+        {editable && interacting && libraryDrag === null && <div ref={deleteZoneRef} className="dsh-home-delete-zone border-border-button-default bg-background-primary-default text-text-secondary shadow-dropdown" aria-hidden="true">
           <IconTrashOutlineRegular size={16}/>
           <span className="dsh-home-delete-zone-idle">{t('edit.deleteZone')}</span>
           <span className="dsh-home-delete-zone-armed">{t('edit.deleteZoneArmed')}</span>
@@ -245,9 +245,9 @@ export function HomePage(props: HomePageProps): ReactNode {
         {!state.workbenchLoaded && <p className="dsh-workbench-notice" role="status">{t('workbench.loading')}</p>}
         {state.workbenchLoaded && !state.storage.writable && <div className="dsh-workbench-notice" role="alert">{t('workbench.readOnly')}{state.storage.error !== null && <span>{state.storage.error.message}</span>}</div>}
         {state.storage.status === 'write-error' && <div className="dsh-error" role="alert">{t('workbench.writeError')}</div>}
-        {editing && <div className="dsh-edit-bar" inert={!editable || interacting || undefined} role="region" aria-label={t('edit.mode')}>
-          <span className="dsh-edit-hint">{t('edit.hint')}</span>
-          <div className="dsh-edit-actions">
+        {editing && <div className="dsh-edit-bar flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border-button-default bg-background-secondary-default px-3 py-2" inert={!editable || interacting || undefined} role="region" aria-label={t('edit.mode')}>
+          <span className="dsh-edit-hint text-caption-1-medium text-text-tertiary">{t('edit.hint')}</span>
+          <div className="dsh-edit-actions flex items-center gap-1.5">
             <Button variant="secondary" size="small" aria-expanded={trayOpen} onClick={() => { setTrayOpen(!trayOpen) }}>{t('action.widgets')}</Button>
             <Button variant="ghost" size="small" disabled={libraryDrag !== null || geometry.length === 0} title={t('action.compactHint')} onClick={() => manage(() => { store.compactSpatialLayout(geometry, cols) })}>{t('action.compact')}</Button>
           </div>
