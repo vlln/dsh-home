@@ -114,3 +114,49 @@ export function HeatCell({ level, size, label, selected, unknown, onClick, class
     ? <span className={classes} style={style} aria-hidden="true" />
     : <button type="button" className={classes} style={style} aria-label={label} aria-pressed={selected} onClick={onClick} />
 }
+
+/**
+ * 多段环：一个总量被拆成几份时用它，而不是几个并排的条。
+ *
+ * `segments` 的顺序就是绘制顺序；`tone` 是槽位名（`chart-1`…`chart-5`），
+ * 组件不认识色相，只认识槽位——换配色只改 theme.css。
+ * 悬停/聚焦由调用方决定（传 `activeKey`），这里只负责把非选中段淡出。
+ */
+export function Donut({ segments, size = 108, thickness = 12, activeKey, center, label }: {
+  segments: readonly { key: string; value: number; tone: 'chart-1' | 'chart-2' | 'chart-3' | 'chart-4' | 'chart-5' }[]
+  size?: number
+  thickness?: number
+  activeKey?: string | null
+  center?: ReactNode
+  label?: string
+}): ReactNode {
+  const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
+  const radius = (size - thickness) / 2
+  const circumference = 2 * Math.PI * radius
+  let cursor = 0
+  return <div className="relative flex-none" style={{ width: size, height: size }} role="img" aria-label={label}>
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={thickness} className="stroke-chart-track" />
+      {total > 0 && segments.map(segment => {
+        const share = Math.max(0, segment.value) / total
+        const dash = `${(share * circumference).toFixed(2)} ${circumference.toFixed(2)}`
+        const offset = -cursor * circumference
+        cursor += share
+        const tone = TONE[segment.tone]
+        return <circle key={segment.key} cx={size / 2} cy={size / 2} r={radius} fill="none"
+          strokeWidth={thickness} strokeDasharray={dash} strokeDashoffset={offset} strokeLinecap="butt"
+          className={cx('transition-opacity duration-200', tone, activeKey !== undefined && activeKey !== null && activeKey !== segment.key && 'opacity-25')}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      })}
+    </svg>
+    {center !== undefined && <div className="absolute inset-0 flex flex-col items-center justify-center">{center}</div>}
+  </div>
+}
+
+const TONE = {
+  'chart-1': 'stroke-chart-1',
+  'chart-2': 'stroke-chart-2',
+  'chart-3': 'stroke-chart-3',
+  'chart-4': 'stroke-chart-4',
+  'chart-5': 'stroke-chart-5',
+} as const

@@ -11,7 +11,7 @@ import { useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
-import { Chip } from './ui/index.ts'
+import { Chip, Donut } from './ui/index.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
@@ -97,25 +97,14 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
         <span className="dsh-usage-total text-display-4-semibold leading-none tabular-nums tracking-tight text-text-primary" aria-label={t('usage.today')}>{compactCount(total)}</span>
         <span className="dsh-usage-unit text-caption-1-medium text-text-tertiary">{t('usage.today')} · {t('usage.unit')}</span>
       </div>
-      <div className="dsh-usage-donut" style={{ background: donutGradient(parts, windowTotal, hover) }} role="img"
-        aria-label={t('usage.split')} tabIndex={0}
-        onMouseMove={event => {
-          const part = partAt(event, parts, windowTotal)
-          setHover(part?.key ?? null)
-          if (part) tip.show(event, `${part.label} · ${compactCount(part.value)} ${t('usage.unit')} · ${share(part)}`)
-          else tip.hide()
-        }}
-        onMouseLeave={() => { setHover(null); tip.hide() }}
-        onFocus={event => {
-          const text = parts.map(part => `${part.label} · ${compactCount(part.value)} · ${share(part)}`).join('\n')
-          tip.show({ currentTarget: event.currentTarget, clientX: 0, clientY: 0 }, text || t('usage.split'))
-        }}
-        onBlur={() => { setHover(null); tip.hide() }}>
-        <span className="dsh-usage-donut-hole">
-          <b>{(() => { const hovered = parts.find(part => part.key === hover); return hovered ? share(hovered) : windowHit === null ? '—' : percent(windowHit) })()}</b>
-          <i>{t(week ? 'usage.sevenDays' : 'usage.hit')}</i>
-        </span>
-      </div>
+      <Donut size={96} thickness={12} label={t('usage.split')}
+        activeKey={hover}
+        segments={[
+          { key: 'input', value: today.input, tone: 'chart-4' },
+          { key: 'cache', value: today.cacheRead, tone: 'chart-2' },
+          { key: 'output', value: today.output, tone: 'chart-5' },
+        ]}
+        center={<span className="text-caption-1-semibold tabular-nums text-text-secondary">{windowTotal === 0 ? '—' : percent(1)}</span>} />
     </div>
     <div className="dsh-usage-chips flex flex-wrap items-center gap-1">
       <Chip variant="caption" color="neutral" {...tip.bind(`${t('usage.input')} · ${today.input.toLocaleString()} ${t('usage.unit')}`)}><i className="dsh-chip-dot" style={{ '--dsh-part': 'var(--color-chart-4)' } as CSSProperties} aria-hidden="true" />{t('usage.input')} <b>{compactCount(today.input)}</b></Chip>
