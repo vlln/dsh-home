@@ -11,7 +11,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
-import { ShareRings, SparkBars } from './ui/index.ts'
+import { Donut, SparkBars } from './ui/index.ts'
 import { useHoverTip } from './hover-tip.tsx'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
@@ -74,15 +74,18 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
               <i className="size-2 flex-none rounded-[3px]" style={{ background: `var(--color-${part.tone})` }} aria-hidden="true" />
               <span>{part.label}</span>
               <span className="tabular-nums text-text-secondary">{compactCount(part.value)}</span>
+              {/* A 1% ring reads as "all green" unless the share is also a number. */}
+              <span className="tabular-nums text-text-tertiary">{total === 0 ? '—' : percent(part.value / total)}</span>
             </span>
           ))}
         </span>
-        <ShareRings size={compact ? 52 : 68} thickness={compact ? 7 : 9} gap={4}
+        {/* ONE ring split in two: the relationship is the message. Two concentric rings
+            read as two independent gauges, which is exactly what these are not. */}
+        <Donut size={compact ? 44 : 60} thickness={compact ? 6 : 7}
           segments={[
             { key: 'fresh', value: today.input + today.output, tone: PART_TONE.input },
             { key: 'cache', value: today.cacheRead + today.cacheWrite, tone: PART_TONE.cache },
-          ]}
-          />
+          ]} />
       </span>
     </div>
     {week && <div className="mt-auto flex min-h-0 flex-1 flex-col gap-1.5">

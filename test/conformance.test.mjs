@@ -151,8 +151,10 @@ test('recent and pinned share one row implementation', async () => {
 test('session status and tokens use the measured primitives', async () => {
   const [status, usage] = await Promise.all([read('session-status-widget.tsx'), read('usage-widget.tsx')])
   assert.match(status, /SegmentedControlItem/, 'session status filters through one control, not two')
-  // The ring now shows a split of one total (fresh vs cached), not three parts of a budget.
-  assert.match(usage, /ShareRings/, 'tokens draws the share-ring primitive')
+  // The ring shows one total split in two (fresh vs cached). One ring, two segments —
+  // concentric rings read as two independent gauges.
+  assert.match(usage, /<Donut/, 'tokens draws the segmented ring')
+  assert.doesNotMatch(await read('ui/viz.tsx'), /ShareRings/, 'no second ring primitive')
   assert.match(usage, /SparkBars/, 'tokens draws the bar primitive')
 })
 

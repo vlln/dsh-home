@@ -195,36 +195,3 @@ const TONE = {
   'chart-5': 'stroke-chart-5',
 } as const
 
-/**
- * Concentric rings where each arc is a SHARE of the same total (no goal, no baseline).
- * Two rings say "this much of today was fresh work, this much was cache" — the split is the
- * message, so every arc is measured against the sum of all segments.
- */
-export function ShareRings({ size, thickness, gap = 3, center, segments, className }: {
-  size: number
-  thickness: number
-  gap?: number
-  center?: ReactNode
-  segments: { key: string; value: number; tone: string }[]
-  className?: string
-}) {
-  const total = segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
-  const radiusOf = (index: number) => size / 2 - thickness / 2 - index * (thickness + gap)
-  return <span className={cx('relative inline-flex flex-none items-center justify-center', className)} style={{ width: size, height: size }}>
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="absolute inset-0 -rotate-90">
-      {segments.map((segment, index) => {
-        const radius = radiusOf(index)
-        const circumference = 2 * Math.PI * radius
-        const share = total === 0 ? 0 : Math.max(0, segment.value) / total
-        return <g key={segment.key}>
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" style={{ stroke: `var(--color-${segment.tone})` }}
-            strokeWidth={thickness} strokeOpacity={0.12} />
-          {share > 0 && <circle cx={size / 2} cy={size / 2} r={radius} fill="none" style={{ stroke: `var(--color-${segment.tone})` }}
-            strokeWidth={thickness} strokeLinecap="round"
-            strokeDasharray={`${circumference * Math.min(share, 0.999)} ${circumference}`} />}
-        </g>
-      })}
-    </svg>
-    {center !== undefined && <span className="relative flex flex-col items-center justify-center">{center}</span>}
-  </span>
-}
