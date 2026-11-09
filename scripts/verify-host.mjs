@@ -20,6 +20,9 @@ import { createRequire } from 'node:module'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SITE = path.resolve(ROOT, '../.work/dsh-home')
+// Shared with the screenshot station on purpose: the harness needs a ledger with sessions,
+// and an isolated home has none. The cost is that a hand-tuned fixture can break the run;
+// the rule is therefore "reset the fixture to the canonical cards before verifying".
 const HOME = path.join(SITE, 'dsh')
 const WORKSPACE = path.join(SITE, 'workspace')
 const EXPECTED = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version
@@ -317,10 +320,14 @@ async function recentCases(page) {
   await card.waitFor()
   // The card decides its own capacity from measured height, so assert the shape
   // (at least one row, never more than five) rather than one exact number.
+  // An isolated home has no sessions at all, and zero rows is the correct rendering of
+  // an empty snapshot — the case is about the cap and the subagent filter, not about
+  // inventing data.
   await eventually(async () => {
     const shown = await card.locator('[data-session-id]').count()
-    return shown >= 1 && shown <= 5
-  }, `recent shows 1..5 rows (${topLevel.length} sessions available)`)
+    if (topLevel.length === 0) return shown === 0
+    return shown >= 1 && shown <= expected
+  }, `recent shows 0..5 rows (${topLevel.length} sessions available)`)
   const child = sessions.find(session => session.parentSessionId !== undefined)
   if (child !== undefined) {
     assert.equal(await card.locator(`[data-session-id="${child.id}"]`).count(), 0, 'subagent session must not appear')
