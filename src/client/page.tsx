@@ -274,11 +274,11 @@ export function HomePage(props: HomePageProps): ReactNode {
             deleteZone={deleteZoneRef} onDeleteRequest={requestDelete}
             libraryDrag={libraryDrag} onLibraryEnd={() => setLibraryDrag(null)}
             onLibraryDrop={(drag,accepted) => {try {if(registry.get(drag.definition.typeId)!==drag.definition||JSON.stringify(store.getSnapshot().layout)!==drag.baseLayout)throw new Error('Widget or layout changed');store.dropInstance(drag.definition,drag.id,accepted,cols)}catch{setManagementError(true)}}}
-            libraryGhost={libraryDrag && <><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
+            libraryGhost={libraryDrag && <div className="dsh-card dsh-home-widget" data-size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)}><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
               <CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetContentPreview definition={libraryDrag.definition} t={t} language={locale()}
                 size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)}
                 width={widgetWidthForColumns(libraryDrag.item.w)}
-                height={libraryDrag.item.h * SPATIAL_ROW_HEIGHT + (libraryDrag.item.h - 1) * SPATIAL_GAP}/></CardBoundary></>}>
+                height={libraryDrag.item.h * SPATIAL_ROW_HEIGHT + (libraryDrag.item.h - 1) * SPATIAL_GAP}/></CardBoundary></div>}>
           {geometry.map((rect, cardIndex) => {
             const instance = instancesById.get(rect.i)
             if (instance === undefined) return null

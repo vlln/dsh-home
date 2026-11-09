@@ -197,8 +197,9 @@ test('the drag ghost is the card it will become', async () => {
   // already sized as if padded, and it took `defaults.size` instead of the size the drop
   // would produce. Both are gone — the ghost takes the real card's geometry and size.
   const [styles, page] = await Promise.all([read('library-styles.ts'), read('page.tsx')])
-  assert.match(styles, /\.dsh-library-ghost \{[^}]*padding:var\(--dsh-card-pad\)/s, 'ghost has the card padding')
-  assert.match(styles, /\.dsh-library-ghost \{[^}]*border-radius:var\(--dsh-card-radius\)/s, 'ghost has the card radius')
+  // The ghost is a real card element, not a look-alike: same classes, same size attribute.
+  assert.match(page, /libraryGhost=\{libraryDrag && <div className="dsh-card dsh-home-widget" data-size=\{sizeFromRect/, 'ghost renders a real card')
+  assert.doesNotMatch(styles, /\.dsh-library-ghost \{[^}]*padding:/s, 'the outer box adds no padding of its own')
   assert.match(page, /size=\{sizeFromRect\(/, 'ghost takes the size the drop will produce')
   assert.match(page, /width=\{widgetWidthForColumns\(libraryDrag\.item\.w\)\}/, 'ghost width is a card width')
   assert.doesNotMatch(page, /cardContentSize\(libraryDrag/, 'no second sizing path')
