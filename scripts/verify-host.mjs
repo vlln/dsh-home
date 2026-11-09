@@ -296,6 +296,13 @@ async function packedBoardCase(page) {
   // gesture stop path must not compact. A packed board has nowhere to drag to, so a UI
   // drag here would prove nothing either way.
   check('first-run board is packed: first row at the grid top', { boxes: boxes.length })
+  // A card that hit its error boundary renders the fallback text and throws nothing, so
+  // pageerror stays empty and a screenshot of it looks like "the card rendered". Assert
+  // the content is real before anything else trusts this page.
+  const broken = await page.evaluate(() => [...document.querySelectorAll('.dsh-home-widget')]
+    .filter(el => /failed to render|无法显示/i.test(el.textContent || ''))
+    .map(el => el.dataset.widgetId))
+  assert.deepEqual(broken, [], `cards rendered their error fallback: ${broken.join(', ')}`)
 }
 async function recentCases(page) {
   // No synthetic ledger. The card is fixed at five rows and has no search box or
