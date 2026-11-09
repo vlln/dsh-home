@@ -130,6 +130,12 @@ test('todo rows keep the measured checkbox and heading', async () => {
   assert.match(todo, /dsh-todo-add/, 'the add row is part of the card, not a dialog')
 })
 
+test('balance uses the card metric size, not the stat-card size', async () => {
+  const balance = await read('balance-widget.tsx')
+  assert.match(balance, /CardHero/, 'balance renders through CardHero')
+  assert.match(plan, /24\/500/, 'the 24-vs-32 decision is recorded')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')
