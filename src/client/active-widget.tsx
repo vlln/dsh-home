@@ -15,7 +15,8 @@ import type { WidgetContentProps } from './widget-contract.ts'
 import type { DayBucket, LedgerSnapshot } from './api.ts'
 import { ACTIVE_DAY_COUNT as DAY_COUNT, ACTIVE_RANGES as RANGES, activePreviewData, migrateActiveConfig, validateActiveConfig, type ActiveConfig } from './active-model.ts'
 import { IconBars } from './widget-glyphs.tsx'
-import { CardBody, SegmentedControl, SegmentedControlItem, SparkBars, Tooltip, TooltipTrigger, type VizItem } from './ui/index.ts'
+import { CardBody, SegmentedControl, SegmentedControlItem, SparkBars, type VizItem } from './ui/index.ts'
+import { useHoverTip } from './hover-tip.tsx'
 
 function barLabel(day: DayBucket, t: Translate): string {
   return `${shortDay(day.key)} · ${formatDuration(day.activeMs, t)}`
@@ -30,16 +31,16 @@ function Bars({ days, t, todayKey }: { days: readonly DayBucket[]; t: Translate;
     emphasis: day.key === todayKey,
     empty: day.activeMs === 0,
   }))
+  const tip = useHoverTip()
   return <div className="flex min-h-0 flex-1 flex-col gap-1.5">
-    <SparkBars items={items} wrap={(item, bar) => (
-      <TooltipTrigger delay={60}>{bar}<Tooltip>{item.label}</Tooltip></TooltipTrigger>
-    )} className="min-h-6 flex-1" />
+    <SparkBars items={items} wrap={(item, bar) => <span className="flex w-full justify-center" {...tip.bind(item.label)}>{bar}</span>} className="min-h-6 flex-1" />
     {/* 30 天不再逐日写 30 个数字：每 5 天一个刻度，最后一天始终保留。 */}
     <div className="flex gap-1 text-center text-caption-1-medium text-text-tertiary" aria-hidden="true">
       {days.map((day, index) => <span key={day.key} className="flex-1 truncate">{
         days.length > 14 && (index % 5 !== 0) && index !== days.length - 1 ? '' : day.key.slice(8)
       }</span>)}
     </div>
+    {tip.node}
   </div>
 }
 

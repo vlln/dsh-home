@@ -41,7 +41,7 @@ export function SparkBars({ items, wrap, className, minHeight = 4 }: {
     {items.map(item => {
       const height = item.empty === true ? 0 : Math.max(minHeight, Math.round(item.ratio * 100))
       const bar = <span
-        className="relative flex h-full min-h-0 w-full max-w-9 items-end justify-center rounded-md bg-chart-track"
+        className="relative mx-auto flex h-full min-h-0 w-full max-w-9 items-end justify-center rounded-md bg-chart-track"
         data-empty={item.empty === true ? 'true' : undefined}
       >
         {item.empty === true

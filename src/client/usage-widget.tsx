@@ -11,7 +11,8 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
-import { Donut, SparkBars, Tooltip, TooltipTrigger } from './ui/index.ts'
+import { Donut, SparkBars } from './ui/index.ts'
+import { useHoverTip } from './hover-tip.tsx'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
@@ -55,6 +56,7 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
   const peak = Math.max(1, ...days.map(day => totalTokens(bucketsOf(day))))
   const windowBuckets = week ? sumDays(days) : today
   const [hover] = useState<string | null>(null)
+  const tip = useHoverTip()
   return <div className="flex h-full min-h-0 flex-col gap-3">
     <div className="flex items-start justify-between gap-3">
       <div className="flex min-w-0 flex-col gap-1.5">
@@ -79,13 +81,12 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
       const label = [`${day.key.slice(5)} · ${compactCount(value)} ${t('usage.unit')}`,
         `${t('usage.input')} ${compactCount(buckets.input)} · ${t('usage.cache')} ${compactCount(buckets.cacheRead)} · ${t('usage.output')} ${compactCount(buckets.output)}`].join('\n')
       return { key: day.key, ratio: value / peak, label, empty: value === 0, emphasis: value === peak }
-      })} className="min-h-6 flex-1" wrap={(item, bar) => (
-        <TooltipTrigger delay={60}>{bar}<Tooltip>{item.label}</Tooltip></TooltipTrigger>
-      )} />
+      })} className="min-h-6 flex-1" wrap={(item, bar) => <span className="flex w-full justify-center" {...tip.bind(item.label)}>{bar}</span>} />
       <div className="flex gap-1.5" aria-hidden="true">
         {days.map(day => <span key={day.key} className="min-w-0 flex-1 text-center text-caption-1-medium tabular-nums text-text-tertiary">{day.key.slice(8)}</span>)}
       </div>
     </div>}
+    {tip.node}
   </div>
 }
 

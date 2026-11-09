@@ -54,5 +54,4 @@ export { Row, RowButton, RowLink } from './row.tsx'
 export * from './boardui/button.tsx'
 export * from './boardui/chip.tsx'
 export * from './boardui/segmented-control.tsx'
-export * from './boardui/tooltip.tsx'
 // </generated:surface>
