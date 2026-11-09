@@ -12,6 +12,7 @@ import { readFile } from 'node:fs/promises'
 const client = new URL('../src/client/', import.meta.url)
 const read = (name) => readFile(new URL(name, client), 'utf8')
 const doc = await readFile(new URL('../docs/boardui-conformance.md', import.meta.url), 'utf8')
+const plan = await readFile(new URL('../docs/conformance-plan.md', import.meta.url), 'utf8')
 
 const [theme, viz, parts, page] = await Promise.all([
   read('theme.css'), read('ui/viz.tsx'), read('ui/parts.tsx'), read('page.tsx'),
@@ -99,7 +100,7 @@ test('timer cards are self-built but only use measured sizes', async () => {
 test('the clock is the one deliberate size above the list, and says so', async () => {
   const personal = await read('personal-widgets.tsx')
   assert.match(personal, /text-display-3-semibold/, 'clock time is display-3 (40/600)')
-  assert.match(doc, /40\/600/, 'the deviation is recorded')
+  assert.match(plan, /40\/600/, 'the deviation is recorded in the plan')
 })
 
 test('rings keep BoardUI\'s ratio and caps', async () => {
