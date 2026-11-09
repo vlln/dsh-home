@@ -74,6 +74,21 @@
 > 唯一不一致的是比例：他们的格子是横向的 4:3，我们是正方形。改成 4:3 会让一屏能排下的
 > 周数变化，动之前要先确认卡片宽度预算。
 
+## 3.6 列表行（`Row*`）
+
+量于 2026-11-09，`components/data-table`。
+
+| 属性 | BoardUI | 我们 |
+|---|---|---|
+| 单元格内边距 | **10 / 12** | `px-3 py-1.5`（12 / 6） |
+| 字号 | **14/500** | `text-body-medium`（14/500）✅ |
+| 行高 | 表头 45、数据行 **59** | **32** ⚠️ |
+| 行分隔 | 1px 底边（`border-table`） | `divide-y` + `--dsh-hairline` |
+| 表头 | 14/500，`text-tertiary` | 分组标题同样式 ✅ |
+
+> 59 是**整页表格**的行高，塞不进一张摘要卡：5 行就 295px。摘要卡刻意用 32，
+> 只采用它的内边距、字号和分隔线。这是清单里唯一一处有意的密度偏差。
+
 ## 4. 我们的卡片 → BoardUI 的同类
 
 | 我们的卡 | BoardUI 里最接近 | 状态 |
@@ -81,7 +96,7 @@
 | Tokens / Recent activity | `bar-chart-card`（Pro，量了柱子） | 结构照做，柱状图按第 2 节 |
 | Work footprints | `heatmap-chart-card`（Pro，量了格子） | 见第 3.5 节；圆角一致，比例待定 |
 | Session status | `stat-cards`（Pro，量了字号与圆角） | 用 `StatGrid` |
-| Recent sessions / Pinned | `data-table` 的行 | 用 `RowButton`；行高待量 |
+| Recent sessions / Pinned | `data-table` 的行 | 用 `RowButton`；见 3.6（内边距/字号/分隔照做，行高刻意 32） |
 | Today（24 小时轨） | 无同类（自研） | 用 track 色 + 数据色，保持第 1 节字体 |
 | Clock / Notes / Quote | 无同类 | 自研，字体与圆角一律取第 1 节 |
 
@@ -89,7 +104,6 @@
 
 ## 5. 已知还没量的
 
-- 表格行高与单元格内边距（`data-table`）
 - `data-grid` 的列头样式
 - 浅色模式下 `stat-cards` 的底色层级
 

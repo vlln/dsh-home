@@ -40,7 +40,7 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
   return (
     <div className="dsh-recent" data-status-source={source}>
       {empty === null ? (
-        <ol className="dsh-recent-list flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
+        <ol className="dsh-recent-list flex min-h-0 flex-1 flex-col divide-y divide-[var(--dsh-hairline)] overflow-hidden">
           {shown.map(session => {
             const title = session.title ?? t('recent.untitled')
             const workspace = session.cwd === undefined ? t('recent.unknownCwd') : labels.get(session.cwd) ?? session.cwd

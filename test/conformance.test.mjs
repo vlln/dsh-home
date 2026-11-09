@@ -53,6 +53,16 @@ test('heat cells keep BoardUI\'s 4px radius', () => {
   return viz.then(source => assert.match(source, /rounded-\[4px\]/))
 })
 
+test('list rows keep BoardUI\'s cell metrics', () => {
+  // data-table: 14/500 cells, 10/12 padding, 1px separators. Height is the one
+  // deliberate deviation (32 not 59) and is recorded in the doc.
+  const row = read('ui/row.tsx')
+  return row.then(source => {
+    assert.match(source, /px-3/, 'horizontal cell padding 12')
+    assert.match(source, /text-body-medium/, 'cell text 14/500')
+  })
+})
+
 test('every primitive we implement is recorded in the conformance doc', () => {
   // If a primitive is not in the doc, it was not measured, and "looks like BoardUI"
   // is a guess. Keep this list in step with docs/boardui-conformance.md.
