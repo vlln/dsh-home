@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
-import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
+import { bucketsOf, compactCount, type TokenBuckets } from './usage-model.ts'
 import { Donut } from './ui/index.ts'
 import { useHoverTip } from './hover-tip.tsx'
 import type { Translate } from './format.ts'
@@ -41,37 +41,27 @@ function percent(value: number): string {
 }
 
 /**
- * 用量卡：一个主值 + 一条七天轨道柱 + 一枚构成环。
+ * 用量卡：今天的输入与输出 token，一个环，中心是合计。
  *
- * 上一版把「主值 / 单位 / 环形 / 三个 chip / 七根柱 / 两行脚注」全塞进一张卡，
- * 结果六种字号互相打架、柱子没有轨道、空值那天直接消失。这里按 BoardUI 的卡片
- * 顺序重排：指标和单位同一行，环形只说「缓存命中」，柱状只说「这七天」，其余
- * 降级成一行图例；脚注删掉，因为它重复了柱状已经说过的话。
+ * 结构取自参考卡（睡眠评分）：一个大环按成分切段、中心放总数、下方是成分行列表。
+ * 缓存 token 不在这张卡上——那是服务商省下的钱，不是用户花掉的。
  */
 function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Translate; compact: boolean; week: boolean }): ReactNode {
   const today = bucketsOf(data.today)
-  const total = totalTokens(today)
-  const hit = cacheHitRate(today)
-  const days = week ? data.days.slice(-7) : []
-  const peak = Math.max(1, ...days.map(day => totalTokens(bucketsOf(day))))
-  const windowBuckets = week ? sumDays(days) : today
+  // The total is what the card is about: tokens read and written today. Cache traffic is
+  // the provider's saving, not the user's spending, so it is not on this card at all.
+  const total = today.input + today.output
   const tip = useHoverTip()
   const [hover, setHover] = useState<string | null>(null)
-  // One card, one graphic: two rings, each a category split into its parts. The bars are
-  // gone — a strip of per-day bars next to a ring made the same card answer two questions.
-  const fresh = today.input + today.output
-  const cache = today.cacheRead + today.cacheWrite
-  // The reference card, exactly: one ring split into its parts, the total in the middle,
-  // and a row list underneath. No tiles, no concentric gauges.
+  // The reference card: one ring split into its parts, the total in the middle, and the
+  // parts as a row list underneath. No bars, no tiles, no concentric gauges.
   const parts = [
     { key: 'input', tone: PART_TONE.input, value: today.input, label: t('usage.input') },
     { key: 'output', tone: PART_TONE.output, value: today.output, label: t('usage.output') },
-    { key: 'cacheRead', tone: PART_TONE.cacheRead, value: today.cacheRead, label: t('usage.cacheRead') },
-    { key: 'cacheWrite', tone: PART_TONE.cacheWrite, value: today.cacheWrite, label: t('usage.cacheWrite') },
   ]
   const share = (value: number) => total === 0 ? '—' : percent(value / total)
-  // A 1% arc is invisible, so the ring showed one colour while four parts existed. Every
-  // non-zero part keeps a minimum arc; the largest part gives up the difference.
+  // A 1% arc is invisible, so a two-part ring could show one colour. Every non-zero part
+  // keeps a minimum arc; the largest part gives up the difference.
   const MIN_ARC = 0.07
   const arcs = (() => {
     const raw = parts.map(part => (total === 0 ? 0 : part.value / total))
