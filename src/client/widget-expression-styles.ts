@@ -27,7 +27,7 @@ export const widgetExpressionStyles = `
 .dsh-home-widget .dsh-rhythm-bar[data-today="true"] { opacity:1; }
 .dsh-home-widget .dsh-area-track { height:7px; }
 .dsh-home-widget .dsh-area-track > span { background:var(--color-chart-4); opacity:.8; }
-.dsh-home-widget .dsh-pinned-summary { padding-bottom:6px; border-bottom:.5px solid var(--dsh-hairline); }
+.dsh-home-widget .dsh-pinned-summary { padding-bottom:6px; }
 .dsh-home-widget .dsh-pinned-summary strong { color:var(--color-text-primary); font:var(--dsh-font-xs-strong-13); }
 .dsh-home-widget .dsh-focus-snippet { border-inline-start:3px solid var(--color-chart-4); padding-inline-start:12px; margin-block:0; color:var(--color-text-secondary); }
 .dsh-home-widget .dsh-focus-primary { background:var(--color-accent-500); color:var(--color-text-white); }

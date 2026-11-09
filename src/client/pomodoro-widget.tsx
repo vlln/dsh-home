@@ -73,8 +73,8 @@ function PomodoroBody({ pomodoro, today, t, readOnly, onStart, onPause, onSkip, 
       <Button variant="primary" size="small" disabled={readOnly} onClick={running ? onPause : onStart}>
         {running ? t('timer.pause') : t('pomodoro.start')}
       </Button>
-      <Button variant="secondary" size="xs" disabled={readOnly} onClick={onSkip}>{t('pomodoro.skip')}</Button>
-      <Button variant="ghost" size="xs" disabled={readOnly} onClick={onReset}>{t('timer.reset')}</Button>
+      <Button variant="secondary" size="small" disabled={readOnly} onClick={onSkip}>{t('pomodoro.skip')}</Button>
+      <Button variant="ghost" size="small" disabled={readOnly} onClick={onReset}>{t('timer.reset')}</Button>
     </div>
   </div>
 }

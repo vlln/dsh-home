@@ -174,6 +174,17 @@ test('dividers: one hairline token, and never a rule per row', async () => {
   for (const source of sources) assert.doesNotMatch(source, /\+\s*\.dsh-row\s*\{[^}]*border-top/s, 'no per-row rules')
 })
 
+test('time cards share one action row', async () => {
+  // The three time cards had mixed sizes: a 32px primary next to a 24px ghost, and a skippable
+  // secondary. One size for actions (`small`), one primary, one secondary, ghost for the rest.
+  const [pomodoro, timer] = await Promise.all([read('pomodoro-widget.tsx'), read('timer-widget.tsx')])
+  for (const source of [pomodoro, timer]) {
+    assert.doesNotMatch(source, /size="xs"/, 'actions are `small`, never `xs`')
+    const primaries = source.match(/variant="primary"/g) ?? []
+    assert.ok(primaries.length >= 1, 'each card has exactly one kind of primary action')
+  }
+})
+
 test('a card is a container, not a target', async () => {
   // The whole card used to tint on hover, which made it read as one big button and erased
   // the card/content boundary. Only the element under the pointer may react.

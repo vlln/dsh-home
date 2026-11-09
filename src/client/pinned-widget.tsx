@@ -25,8 +25,7 @@ export function PinnedBody() {
     else group.items.push(session)
   }
   return <div className="dsh-pinned" data-status-source={statusSource}>
-    <div className="dsh-pinned-summary"><strong>{t('pinned.count', { count: rows.length })}</strong>
-      {shown.length < rows.length && <span>{t('pinned.visible', { shown: shown.length, total: rows.length })}</span>}</div>
+    {shown.length < rows.length && <div className="dsh-pinned-summary"><span>{t('pinned.visible', { shown: shown.length, total: rows.length })}</span></div>}
     {pins?.status === 'error' && rows.length > 0 && <p className="dsh-muted" role="alert">{t('pinned.error')}</p>}
     {rows.length === 0 ? <CardEmpty title={t(stateKey)} detail={pins?.status === 'ready' ? t('pinned.hint') : undefined} />
       : <div className="dsh-rows dsh-pinned-rows" ref={rowsRef}>

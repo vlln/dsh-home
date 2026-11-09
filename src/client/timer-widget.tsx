@@ -220,7 +220,7 @@ function TimerBody({ elapsed, targetMs, running, readOnly, t, onPreview, onCommi
         : <>
           <Button variant="primary" size="small" disabled={readOnly}
             onClick={reached ? onRestart : running ? onPause : onStart}>{primary}</Button>
-          <Button variant="ghost" size="xs" disabled={readOnly} onClick={onReset}>{t('timer.reset')}</Button>
+          <Button variant="ghost" size="small" disabled={readOnly} onClick={onReset}>{t('timer.reset')}</Button>
         </>}
     </div>
   </div>
