@@ -156,7 +156,8 @@ test('session status and tokens use the measured primitives', async () => {
   const viz = await read('ui/viz.tsx')
   assert.match(usage, /<ActivityRings/, 'tokens draws the activity rings')
   assert.doesNotMatch(usage, /SparkBars/, 'no bar strip in the tokens card')
-  assert.match(viz, /<title>\{segment\.label\}<\/title>/, 'every arc has a tooltip label')
+  assert.match(usage, /bind=\{tip\.bind\}/, 'every arc is bound to the app tooltip')
+  assert.doesNotMatch(viz, /strokeOpacity/, 'segments are solid colours, not shades of one')
 })
 
 test('heat cells are square', async () => {

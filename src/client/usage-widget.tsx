@@ -34,7 +34,7 @@ function validateUsageConfig(value: unknown): value is UsageConfig {
 export interface UsagePreviewData { today: { tokens: TokenBuckets; runMs: number }; days: DayBucket[] }
 
 /** Token 卡的三段配色，与环形、图例共用一处定义——两处写颜色迟早会漂。 */
-const PART_TONE = { input: 'chart-4', output: 'chart-5', cache: 'chart-2', cacheWrite: 'chart-2' } as const
+const PART_TONE = { input: 'chart-4', output: 'chart-5', cacheRead: 'chart-2', cacheWrite: 'chart-3' } as const
 
 function percent(value: number): string {
   return `${Math.round(value * 100)}%`
@@ -64,10 +64,10 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
   // Reference layout: a headline, a row of tiles (one per part), then the ring. The ring
   // alone left the rest of the card empty, which is the fill-rate rule again.
   const parts = [
-    { key: 'input', tone: PART_TONE.input, opacity: 1, value: today.input, label: t('usage.input') },
-    { key: 'output', tone: PART_TONE.input, opacity: 0.55, value: today.output, label: t('usage.output') },
-    { key: 'cacheRead', tone: PART_TONE.cache, opacity: 1, value: today.cacheRead, label: t('usage.cacheRead') },
-    { key: 'cacheWrite', tone: PART_TONE.cache, opacity: 0.55, value: today.cacheWrite, label: t('usage.cacheWrite') },
+    { key: 'input', tone: PART_TONE.input, value: today.input, label: t('usage.input') },
+    { key: 'output', tone: PART_TONE.output, value: today.output, label: t('usage.output') },
+    { key: 'cacheRead', tone: PART_TONE.cacheRead, value: today.cacheRead, label: t('usage.cacheRead') },
+    { key: 'cacheWrite', tone: PART_TONE.cacheWrite, value: today.cacheWrite, label: t('usage.cacheWrite') },
   ]
   const share = (value: number) => total === 0 ? '—' : percent(value / total)
   return <div className="flex h-full min-h-0 flex-col gap-3">
@@ -78,7 +78,7 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
     <div className="grid grid-cols-2 gap-1.5">
       {parts.map(part => <div key={part.key} className="flex min-w-0 flex-col gap-0.5 rounded-[10px] bg-[var(--dsh-sunken)] px-2.5 py-2">
         <span className="flex items-center gap-1.5 text-caption-1-medium text-text-tertiary">
-          <i className="size-2 rounded-[3px]" style={{ background: `var(--color-${part.tone})`, opacity: part.opacity }} aria-hidden="true" />
+          <i className="size-2 rounded-[3px]" style={{ background: `var(--color-${part.tone})` }} aria-hidden="true" />
           <span className="truncate">{part.label}</span>
         </span>
         <span className="flex items-baseline gap-1.5">
@@ -87,12 +87,13 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
         </span>
       </div>)}
     </div>
-    <div className="flex min-h-0 flex-1 items-center justify-center">
-      <ActivityRings size={compact ? 96 : 132} rings={[
+    <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
+      <ActivityRings size={compact ? 104 : 128} bind={tip.bind} rings={[
         { key: 'fresh', segments: parts.slice(0, 2).map(part => ({ ...part, label: `${part.label} · ${compactCount(part.value)} ${t('usage.unit')} · ${share(part.value)}` })) },
         { key: 'cache', segments: parts.slice(2).map(part => ({ ...part, label: `${part.label} · ${compactCount(part.value)} ${t('usage.unit')} · ${share(part.value)}` })) },
       ]} />
     </div>
+    {tip.node}
   </div>
 }
 
