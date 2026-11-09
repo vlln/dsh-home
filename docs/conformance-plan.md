@@ -24,7 +24,7 @@
 | 打卡 | `habit` | `project-board` + `checkbox` | ✅ | 行结构 + 勾选框 16/r4 均已验证 |
 | 计划 | `plan` | `data-table` 行 | 🔶 | 时间列宽度、时间轴竖线未量 |
 | 时钟 | `clock` | 无 | ✅ | 时间 `display-3`（40/600）**有意超出**清单最大值 32；日期块 `rounded-xl`；时区用 quiet select |
-| 便笺 | `notes` | 无 | 🔶 | 空态已验证（占位 14/400 左对齐）；**有内容态未拍到**（Escape 取消了编辑） |
+| 便笺 | `notes` | 无 | ✅ | 空态 + 有内容态都拍到（深浅）；标题 14/500、正文 14/400、占位同档降色 |
 | 番茄钟 | `pomodoro` | `activity-rings-card`（已量环；Pro 无源码） | ✅ | 环 10%/round 端头、环心 `title-1`、按钮组仅用 vendored Button；深浅实图已验 |
 | 计时器 | `timer` | `activity-rings-card` | ✅ | 同上；表盘刻度自研（清单内数字） |
 | 倒计时 | `countdown` | 无 | ✅ | 主值 `display-4/32` + 单位 `caption-1/12` 同行；深浅实图已验 |

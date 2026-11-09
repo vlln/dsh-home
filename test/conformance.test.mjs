@@ -103,6 +103,14 @@ test('the clock is the one deliberate size above the list, and says so', async (
   assert.match(plan, /40\/600/, 'the deviation is recorded in the plan')
 })
 
+test('notes keeps the three text roles from the list', async () => {
+  // A note is the one card where read and edit share a surface, so it does not use Row.
+  // What it must still do is take its three sizes from the ramp.
+  const personal = await read('personal-widgets.tsx')
+  assert.match(personal, /dsh-note-title text-body-medium/, 'content title 14/500')
+  assert.match(personal, /dsh-note-body[^"]*text-body-regular/, 'body 14/400')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')
