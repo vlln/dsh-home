@@ -364,7 +364,7 @@ export const CSS = `
 .dsh-settings-fields { margin: 12px 0; min-width: 0; }
 /* Fill only the content flex box, excluding the shell header and padding. The
    observer reports this available viewport, independent of overflowing children. */
-.dsh-widget-viewport { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; }
+.dsh-widget-viewport { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; overflow: hidden; }
 .dsh-home [inert] { cursor: default; }
 .dsh-home .dsh-tool:disabled { opacity: 0.4; cursor: default; }
 
@@ -393,13 +393,13 @@ export const CSS = `
    gives each entry air instead of scaling the text. */
 .dsh-recent { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .dsh-recent-list {
-  display: flex; flex-direction: column; justify-content: center; gap: 2px; flex: 1 1 auto;
+  display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; flex: 1 1 auto;
   min-height: 0; margin: 0; padding: 0; list-style: none;
 }
 /* 43px is the two-line content budget (18 + 3 + 18 + 4): five of them, plus gaps, still
    fit a grandfathered 6-row card. A taller card hands the extra space to the entries,
    capped at 86px so a 10-row card gets air instead of a stretched list. */
-.dsh-recent-list > li { display: flex; flex: 1 1 0; min-height: 42px; max-height: 86px; }
+.dsh-recent-list > li { display: flex; flex: 0 0 auto; min-height: 32px; }
 .dsh-recent-item {
   display: flex; flex-direction: column; justify-content: center; gap: 3px;
   box-sizing: border-box; width: 100%; min-width: 0;

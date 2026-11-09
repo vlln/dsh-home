@@ -98,14 +98,14 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
         ]}
         center={<span className="text-caption-1-semibold tabular-nums text-text-primary" title={t('usage.hit')}>{total === 0 || hit === null ? '—' : percent(hit)}</span>} />
     </div>
-    {week && <div className="mt-auto flex flex-col gap-1.5">
+    {week && <div className="mt-auto flex min-h-0 flex-1 flex-col gap-1.5">
       <SparkBars items={days.map(day => {
       const buckets = bucketsOf(day)
       const value = totalTokens(buckets)
       const label = [`${day.key.slice(5)} · ${compactCount(value)} ${t('usage.unit')}`,
         `${t('usage.input')} ${compactCount(buckets.input)} · ${t('usage.cache')} ${compactCount(buckets.cacheRead)} · ${t('usage.output')} ${compactCount(buckets.output)}`].join('\n')
       return { key: day.key, ratio: value / peak, label, empty: value === 0, emphasis: value === peak }
-      }).reverse()} className="h-20" wrap={(item, bar) => <span className="flex w-full justify-center" {...tip.bind(item.label)}>{bar}</span>} />
+      }).reverse()} className="min-h-6 flex-1" wrap={(item, bar) => <span className="flex w-full justify-center" {...tip.bind(item.label)}>{bar}</span>} />
       <div className="flex gap-1.5" aria-hidden="true">
         {[...days].reverse().map(day => <span key={day.key} className="min-w-0 flex-1 text-center text-caption-1-medium tabular-nums text-text-tertiary">{weekday(day.key)}</span>)}
       </div>

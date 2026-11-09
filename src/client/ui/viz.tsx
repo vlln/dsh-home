@@ -45,12 +45,12 @@ export function SparkBars({ items, wrap, className, minHeight = 4 }: {
         data-empty={item.empty === true ? 'true' : undefined}
       >
         {item.empty === true
-          ? <span className="h-px w-[58%] bg-chart-neutral" />
+          ? <span className="h-px w-full bg-chart-neutral" />
           : <span
             // Solid, not 75%-over-the-track: an alpha fill let the track show through the
             // bar and read as a second, lighter block inside it.
             className={cx(
-              'w-[58%] rounded-[4px] transition-[height] duration-300 ease-out',
+              'w-full rounded-[4px] transition-[height] duration-300 ease-out',
               'bg-chart-4 hover:bg-chart-4-active',
               item.emphasis === true ? 'opacity-100' : 'opacity-85 hover:opacity-100',
             )}
