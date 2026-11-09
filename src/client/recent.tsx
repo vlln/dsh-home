@@ -58,27 +58,27 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
                 <span className="truncate">{group.label}</span>
                 <span className="tabular-nums text-text-tertiary">{group.items.length}</span>
               </h3>
-              <ul className="dsh-recent-group-list">
+              <ul className="dsh-session-cards">
                 {group.items.map(session => {
                   const title = session.title ?? t('recent.untitled')
                   const status = recentSessionStatus(session, source === 'runtime' ? statuses?.get(session.id) : undefined)
                   const statusLabel = t(`recent.status.${status}`)
                   const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
+                  // Reminder-card anatomy: each session is its own tile with a filled state
+                  // disc, a date badge, and the title. Not a table row.
                   return (
                     <li key={session.id}>
-                      <RowButton onClick={() => { actions.openSession(session.id) }}
-                        data-session-id={session.id} data-status={status}
+                      <button type="button" className="dsh-session-card" data-session-id={session.id} data-status={status}
                         aria-label={`${title} · ${group.label} · ${statusLabel} · ${trailing}`}
-                        trailing={<span className="dsh-time-pill tabular-nums">{trailing}</span>}>
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          {/* Reminder-card anatomy: the state is a glyph in a tinted disc,
-                              the title is the only text, the time sits in its own pill. */}
-                          <span className="dsh-avatar flex-none" data-state={status} style={{ borderRadius: '50%' }} role="img" aria-label={statusLabel} title={statusLabel}>
+                        onClick={() => { actions.openSession(session.id) }}>
+                        <span className="dsh-session-card-top">
+                          <span className="dsh-session-tile" data-state={status} role="img" aria-label={statusLabel}>
                             <StateDot state={sessionDotState(status)} />
                           </span>
-                          <span className="dsh-recent-title truncate">{title}</span>
+                          <span className="dsh-time-pill tabular-nums">{trailing}</span>
                         </span>
-                      </RowButton>
+                        <span className="dsh-session-card-title">{title}</span>
+                      </button>
                     </li>
                   )
                 })}

@@ -703,4 +703,22 @@ const designSystemStyles = `
 @media (prefers-reduced-motion: reduce) {
   .dsh-quiet-select { transition: none; }
 }
+.dsh-session-cards { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.dsh-session-card {
+  display: flex; flex-direction: column; gap: 8px; width: 100%;
+  padding: 12px; border-radius: 12px; border: 0;
+  background: var(--dsh-sunken); color: inherit; text-align: left; cursor: pointer;
+  transition: background 120ms ease;
+}
+.dsh-session-card:hover { background: var(--dsh-card-hover); }
+.dsh-session-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dsh-session-card-title { font: var(--dsh-font-s-semibold-14); color: var(--color-text-primary); }
+.dsh-session-tile { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; }
+.dsh-session-tile > * { width: 8px; height: 8px; border-radius: 9999px; background: var(--color-text-white); }
+.dsh-session-tile[data-state="running"] { background: var(--color-status-lime-text); }
+.dsh-session-tile[data-state="waiting"] { background: var(--color-status-yellow-text); }
+.dsh-session-tile[data-state="unread"] { background: var(--color-chart-4); }
+.dsh-session-tile[data-state="done"], .dsh-session-tile[data-state="archived"], .dsh-session-tile[data-state="idle"] { background: var(--color-text-tertiary); }
 `
+
+/* Reminder-card behaviour: the rows are tiles on the card surface, not lines in a table. */
