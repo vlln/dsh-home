@@ -76,7 +76,6 @@ export const widgetRefinementStyles = `
    targets instead of a strip of one-line rows. The list never scrolls; the footer states
    the real total. Entry styling lives next to the component in styles.ts. */
 .dsh-home-widget .dsh-recent { gap:6px; height:100%; min-height:0; }
-.dsh-home-widget .dsh-recent > .dsh-recent-footer { flex:none; padding-top:4px; border-top:.5px solid var(--dsh-hairline); }
 .dsh-home-widget .dsh-recent > .dsh-empty { flex:1 1 auto; }
 .dsh-home-widget .dsh-recent-list { flex:1 1 auto; min-height:0; overflow:hidden; }
 .dsh-home-widget .dsh-recent-item { transition:background-color 120ms ease-out; }
@@ -95,7 +94,6 @@ export const widgetRefinementStyles = `
 .dsh-pinned > .dsh-empty { flex:1 1 auto; }
 .dsh-pinned-rows { flex:1 1 auto; min-height:0; overflow:hidden; margin:0; padding:2px; }
 .dsh-pinned-rows .dsh-row { flex:none; }
-.dsh-pinned-rows .dsh-row + .dsh-row { border-top:.5px solid var(--dsh-hairline); }
 
 /* Task choices remain choices; the only primary action still prepares a draft. */
 .dsh-home-widget .dsh-personal-clock { min-height:100%; }

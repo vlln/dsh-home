@@ -163,6 +163,17 @@ test('heat cells are square', async () => {
   assert.match(plan, /正方形/, 'the square decision is recorded in the plan')
 })
 
+test('dividers: one hairline token, and never a rule per row', async () => {
+  // The rule: a line belongs to a summary or a header block. Rows separate by space.
+  const files = ['styles.ts', 'widget-refinement-styles.ts', 'widget-expression-styles.ts', 'planner-styles.ts']
+  const sources = await Promise.all(files.map(file => read(file)))
+  const dividers = sources.flatMap(source => source.match(/border-(?:top|bottom):[^;}]*/g) ?? [])
+  for (const divider of dividers) {
+    if (/var\(--color-/.test(divider)) assert.fail(`divider uses a colour token, not the hairline: ${divider}`)
+  }
+  for (const source of sources) assert.doesNotMatch(source, /\+\s*\.dsh-row\s*\{[^}]*border-top/s, 'no per-row rules')
+})
+
 test('a card is a container, not a target', async () => {
   // The whole card used to tint on hover, which made it read as one big button and erased
   // the card/content boundary. Only the element under the pointer may react.

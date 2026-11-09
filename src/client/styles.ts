@@ -360,7 +360,7 @@ export const CSS = `
 .dsh-workbench-notice > span { overflow-wrap: anywhere; }
 .dsh-widget-own-editor { display: flex; justify-content: flex-end; margin-top: 8px; }
 .dsh-widget-config-modal .dsh-widget-settings { margin: 0; padding: 0; border: 0; }
-.dsh-widget-settings { margin-top: 16px; padding-top: 4px; border-top: 0.5px solid var(--color-border-button-default); }
+.dsh-widget-settings { margin-top: 16px; padding-top: 4px; border-top: 0.5px solid var(--dsh-hairline); }
 .dsh-settings-fields { margin: 12px 0; min-width: 0; }
 /* Fill only the content flex box, excluding the shell header and padding. The
    observer reports this available viewport, independent of overflowing children. */
