@@ -37,37 +37,53 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
   // Omitted statusSource may accompany a supplied map; explicit 'none' means do not use it.
   const source = statusSource ?? (statuses === undefined ? 'none' : 'runtime')
 
+  // Group by workspace, keeping the order in which each workspace last appeared.
+  const grouped: { key: string; label: string; items: typeof shown }[] = []
+  for (const session of shown) {
+    const key = session.cwd ?? ''
+    const label = session.cwd === undefined ? t('recent.unknownCwd') : labels.get(session.cwd) ?? session.cwd
+    const group = grouped.find(entry => entry.key === key)
+    if (group === undefined) grouped.push({ key, label, items: [session] })
+    else group.items.push(session)
+  }
   return (
     <div className="dsh-recent" data-status-source={source}>
       {empty === null ? (
         <ol className="dsh-recent-list flex min-h-0 flex-1 flex-col divide-y divide-[var(--dsh-hairline)] overflow-hidden">
-          {shown.map(session => {
-            const title = session.title ?? t('recent.untitled')
-            const workspace = session.cwd === undefined ? t('recent.unknownCwd') : labels.get(session.cwd) ?? session.cwd
-            const status = recentSessionStatus(session, source === 'runtime' ? statuses?.get(session.id) : undefined)
-            const statusLabel = t(`recent.status.${status}`)
-            const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
-            return (
-              <li key={session.id}>
-                {/* One line per session: state dot, title, workspace, time. The workspace
-                    used to be a 10px capsule on a second line, which cost 20px of height
-                    per row and read as a tag rather than as context. */}
-                <RowButton onClick={() => { actions.openSession(session.id) }}
-                  data-session-id={session.id} data-status={status}
-                  aria-label={`${title} · ${workspace} · ${statusLabel} · ${trailing}`}
-                  trailing={<span className="tabular-nums">{trailing}</span>}>
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="dsh-recent-dot flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
-                      <StateDot state={sessionDotState(status)} />
-                    </span>
-                    <span className="dsh-recent-title truncate">{title}</span>
-                    <span className="dsh-recent-workspace max-w-32 shrink truncate text-caption-1-medium text-text-tertiary">{workspace}</span>
-                    {isWaiting(status) && <span className="dsh-recent-state shrink-0 text-caption-1-medium text-status-yellow-text">{statusLabel}</span>}
-                  </span>
-                </RowButton>
-              </li>
-            )
-          })}
+          {grouped.map(group => (
+            <li key={group.key} className="dsh-recent-group">
+              {/* Sessions are grouped by workspace: with one flat list, two sessions from
+                  different directories looked like one run of the same thing. */}
+              <h3 className="dsh-recent-group-title">
+                <span className="truncate">{group.label}</span>
+                <span className="tabular-nums text-text-tertiary">{group.items.length}</span>
+              </h3>
+              <ul className="dsh-recent-group-list">
+                {group.items.map(session => {
+                  const title = session.title ?? t('recent.untitled')
+                  const status = recentSessionStatus(session, source === 'runtime' ? statuses?.get(session.id) : undefined)
+                  const statusLabel = t(`recent.status.${status}`)
+                  const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
+                  return (
+                    <li key={session.id}>
+                      <RowButton onClick={() => { actions.openSession(session.id) }}
+                        data-session-id={session.id} data-status={status}
+                        aria-label={`${title} · ${group.label} · ${statusLabel} · ${trailing}`}
+                        trailing={<span className="tabular-nums">{trailing}</span>}>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="dsh-recent-dot flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
+                            <StateDot state={sessionDotState(status)} />
+                          </span>
+                          <span className="dsh-recent-title truncate">{title}</span>
+                          {isWaiting(status) && <span className="dsh-recent-state shrink-0 text-caption-1-medium text-status-yellow-text">{statusLabel}</span>}
+                        </span>
+                      </RowButton>
+                    </li>
+                  )
+                })}
+              </ul>
+            </li>
+          ))}
         </ol>
       ) : (
         <div className="dsh-empty" role="status">{t(loadError && all.length === 0 ? 'error.load' : `recent.${empty}`)}</div>

@@ -25,7 +25,6 @@ export const activityStyles = `
 .dsh-activity-weekdays { text-align:center; font:var(--dsh-font-xxxs-11); color:var(--color-text-tertiary); }
 .dsh-activity-caption { display:flex; align-items:center; flex-wrap:wrap; gap:2px 12px; font:var(--dsh-font-xxxs-11); color:var(--color-text-tertiary); font-variant-numeric:tabular-nums; }
 .dsh-activity-range { flex:none; }
-.dsh-activity-legend { margin-inline-start:auto; }
 .dsh-activity-month { font:var(--dsh-font-xxxs-11); color:var(--color-text-tertiary); overflow:visible; }
 .dsh-activity-cell { display:block; flex:none; width:var(--dsh-activity-cell-size); height:var(--dsh-activity-cell-size); aspect-ratio:1; padding:0; border:0; border-radius:var(--dsh-radius-xs); background:var(--dsh-card); }
 button.dsh-activity-cell { cursor:pointer; transition:box-shadow 120ms ease-out; }
@@ -39,7 +38,7 @@ button.dsh-activity-cell:is(:hover,:focus-visible) { box-shadow:0 0 0 1px var(--
 .dsh-activity-spacer { visibility:hidden; }
 .dsh-activity-filters { display:flex; align-items:center; gap:10px; min-width:0; flex-wrap:wrap; flex:none; margin-inline-start:auto; }
 .dsh-activity-filters .dsh-quiet-select { max-width:160px; }
-.dsh-activity-legend { display:flex; align-items:center; justify-content:flex-start; gap:4px; font:var(--dsh-font-xxxs-11); color:var(--color-text-tertiary); }
+.dsh-activity-legend { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; font:var(--dsh-font-xxs-12); color:var(--color-text-tertiary); }
 .dsh-activity-legend .dsh-activity-cell { width:12px; height:12px; }
 .dsh-activity > .dsh-muted { margin:0; overflow-wrap:anywhere; }
 .dsh-activity-detail { display:flex; flex-direction:column; gap:6px; height:100%; min-height:0; padding:2px; font:var(--dsh-font-xs-13); }
@@ -53,16 +52,8 @@ button.dsh-activity-cell:is(:hover,:focus-visible) { box-shadow:0 0 0 1px var(--
 /* The plot is "axis + weeks". The axis is the weekday column the reference card has:
    four labels (Mon/Wed/Fri/Sun) lined up with their rows, one cell each. */
 .dsh-activity-plot { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
-.dsh-activity-axis {
-  display: grid; flex: none;
-  grid-auto-rows: var(--dsh-activity-cell-size, 12px);
-  row-gap: var(--dsh-activity-gap, 2px);
-  padding-top: 16px; /* clears the month label row above the weeks */
-  font-size: 10px; line-height: var(--dsh-activity-cell-size, 12px);
-  color: var(--color-text-tertiary);
-}
-.dsh-activity-axis span { display: block; white-space: nowrap; }
+.dsh-activity-legend { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; }
 /* Legend on the left, the exact range on the right: the range used to share space with a
    range picker that no longer exists. */
-.dsh-activity-caption { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dsh-activity-caption { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
 `

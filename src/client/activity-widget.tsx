@@ -134,9 +134,6 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
         <div className="dsh-activity-weekdays" aria-hidden="true">{weekdays.map(day => <span key={day}>{t(`activity.${day}`)}</span>)}</div>
         <div className="dsh-activity-block-days">{block.weeks.flat().map(cell)}</div>
       </section>)}</div> : <div className="dsh-activity-plot">
-        <div className="dsh-activity-axis" aria-hidden="true">
-          {weekdays.map((day, index) => <span key={day}>{index % 2 === 0 ? t(`activity.${day}`) : ''}</span>)}
-        </div>
         <div className="dsh-activity-grid" style={{ gridTemplateColumns: `repeat(${weeks.length}, var(--dsh-activity-cell-size))` }}>
         {weeks.map((week, i) => <div className="dsh-activity-week" key={i}>
           <span className="dsh-activity-month" aria-hidden="true">{week.find(day => day?.key.endsWith('-01'))?.key.slice(5, 7) ?? ''}</span>
@@ -147,8 +144,8 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
     </div>
     {/* One quiet footer row: the exact range, the legend and the two filters. The time
         zone and the "empty cells are not inactivity" paragraph were noise for the reader. */}
+    <div className="dsh-activity-legend" aria-hidden="true"><span>{t('activity.less')}</span>{([0,1,2,3,4] as const).map(level => <HeatCell key={level} size={10} level={level} />)}<span>{t('activity.more')}</span></div>
     <div className="dsh-activity-caption">
-      <div className="dsh-activity-legend"><span>{t('activity.less')}</span>{([0,1,2,3,4] as const).map(level => <HeatCell key={level} size={10} level={level} />)}<span>{t('activity.more')}</span></div>
       <span className="dsh-activity-range">{first} – {result.today}</span>
     </div>
     {tip.node}
