@@ -21,7 +21,7 @@
 | 最近活跃 | `active` | `bar-chart-card`（已量） | ✅ | 分段控件与柱状图的垂直间距未量 |
 | 工作足迹 | `activity` | `heatmap-chart-card`（已量） | 🔶 | 格子是正方形 vs 他们的 28×21；月份间隔未量 |
 | 待办 | `todo` | `project-board` / `data-table` | ⬜ | 分组标题、勾选框、添加行的样式未量 |
-| 打卡 | `habit` | `project-board` | 🔶 | 勾选框尺寸/圆角未量；行结构已用 `RowButton` |
+| 打卡 | `habit` | `project-board` | 🔶 | 行结构已验证（复选框紧贴标题、读数在右）；**勾选框 16px/r4 未量** |
 | 计划 | `plan` | `data-table` 行 | 🔶 | 时间列宽度、时间轴竖线未量 |
 | 时钟 | `clock` | 无 | 🔶 | 时间字号取的是 `display-3`，**未与他们的同类页面对照** |
 | 便笺 | `notes` | 无 | ⬜ | 标题/正文/占位的字号层级未量 |
