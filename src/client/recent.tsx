@@ -69,9 +69,11 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
                       <RowButton onClick={() => { actions.openSession(session.id) }}
                         data-session-id={session.id} data-status={status}
                         aria-label={`${title} · ${group.label} · ${statusLabel} · ${trailing}`}
-                        trailing={<span className="tabular-nums">{trailing}</span>}>
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="dsh-recent-dot flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
+                        trailing={<span className="dsh-time-pill tabular-nums">{trailing}</span>}>
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          {/* Reminder-card anatomy: the state is a glyph in a tinted disc,
+                              the title is the only text, the time sits in its own pill. */}
+                          <span className="dsh-avatar flex-none" data-state={status} style={{ borderRadius: '50%' }} role="img" aria-label={statusLabel} title={statusLabel}>
                             <StateDot state={sessionDotState(status)} />
                           </span>
                           <span className="dsh-recent-title truncate">{title}</span>

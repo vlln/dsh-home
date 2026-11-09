@@ -400,6 +400,22 @@ export const CSS = `
    fit a grandfathered 6-row card. A taller card hands the extra space to the entries,
    capped at 86px so a 10-row card gets air instead of a stretched list. */
 .dsh-recent-list > li { display: flex; flex: 0 0 auto; min-height: 32px; }
+/* Reminder-card anatomy: a 28px tinted disc holds the state glyph, and the time is a pill
+   on its own surface instead of loose grey text. */
+.dsh-avatar { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9999px; }
+.dsh-avatar[data-state="running"] { background: color-mix(in srgb, var(--color-status-lime-text) 16%, transparent); }
+.dsh-avatar[data-state="waiting"] { background: color-mix(in srgb, var(--color-status-yellow-text) 18%, transparent); }
+.dsh-avatar[data-state="unread"] { background: color-mix(in srgb, var(--color-chart-4) 16%, transparent); }
+.dsh-avatar[data-state="done"], .dsh-avatar[data-state="archived"], .dsh-avatar[data-state="idle"] { background: var(--dsh-sunken); }
+/* The glyph keeps its own colour in every state: an "idle" disc with an invisible dot read
+   as a grey blob rather than as a state. */
+.dsh-avatar > * { width: 8px; height: 8px; border-radius: 9999px; }
+.dsh-avatar[data-state="running"] > * { background: var(--color-status-lime-text); }
+.dsh-avatar[data-state="waiting"] > * { background: var(--color-status-yellow-text); }
+.dsh-avatar[data-state="unread"] > * { background: var(--color-chart-4); }
+.dsh-avatar[data-state="done"] > *, .dsh-avatar[data-state="archived"] > *, .dsh-avatar[data-state="idle"] > * { background: var(--color-text-tertiary); }
+.dsh-time-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--dsh-sunken); color: var(--color-text-tertiary); font: var(--dsh-font-xxs-12); }
+
 /* Workspace groups: a quiet heading, then its rows. Same size as the table header. */
 .dsh-pinned-group { display: flex; flex-direction: column; gap: 2px; }
 .dsh-pinned-group-title { display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 12px 4px; font: var(--dsh-font-s-strong-14); color: var(--color-text-tertiary); }
