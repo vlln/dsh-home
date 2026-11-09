@@ -15,7 +15,7 @@ import type { HomeWidgets, RegisteredWidgetDefinition, WidgetContentProps, Widge
 import { widgetText } from './widget-settings.tsx'
 import { validateWidgetConfig } from './widget-registry.ts'
 import { WidgetGallery } from './widget-gallery.tsx'
-import { cardContentSize, WidgetContentPreview } from './widget-preview.tsx'
+import { WidgetContentPreview } from './widget-preview.tsx'
 import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
 import { legacyInstanceProjection } from './widget-sizing.ts'
@@ -276,7 +276,9 @@ export function HomePage(props: HomePageProps): ReactNode {
             onLibraryDrop={(drag,accepted) => {try {if(registry.get(drag.definition.typeId)!==drag.definition||JSON.stringify(store.getSnapshot().layout)!==drag.baseLayout)throw new Error('Widget or layout changed');store.dropInstance(drag.definition,drag.id,accepted,cols)}catch{setManagementError(true)}}}
             libraryGhost={libraryDrag && <><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
               <CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetContentPreview definition={libraryDrag.definition} t={t} language={locale()}
-                size={libraryDrag.definition.defaults.size} {...cardContentSize(libraryDrag.item.w, libraryDrag.item.h)}/></CardBoundary></>}>
+                size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)}
+                width={widgetWidthForColumns(libraryDrag.item.w)}
+                height={libraryDrag.item.h * SPATIAL_ROW_HEIGHT + (libraryDrag.item.h - 1) * SPATIAL_GAP}/></CardBoundary></>}>
           {geometry.map((rect, cardIndex) => {
             const instance = instancesById.get(rect.i)
             if (instance === undefined) return null

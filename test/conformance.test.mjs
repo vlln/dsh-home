@@ -192,6 +192,18 @@ test('time cards share one action row', async () => {
   }
 })
 
+test('the drag ghost is the card it will become', async () => {
+  // Two logics used to size the preview: the ghost had no padding while its content was
+  // already sized as if padded, and it took `defaults.size` instead of the size the drop
+  // would produce. Both are gone — the ghost takes the real card's geometry and size.
+  const [styles, page] = await Promise.all([read('library-styles.ts'), read('page.tsx')])
+  assert.match(styles, /\.dsh-library-ghost \{[^}]*padding:var\(--dsh-card-pad\)/s, 'ghost has the card padding')
+  assert.match(styles, /\.dsh-library-ghost \{[^}]*border-radius:var\(--dsh-card-radius\)/s, 'ghost has the card radius')
+  assert.match(page, /size=\{sizeFromRect\(/, 'ghost takes the size the drop will produce')
+  assert.match(page, /width=\{widgetWidthForColumns\(libraryDrag\.item\.w\)\}/, 'ghost width is a card width')
+  assert.doesNotMatch(page, /cardContentSize\(libraryDrag/, 'no second sizing path')
+})
+
 test('a card is a container, not a target', async () => {
   // The whole card used to tint on hover, which made it read as one big button and erased
   // the card/content boundary. Only the element under the pointer may react.
