@@ -67,7 +67,7 @@ test('stat tiles keep the measured padding and label size', async () => {
   // stat-cards (2026-11-09): padding 8, label 14/500, radius 16. The value is 32/500
   // on a standalone stat card; our three-up tile uses 20/500 (recorded deviation).
   const parts = await read('ui/parts.tsx')
-  assert.match(parts, /rounded-xl bg-\[var\(--dsh-sunken\)\] p-2/, 'tile padding 8')
+  assert.match(parts, /rounded-xl bg-\[var\(--dsh-sunken\)\] p-4/, 'tile padding 16 (stat-cards p-4)')
   assert.match(parts, /text-body-medium text-text-tertiary/, 'tile label 14/500')
 })
 

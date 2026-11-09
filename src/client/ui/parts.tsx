@@ -70,7 +70,7 @@ export function StatGrid({ stats, className }: {
   className?: string
 }): ReactNode {
   return <div className={cx('grid gap-2', className)} style={{ gridTemplateColumns: `repeat(${Math.max(1, stats.length)}, minmax(0, 1fr))` }}>
-    {stats.map(stat => <div key={stat.key} className="flex min-w-0 flex-col gap-1 rounded-xl bg-[var(--dsh-sunken)] p-2">
+    {stats.map(stat => <div key={stat.key} className="flex min-w-0 flex-col gap-1 rounded-xl bg-[var(--dsh-sunken)] p-4">
       <span className="truncate text-body-medium text-text-tertiary">{stat.label}</span>
       <span className={cx('truncate text-title-2-medium tabular-nums', {
         default: 'text-text-primary',
