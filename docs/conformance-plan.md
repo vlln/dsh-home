@@ -28,7 +28,7 @@
 | 番茄钟 | `pomodoro` | `activity-rings-card`（已量环；Pro 无源码） | ✅ | 环 10%/round 端头、环心 `title-1`、按钮组仅用 vendored Button；深浅实图已验 |
 | 计时器 | `timer` | `activity-rings-card` | ✅ | 同上；表盘刻度自研（清单内数字） |
 | 倒计时 | `countdown` | 无 | ✅ | 主值 `display-4/32` + 单位 `caption-1/12` 同行；深浅实图已验 |
-| 引用 | `quote` | 无 | 🔶 | 引号装饰尺寸未量（现用 display-4） |
+| 引用 | `quote` | 无 | ✅ | 引号 `display-4` 但用**三级墨**（装饰不占数据色）；正文 `headline` 16/400 |
 | 图片 | `picture` | 无 | ⬜ | 圆角/留白未量；空态未定义 |
 | 置顶 | `pinned` | `data-table` 行 | 🔶 | 与最近会话共用行，行高偏差同上 |
 | 余额 | `balance` | `stat-cards` | 🔶 | 主值 24/500 与他们的 32/500 差异未决（摘要卡 vs 统计卡） |

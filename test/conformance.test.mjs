@@ -111,6 +111,13 @@ test('notes keeps the three text roles from the list', async () => {
   assert.match(personal, /dsh-note-body[^"]*text-body-regular/, 'body 14/400')
 })
 
+test('the quote mark is decoration: tertiary ink, never the data colour', async () => {
+  const quote = await read('quote-widget.tsx')
+  assert.match(quote, /text-display-4-semibold leading-none text-text-tertiary/, 'mark uses tertiary ink')
+  assert.doesNotMatch(quote, /text-chart-4[^"]*" aria-hidden="true">“/, 'mark does not borrow chart ink')
+  assert.match(quote, /text-headline-regular/, 'quote body is headline size')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')
