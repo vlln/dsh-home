@@ -58,27 +58,25 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
                 <span className="truncate">{group.label}</span>
                 <span className="tabular-nums text-text-tertiary">{group.items.length}</span>
               </h3>
-              <ul className="dsh-session-cards">
+              <ul className="dsh-recent-group-list">
                 {group.items.map(session => {
                   const title = session.title ?? t('recent.untitled')
                   const status = recentSessionStatus(session, source === 'runtime' ? statuses?.get(session.id) : undefined)
                   const statusLabel = t(`recent.status.${status}`)
                   const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
-                  // Reminder-card anatomy: each session is its own tile with a filled state
-                  // disc, a date badge, and the title. Not a table row.
                   return (
                     <li key={session.id}>
-                      <button type="button" className="dsh-session-card" data-session-id={session.id} data-status={status}
+                      <RowButton onClick={() => { actions.openSession(session.id) }}
+                        data-session-id={session.id} data-status={status}
                         aria-label={`${title} · ${group.label} · ${statusLabel} · ${trailing}`}
-                        onClick={() => { actions.openSession(session.id) }}>
-                        <span className="dsh-session-card-top">
-                          <span className="dsh-session-tile" data-state={status} role="img" aria-label={statusLabel}>
+                        trailing={<span className="tabular-nums">{trailing}</span>}>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="dsh-recent-dot flex-none" role="img" aria-label={statusLabel} title={statusLabel}>
                             <StateDot state={sessionDotState(status)} />
                           </span>
-                          <span className="dsh-time-pill tabular-nums">{trailing}</span>
+                          <span className="dsh-recent-title truncate">{title}</span>
                         </span>
-                        <span className="dsh-session-card-title">{title}</span>
-                      </button>
+                      </RowButton>
                     </li>
                   )
                 })}
