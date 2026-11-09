@@ -153,11 +153,13 @@ test('session status and tokens use the measured primitives', async () => {
   assert.match(status, /SegmentedControlItem/, 'session status filters through one control, not two')
   // One graphic: activity rings, each ring a category split into its parts, every arc
   // answering a hover. No bar strip — that answered a different question on the same card.
+  // Reference card: ONE ring split into its parts, the total in the middle, a row list
+  // underneath. No bar strip, no concentric gauges, no tile grid.
   const viz = await read('ui/viz.tsx')
-  assert.match(usage, /<ActivityRings/, 'tokens draws the activity rings')
+  assert.match(usage, /<Donut/, 'tokens draws a single segmented ring')
   assert.doesNotMatch(usage, /SparkBars/, 'no bar strip in the tokens card')
-  assert.match(usage, /bind=\{tip\.bind\}/, 'every arc is bound to the app tooltip')
-  assert.doesNotMatch(viz, /strokeOpacity/, 'segments are solid colours, not shades of one')
+  assert.doesNotMatch(usage, /grid grid-cols-2/, 'no tile grid: the parts are a row list')
+  assert.doesNotMatch(viz, /ActivityRings|ShareRings/, 'no second ring primitive')
 })
 
 test('heat cells are square', async () => {

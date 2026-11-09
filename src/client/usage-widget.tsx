@@ -11,7 +11,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
-import { ActivityRings } from './ui/index.ts'
+import { Donut } from './ui/index.ts'
 import { useHoverTip } from './hover-tip.tsx'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
@@ -55,14 +55,14 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
   const days = week ? data.days.slice(-7) : []
   const peak = Math.max(1, ...days.map(day => totalTokens(bucketsOf(day))))
   const windowBuckets = week ? sumDays(days) : today
-  const [hover] = useState<string | null>(null)
   const tip = useHoverTip()
+  const [hover, setHover] = useState<string | null>(null)
   // One card, one graphic: two rings, each a category split into its parts. The bars are
   // gone — a strip of per-day bars next to a ring made the same card answer two questions.
   const fresh = today.input + today.output
   const cache = today.cacheRead + today.cacheWrite
-  // Reference layout: a headline, a row of tiles (one per part), then the ring. The ring
-  // alone left the rest of the card empty, which is the fill-rate rule again.
+  // The reference card, exactly: one ring split into its parts, the total in the middle,
+  // and a row list underneath. No tiles, no concentric gauges.
   const parts = [
     { key: 'input', tone: PART_TONE.input, value: today.input, label: t('usage.input') },
     { key: 'output', tone: PART_TONE.output, value: today.output, label: t('usage.output') },
@@ -70,29 +70,38 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
     { key: 'cacheWrite', tone: PART_TONE.cacheWrite, value: today.cacheWrite, label: t('usage.cacheWrite') },
   ]
   const share = (value: number) => total === 0 ? '—' : percent(value / total)
+  // A 1% arc is invisible, so the ring showed one colour while four parts existed. Every
+  // non-zero part keeps a minimum arc; the largest part gives up the difference.
+  const MIN_ARC = 0.07
+  const arcs = (() => {
+    const raw = parts.map(part => (total === 0 ? 0 : part.value / total))
+    const tightened = raw.map(value => (value >= 0.005 ? Math.max(value, MIN_ARC) : 0))
+    const surplus = tightened.reduce((sum, value, index) => sum + (value - raw[index]), 0)
+    const biggest = raw.indexOf(Math.max(...raw))
+    if (biggest >= 0 && surplus > 0) tightened[biggest] = Math.max(0, tightened[biggest] - surplus)
+    return tightened
+  })()
   return <div className="flex h-full min-h-0 flex-col gap-3">
-    <div className="dsh-metric flex items-baseline gap-2">
-      <span className="dsh-metric-value" aria-label={t('usage.today')}>{compactCount(total)}</span>
-      <span className="dsh-metric-unit">{t('usage.today')} · {t('usage.unit')}</span>
+    <div className="flex min-h-0 flex-1 items-center justify-center">
+      <Donut size={compact ? 124 : 156} thickness={compact ? 13 : 17}
+        segments={parts.map((part, index) => ({ key: part.key, value: arcs[index], tone: part.tone }))}
+        activeKey={hover}
+        center={<span className="flex flex-col items-center">
+          <span className="text-display-4-semibold leading-none tabular-nums text-text-primary">{compactCount(total)}</span>
+          <span className="text-caption-1-medium text-text-tertiary">{t('usage.unit')}</span>
+        </span>} />
     </div>
-    <div className="grid grid-cols-2 gap-1.5">
-      {parts.map(part => <div key={part.key} className="flex min-w-0 flex-col gap-0.5 rounded-[10px] bg-[var(--dsh-sunken)] px-2.5 py-2">
-        <span className="flex items-center gap-1.5 text-caption-1-medium text-text-tertiary">
-          <i className="size-2 rounded-[3px]" style={{ background: `var(--color-${part.tone})` }} aria-hidden="true" />
-          <span className="truncate">{part.label}</span>
-        </span>
-        <span className="flex items-baseline gap-1.5">
-          <span className="text-body-medium tabular-nums text-text-primary">{compactCount(part.value)}</span>
-          <span className="text-caption-1-medium tabular-nums text-text-tertiary">{share(part.value)}</span>
-        </span>
-      </div>)}
-    </div>
-    <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
-      <ActivityRings size={compact ? 104 : 128} bind={tip.bind} rings={[
-        { key: 'fresh', segments: parts.slice(0, 2).map(part => ({ ...part, label: `${part.label} · ${compactCount(part.value)} ${t('usage.unit')} · ${share(part.value)}` })) },
-        { key: 'cache', segments: parts.slice(2).map(part => ({ ...part, label: `${part.label} · ${compactCount(part.value)} ${t('usage.unit')} · ${share(part.value)}` })) },
-      ]} />
-    </div>
+    <ul className="flex min-h-0 flex-col gap-1.5">
+      {parts.map(part => <li key={part.key}
+        className="flex items-center gap-2 text-caption-1-medium"
+        onMouseEnter={() => { setHover(part.key) }}
+        onMouseLeave={() => { setHover(null) }}>
+        <i className="size-2 flex-none rounded-[3px]" style={{ background: `var(--color-${part.tone})` }} aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate text-text-secondary">{part.label}</span>
+        <span className="tabular-nums text-text-primary">{compactCount(part.value)}</span>
+        <span className="w-10 text-right tabular-nums text-text-tertiary">{share(part.value)}</span>
+      </li>)}
+    </ul>
     {tip.node}
   </div>
 }

@@ -169,7 +169,9 @@ export function Donut({ segments, size = 108, thickness = 12, activeKey, center,
     onPointerMove={onPointerMove} onPointerLeave={() => setHovered(null)}>
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
       <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={thickness} className="stroke-chart-track" />
-      {total > 0 && segments.map(segment => {
+      {/* A zero-valued segment used to paint a 0.5px arc, and a round cap turned that into
+          a full-thickness dot: the ring showed a colour for a part the list called "0". */}
+      {total > 0 && segments.filter(segment => segment.value > 0).map(segment => {
         const share = Math.max(0, segment.value) / total
         const arc = Math.max(0.5, share * circumference - gap)
         const dash = `${arc.toFixed(2)} ${(circumference - arc).toFixed(2)}`
@@ -196,47 +198,3 @@ const TONE = {
 } as const
 
 
-/**
- * Activity rings, after BoardUI's card. Each ring is one category drawn as a full circle and
- * split into its parts — the parts are equally solid colours, because two shades of one hue
- * read as "the same value, partly drawn".
- */
-export function ActivityRings({ size, rings, bind, className }: {
-  size: number
-  rings: { key: string; segments: { key: string; value: number; tone: string; label: string }[] }[]
-  bind?: (text: string) => object
-  className?: string
-}) {
-  const thickness = Math.max(6, Math.round(size * 0.1))
-  const gap = Math.max(4, Math.round(size * 0.045))
-  return <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true"
-    className={cx('-rotate-90', className)}>
-    {rings.map((ring, ringIndex) => {
-      const radius = size / 2 - thickness / 2 - ringIndex * (thickness + gap)
-      const circumference = 2 * Math.PI * radius
-      const total = ring.segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
-      let offset = 0
-      return <g key={ring.key}>
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--color-chart-track)" strokeWidth={thickness} />
-        {ring.segments.map(segment => {
-          const share = total === 0 ? 0 : Math.max(0, segment.value) / total
-          const length = circumference * share
-          const dash = `${Math.max(0, length - gap / 4)} ${circumference}`
-          const rotate = (offset / circumference) * 360
-          offset += length
-          const props = bind ? bind(segment.label) : {}
-          return <g key={segment.key}>
-          {/* A wider transparent arc underneath: a 12px stroke is a small target, and the
-              rotated dash pattern means the visible arc is not where the eye aims. */}
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" {...props}
-            style={{ stroke: 'transparent', transformOrigin: 'center', transform: `rotate(${rotate}deg)`, pointerEvents: 'stroke' }}
-            strokeWidth={thickness + 14} strokeDasharray={dash} />
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none"
-            className="dsh-ring-arc"
-            strokeWidth={thickness} strokeLinecap="butt" strokeDasharray={dash} style={{ stroke: `var(--color-${segment.tone})`, transformOrigin: 'center', transform: `rotate(${rotate}deg)`, pointerEvents: 'none' }} />
-          </g>
-        })}
-      </g>
-    })}
-  </svg>
-}
