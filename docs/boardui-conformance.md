@@ -61,12 +61,25 @@
 | 主按钮 | 高 32、圆角 8、14/500、accent 渐变 | `Button size="small"`（vendor） |
 | chip | 圆角 6、14/500、`px-1.5 py-0.5` | `Chip`（vendor） |
 
+## 3.5 热力格（`HeatCell`）
+
+量于 2026-11-09，`components/heatmap-chart-card`。
+
+| 属性 | BoardUI | 我们 |
+|---|---|---|
+| 圆角 | **4px** | `rounded-[4px]` ✅ |
+| 格子形状 | **28 × 21**（4:3，不是正方形） | 正方形（`size × size`）⚠️ |
+| 浓淡 | 同色相按透明度分档 | `level 0…4` 五档 ✅ |
+
+> 唯一不一致的是比例：他们的格子是横向的 4:3，我们是正方形。改成 4:3 会让一屏能排下的
+> 周数变化，动之前要先确认卡片宽度预算。
+
 ## 4. 我们的卡片 → BoardUI 的同类
 
 | 我们的卡 | BoardUI 里最接近 | 状态 |
 |---|---|---|
 | Tokens / Recent activity | `bar-chart-card`（Pro，量了柱子） | 结构照做，柱状图按第 2 节 |
-| Work footprints | `heatmap-chart-card`（Pro） | 用 `HeatCell`，格子 4px 圆角；密度待量 |
+| Work footprints | `heatmap-chart-card`（Pro，量了格子） | 见第 3.5 节；圆角一致，比例待定 |
 | Session status | `stat-cards`（Pro，量了字号与圆角） | 用 `StatGrid` |
 | Recent sessions / Pinned | `data-table` 的行 | 用 `RowButton`；行高待量 |
 | Today（24 小时轨） | 无同类（自研） | 用 track 色 + 数据色，保持第 1 节字体 |
@@ -76,7 +89,6 @@
 
 ## 5. 已知还没量的
 
-- 热力格的尺寸与间隔（`heatmap-chart-card`）
 - 表格行高与单元格内边距（`data-table`）
 - `data-grid` 的列头样式
 - 浅色模式下 `stat-cards` 的底色层级

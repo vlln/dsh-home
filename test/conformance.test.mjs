@@ -46,6 +46,13 @@ test('a card is composed from the shared parts, never hand-rolled again', () => 
   assert.match(parts, /text-title-2-medium/)
 })
 
+test('heat cells keep BoardUI\'s 4px radius', () => {
+  // Measured from components/heatmap-chart-card: 28x21 cells, radius 4. We are square
+  // (recorded as a known deviation) but the corner radius is theirs.
+  const viz = read('ui/viz.tsx')
+  return viz.then(source => assert.match(source, /rounded-\[4px\]/))
+})
+
 test('every primitive we implement is recorded in the conformance doc', () => {
   // If a primitive is not in the doc, it was not measured, and "looks like BoardUI"
   // is a guess. Keep this list in step with docs/boardui-conformance.md.
