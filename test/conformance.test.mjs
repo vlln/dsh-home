@@ -63,6 +63,14 @@ test('list rows keep BoardUI\'s cell metrics', () => {
   })
 })
 
+test('stat tiles keep the measured padding and label size', async () => {
+  // stat-cards (2026-11-09): padding 8, label 14/500, radius 16. The value is 32/500
+  // on a standalone stat card; our three-up tile uses 20/500 (recorded deviation).
+  const parts = await read('ui/parts.tsx')
+  assert.match(parts, /rounded-xl bg-\[var\(--dsh-sunken\)\] p-2/, 'tile padding 8')
+  assert.match(parts, /text-body-medium text-text-tertiary/, 'tile label 14/500')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')
