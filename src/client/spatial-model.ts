@@ -370,6 +370,33 @@ export function applyWidgetPreset(
  * breakpoint keep their saved data. Invalid proposals are ignored; callers
  * should validate resize proposals with canPlace before merging.
  */
+/**
+ * Carry one breakpoint's rectangles onto another, unchanged.
+ *
+ * Resizing the canvas is not a re-layout. The column stride is fixed, so a card at
+ * column 4 stays at column 4 when the board grows — but only if the new breakpoint
+ * has the rectangles at all. Without this, the first commit after a width change
+ * wrote *whatever the grid had re-placed* at the new column count and the user's
+ * arrangement was lost. Widening never invalidates a rectangle (x + w <= old cols <=
+ * new cols); narrowing can, so a rectangle that no longer fits is dropped and the
+ * card falls back to first-fit for that breakpoint only.
+ */
+export function carrySpatialBreakpoint(layout: Layout, from: number, to: number): Layout {
+  if (from === to) return layout
+  const source = layout.positions?.[String(from)]
+  if (!record(source)) return layout
+  const existing = layout.positions?.[String(to)]
+  const target: Record<string, GridRect> = record(existing) ? { ...existing } : {}
+  for (const [id, rect] of Object.entries(source)) {
+    if (Object.hasOwn(target, id) || !record(rect)) continue
+    const value = rect as GridRect
+    if (![value.x, value.y, value.w, value.h].every(Number.isInteger)) continue
+    if (value.x + value.w > to) continue
+    Object.defineProperty(target, id, { value: { ...value }, enumerable: true, configurable: true, writable: true })
+  }
+  return { ...layout, positions: { ...layout.positions, [String(to)]: target } }
+}
+
 export function mergeSpatialPositions(
   layout: Layout, geometry: readonly SpatialItem[], cols: number,
 ): Layout {

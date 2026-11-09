@@ -8,14 +8,14 @@
  * @module @vlln/dsh-home/client/store
  */
 
-import { isGridColumns } from './canvas-width.ts'
+import { boardColumnsFor, isGridColumns, resolveCanvasWidth } from './canvas-width.ts'
 import type { LibraryPoint } from './library-position.ts'
 import { homeOrder } from './layout-model.ts'
 import type { WorkspaceSource } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { JsonValue, WidgetDefinition, WidgetInstance, RegisteredWidgetDefinition, WidgetPreset } from './widget-contract.ts'
 import { HomeWidgetRegistry, migrateWidgetInstance, validateWidgetConfig } from './widget-registry.ts'
 import { legacyInstanceProjection, presetGeometry } from './widget-sizing.ts'
-import { applyWidgetPreset, buildSpatialLayout, canPlace, compactSpatialLayout, findSpatialSpace, mergeSpatialPositions, type SpatialItem } from './spatial-model.ts'
+import { applyWidgetPreset, buildSpatialLayout, canPlace, carrySpatialBreakpoint, compactSpatialLayout, findSpatialSpace, mergeSpatialPositions, type SpatialItem } from './spatial-model.ts'
 import {
   emptyLayout, emptyPrefs, fetchWorkbench, fetchPrefs, fetchSnapshot, saveWorkbench, savePrefs, HomeApiError,
   type Layout, type LedgerSnapshot, type Prefs, type WidgetSize, type StorageStatus,
@@ -285,7 +285,12 @@ export class HomeStore {
   setCanvasWidth(width: number): void {
     if (!this.canWritePrefs()) return
     if (this.state.prefs.canvasWidth === width) return
-    this.set({ prefs: { ...this.state.prefs, canvasWidth: width } })
+    // Carry the rectangles to the new column count before anything can commit a
+    // re-placed layout there: resizing is not a re-layout.
+    const from = boardColumnsFor(resolveCanvasWidth(this.state.prefs.canvasWidth))
+    const to = boardColumnsFor(width)
+    this.set({ layout: carrySpatialBreakpoint(this.state.layout, from, to), prefs: { ...this.state.prefs, canvasWidth: width } })
+    this.persistSoon()
     this.persistPrefsSoon()
   }
 

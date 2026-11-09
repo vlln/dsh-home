@@ -312,3 +312,17 @@ test('a gesture never re-packs the board: packing is an explicit action', async 
   const grid = await readFile(new URL('../src/client/spatial-grid.tsx', import.meta.url), 'utf8')
   assert.doesNotMatch(grid, /compactSpatialLayout\(/)
 })
+
+test('a canvas resize carries the rectangles instead of re-placing them', async () => {
+  const { carrySpatialBreakpoint } = await import('../src/client/spatial-model.ts')
+  const layout = {
+    order: ['a', 'b'], focusOrder: [], size: {}, hidden: [], instanceLayout: true,
+    positions: { 12: { a: { x: 0, y: 0, w: 4, h: 4 }, b: { x: 4, y: 0, w: 8, h: 4 } } },
+  }
+  const wider = carrySpatialBreakpoint(layout, 12, 16)
+  assert.deepEqual(wider.positions['16'], layout.positions['12'], 'widening keeps every rectangle verbatim')
+  assert.deepEqual(layout.positions['16'], undefined, 'the source layout is not mutated')
+  // Narrowing drops what no longer fits; the rest still carries.
+  const narrower = carrySpatialBreakpoint(layout, 12, 10)
+  assert.deepEqual(narrower.positions['10'], { a: { x: 0, y: 0, w: 4, h: 4 } })
+})
