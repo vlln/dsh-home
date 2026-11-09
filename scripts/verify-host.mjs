@@ -305,6 +305,9 @@ async function packedBoardCase(page) {
   const broken = await page.evaluate(() => [...document.querySelectorAll('.dsh-home-widget')]
     .filter(el => /failed to render|无法显示/i.test(el.textContent || ''))
     .map(el => el.dataset.widgetId))
+  // Negative control (2026-11-09): a pomodoro instance with an invalid config produced
+  // "cards rendered their error fallback: bad" and failed the run. Without that proof this
+  // assertion could be true for the wrong reason.
   assert.deepEqual(broken, [], `cards rendered their error fallback: ${broken.join(', ')}`)
 }
 async function recentCases(page) {
