@@ -24,7 +24,7 @@
 | 打卡 | `habit` | `project-board` + `checkbox` | ✅ | 行结构 + 勾选框 16/r4 均已验证 |
 | 计划 | `plan` | `data-table` 行 | 🔶 | 时间列宽度、时间轴竖线未量 |
 | 时钟 | `clock` | 无 | ✅ | 时间 `display-3`（40/600）**有意超出**清单最大值 32；日期块 `rounded-xl`；时区用 quiet select |
-| 便笺 | `notes` | 无 | ⬜ | 标题/正文/占位的字号层级未量 |
+| 便笺 | `notes` | 无 | 🔶 | 空态已验证（占位 14/400 左对齐）；**有内容态未拍到**（Escape 取消了编辑） |
 | 番茄钟 | `pomodoro` | `activity-rings-card`（已量环；Pro 无源码） | ✅ | 环 10%/round 端头、环心 `title-1`、按钮组仅用 vendored Button；深浅实图已验 |
 | 计时器 | `timer` | `activity-rings-card` | ✅ | 同上；表盘刻度自研（清单内数字） |
 | 倒计时 | `countdown` | 无 | ✅ | 主值 `display-4/32` + 单位 `caption-1/12` 同行；深浅实图已验 |
@@ -55,6 +55,16 @@
 | 环心数字 | `title-1`（24/500，tabular） | 卡片主值标准（第 1 节） |
 | 倒计时主值 | `display-4`（32/500）+ 单位 `caption-1`（12/500）同行 | `stat-cards` 主值 32/500 的同一档 |
 | 按钮组 | 自研：`Button size="small"` 并排 | 只用 vendored Button，不自画 |
+
+### 便笺：三级文字，取自清单
+
+| 角色 | 取值 | 来源 |
+|---|---|---|
+| 内容标题 | `text-body-medium`（14/500） | 卡片标题同档 |
+| 正文 | `text-body-regular`（14/400 + 行高放宽） | 正文档 |
+| 占位 | 同正文档、`text-tertiary` | 正文档降色 |
+
+便笺是唯一的「阅读 + 编辑同一块区域」的卡，所以它不套 `Row`——行结构会给文本加不该有的分隔线。
 
 ### 时钟：为什么敢用 40/600
 
