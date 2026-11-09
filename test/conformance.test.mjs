@@ -86,6 +86,16 @@ test('habit checkbox keeps the measured 16px / 4px box', async () => {
   assert.match(habit, /rounded-\[4px\]/, '4px radius')
 })
 
+test('timer cards are self-built but only use measured sizes', async () => {
+  // No free equivalent; the plan records the decision. What is asserted is that they draw
+  // from the ramp (24 for the ring centre, 32 for the countdown headline), not from
+  // invented pixel values.
+  const [pomodoro, countdown] = await Promise.all([read('pomodoro-widget.tsx'), read('countdown-widget.tsx')])
+  assert.match(pomodoro, /text-title-1-medium/, 'ring centre is the card metric size')
+  assert.match(countdown, /text-display-4-semibold/, 'countdown headline is the 32/500 step')
+  assert.doesNotMatch(pomodoro + countdown, /text-\[\d/, 'no raw pixel font sizes')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')
