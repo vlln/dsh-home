@@ -136,6 +136,13 @@ test('balance uses the card metric size, not the stat-card size', async () => {
   assert.match(plan, /24\/500/, 'the 24-vs-32 decision is recorded')
 })
 
+test('recent and pinned share one row implementation', async () => {
+  const [recent, pinned] = await Promise.all([read('recent.tsx'), read('pinned-widget.tsx')])
+  assert.match(recent, /RowButton/, 'recent builds on RowButton')
+  assert.match(pinned, /SessionRow/, 'pinned reuses the shared session row')
+  assert.match(plan, /同一套行/, 'the shared-row decision is recorded')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')
