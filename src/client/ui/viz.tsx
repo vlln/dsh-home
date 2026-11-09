@@ -58,9 +58,13 @@ export function SparkBars({ items, wrap, className, minHeight = 4 }: {
             data-emphasis={item.emphasis === true ? 'true' : undefined}
           />}
       </span>
-      const column: ReactElement = <span className="flex h-full min-h-0 w-full flex-col justify-end" tabIndex={0} role="img" aria-label={item.label}>
+      // A button, not a span: react-aria's TooltipTrigger only binds to an element that
+      // can take focus and pointer handlers, and a bare span silently never opens the
+      // tooltip. A bar column is interactive (hover/focus reads it out), so a button is
+      // also the honest element.
+      const column: ReactElement = <button type="button" className="flex h-full min-h-0 w-full flex-col justify-end border-0 bg-transparent p-0" aria-label={item.label}>
         {bar}
-      </span>
+      </button>
       return <div key={item.key} className="flex h-full min-h-0 flex-1 items-stretch justify-center">{wrap === undefined ? column : wrap(item, column)}</div>
     })}
   </div>
