@@ -40,30 +40,30 @@ export function SparkBars({ items, wrap, className, minHeight = 4 }: {
   return <div className={cx('flex min-h-0 items-stretch justify-center gap-1.5', className)} role="group">
     {items.map(item => {
       const height = item.empty === true ? 0 : Math.max(minHeight, Math.round(item.ratio * 100))
-      const bar = <span
-        className="relative mx-auto flex h-full min-h-0 w-full max-w-9 items-end justify-center rounded-md bg-chart-track"
+      // BoardUI's bar, measured from their earnings card: the track is 32 wide and a
+      // full-height rounded rect (rx 10, not a hint of rounding), the value is the same
+      // 32 wide drawn inside it, and the hover target is a 3px-larger box (38 wide,
+      // rx 13) that shows a one-pixel outline around the whole column. Copying those
+      // three numbers is what makes the chart read as theirs instead of "some bars".
+      const column: ReactElement = <button
+        type="button"
+        className="group/bar relative mx-auto flex h-full min-h-0 w-full max-w-[38px] flex-col justify-end border-0 bg-transparent p-[3px] outline-none"
+        aria-label={item.label}
         data-empty={item.empty === true ? 'true' : undefined}
       >
-        {item.empty === true
-          ? <span className="h-px w-full bg-chart-neutral" />
-          : <span
-            // Solid, not 75%-over-the-track: an alpha fill let the track show through the
-            // bar and read as a second, lighter block inside it.
-            className={cx(
-              'w-full rounded-[4px] transition-[height] duration-300 ease-out',
-              'bg-chart-4 hover:bg-chart-4-active',
-              item.emphasis === true ? 'opacity-100' : 'opacity-85 hover:opacity-100',
-            )}
-            style={{ height: `${height}%` }}
-            data-emphasis={item.emphasis === true ? 'true' : undefined}
-          />}
-      </span>
-      // A button, not a span: react-aria's TooltipTrigger only binds to an element that
-      // can take focus and pointer handlers, and a bare span silently never opens the
-      // tooltip. A bar column is interactive (hover/focus reads it out), so a button is
-      // also the honest element.
-      const column: ReactElement = <button type="button" className="flex h-full min-h-0 w-full flex-col justify-end border-0 bg-transparent p-0" aria-label={item.label}>
-        {bar}
+        <span className="relative mx-auto flex h-full w-full items-end justify-center overflow-hidden rounded-[10px] bg-chart-track">
+          {item.empty === true
+            ? <span className="h-px w-full bg-chart-neutral" />
+            : <span
+              className={cx(
+                'w-full rounded-[10px] bg-chart-4 transition-[height] duration-300 ease-out',
+                item.emphasis === true ? 'opacity-100' : 'opacity-90',
+              )}
+              style={{ height: `${height}%` }}
+              data-emphasis={item.emphasis === true ? 'true' : undefined}
+            />}
+        </span>
+        <span className="pointer-events-none absolute inset-0 rounded-[13px] opacity-0 ring-1 ring-chart-4/60 transition-opacity duration-150 group-hover/bar:opacity-100 group-focus-visible/bar:opacity-100" aria-hidden="true" />
       </button>
       return <div key={item.key} className="flex h-full min-h-0 flex-1 items-stretch justify-center">{wrap === undefined ? column : wrap(item, column)}</div>
     })}
