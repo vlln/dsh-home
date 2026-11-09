@@ -106,9 +106,11 @@ const HEAT_TONE: Record<HeatLevel, string> = {
  * 一个热力格。给 `onClick` 就是可点的按钮（键盘可达、aria-pressed），不给就是装饰。
  * 尺寸用 `size` 传像素——热图要按容器实测宽度算格子，不能交给 CSS。
  */
-export function HeatCell({ level, size, label, selected, unknown, onClick, className }: {
+export function HeatCell({ level, size, width, label, selected, unknown, onClick, className }: {
   level: HeatLevel
   size: number
+  /** Cell width when it is not square. BoardUI's heatmap cells are 28×21 (4:3), radius 4. */
+  width?: number
   label?: string
   selected?: boolean
   unknown?: boolean
@@ -123,7 +125,7 @@ export function HeatCell({ level, size, label, selected, unknown, onClick, class
     onClick !== undefined && 'cursor-pointer hover:ring-1 hover:ring-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring',
     className,
   )
-  const style = { width: size, height: size }
+  const style = { width: width ?? size, height: size }
   return onClick === undefined
     ? <span className={classes} style={style} aria-hidden="true" />
     : <button type="button" className={classes} style={style} aria-label={label} aria-pressed={selected} onClick={onClick} />

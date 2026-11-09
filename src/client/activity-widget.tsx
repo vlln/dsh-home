@@ -102,7 +102,7 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
   const dayLabel = (day: {key: string; messages: number; sessions: number}) => t(result.complete ? 'activity.day' : 'activity.partialDay', { date: day.key, messages: day.messages, sessions: day.sessions })
   const cell = (day: (typeof weeks)[number][number], index: number) => day ? <span key={day.key} className="dsh-activity-cell-slot" data-date={day.key}
     {...tip.bind(dayLabel(day))}>
-    <HeatCell size={cellSize} level={activityLevel(day.messages) as HeatLevel} label={dayLabel(day)}
+    <HeatCell size={Math.round(cellSize * 3 / 4)} width={cellSize} level={activityLevel(day.messages) as HeatLevel} label={dayLabel(day)}
       selected={date === day.key} unknown={!result.complete && day.messages === 0}
       onClick={() => { if (!preview) setDate(previous => previous === day.key ? undefined : day.key) }} />
   </span>

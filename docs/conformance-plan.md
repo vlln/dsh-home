@@ -19,7 +19,7 @@
 | 会话状态 | `running` | `stat-cards`（已量） | ✅ | 三格等分；`StatGrid` 已按 `p-4`/14-500 对齐 |
 | Token 用量 | `usage` | `bar-chart-card` + 环（已量） | ✅ | 柱 32/r10、悬停盒 38/r13、环 10%；0 值时环显示空轨道 |
 | 最近活跃 | `active` | `bar-chart-card`（已量） | ✅ | 分段控件与柱状图的垂直间距未量 |
-| 工作足迹 | `activity` | `heatmap-chart-card`（已量） | 🔶 | 格子是正方形 vs 他们的 28×21；月份间隔未量 |
+| 工作足迹 | `activity` | `heatmap-chart-card`（已量） | ✅ | 格子已采用 4:3（宽=槽宽、高=3/4 槽宽）、圆角 4；月份标签在上、图例在下 |
 | 待办 | `todo` | `data-table`（表头+勾选框，已量） | ✅ | 行不是 `RowButton`：一行有两态（勾选/编辑），见下方例外说明 |
 | 打卡 | `habit` | `project-board` + `checkbox` | ✅ | 行结构 + 勾选框 16/r4 均已验证 |
 | 计划 | `plan` | `data-table` 行 | 🔶 | 时间列宽度、时间轴竖线未量 |

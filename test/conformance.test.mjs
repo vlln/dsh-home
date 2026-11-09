@@ -150,6 +150,14 @@ test('session status and tokens use the measured primitives', async () => {
   assert.match(usage, /SparkBars/, 'tokens draws the bar primitive')
 })
 
+test('heat cells are 4:3 inside the existing slots', async () => {
+  // boardui heatmap card: 28x21 cells. Adopted without touching the grid maths: the cell
+  // keeps the slot's width and takes 3/4 of it as height.
+  const [viz, activity] = await Promise.all([read('ui/viz.tsx'), read('activity-widget.tsx')])
+  assert.match(viz, /width\?: number/, 'HeatCell takes an explicit width')
+  assert.match(activity, /size=\{Math\.round\(cellSize \* 3 \/ 4\)\} width=\{cellSize\}/, 'cell is 4:3 of its slot')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')
