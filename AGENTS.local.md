@@ -270,3 +270,16 @@ DSH_HOME=/tmp/dsh-home-verify/home dsh plugin --profile web add ./vlln-dsh-home-
 （这次少了一个 `dsh-provenance-lens`，它在别的 profile 里仍在，属于未登记残留）。
 装完核对 `node_modules/@vlln/dsh-home/lib/client.js` 的 sha256 与构建产物一致。
 运行中的 3080 进程仍持有旧模块，新界面要等它重启。
+
+### 卡片一律先看 BoardUI（2026-11-09）
+
+要加一张新卡或改一张现有卡的构图时，**先在他们的组件清单里找同类**，能找到就照它做：
+
+- 免费注册表里的直接 `npm run vendor` 复制进来（组件本体，不是抄样式）。
+- Pro 组件不进仓库，但可以在 `www.boardui.com/components/<name>` 上**量**它的渲染结果。
+- 量完写进 [`docs/boardui-conformance.md`](docs/boardui-conformance.md)（实测值 + 我们的实现位置），
+  `test/conformance.test.mjs` 会检查两边同步。
+- 表和清单里都没有同类的，才允许自研；自研也只能用清单里已有的数字。
+
+这条不是风格偏好：上一轮"用了 BoardUI 的 token 却不像 BoardUI"，根因就是没有同类时我自己发挥了，
+而且没有任何检查比较过"渲染 vs 参考"。
