@@ -57,7 +57,7 @@ export function SessionRow({
           <StateDot state={DOT[status]} />
         </span>
         <span className="dsh-session-title truncate text-text-primary" title={title}>{title}</span>
-        <span className="dsh-session-workspace max-w-40 shrink-0 truncate text-caption-1-medium text-text-tertiary" title={workspaceTitle ?? workspace}>{workspace}</span>
+        <span className="dsh-session-workspace max-w-32 shrink truncate text-caption-1-medium text-text-tertiary" title={workspaceTitle ?? workspace}>{workspace}</span>
         {reason !== undefined && <Chip variant="caption" color="yellow">{reason}</Chip>}
       </span>
     </RowButton>

@@ -158,6 +158,12 @@ test('heat cells are 4:3 inside the existing slots', async () => {
   assert.match(activity, /size=\{Math\.round\(cellSize \* 3 \/ 4\)\} width=\{cellSize\}/, 'cell is 4:3 of its slot')
 })
 
+test('a card is a container, not a target', async () => {
+  // The whole card used to tint on hover, which made it read as one big button and erased
+  // the card/content boundary. Only the element under the pointer may react.
+  assert.doesNotMatch(await read('theme.css'), /\.dsh-card:hover/)
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')

@@ -400,6 +400,9 @@ export const CSS = `
    fit a grandfathered 6-row card. A taller card hands the extra space to the entries,
    capped at 86px so a 10-row card gets air instead of a stretched list. */
 .dsh-recent-list > li { display: flex; flex: 0 0 auto; min-height: 32px; }
+/* In a narrow card the title is the only thing worth keeping: the workspace name is
+   context the sidebar already shows, and two truncated labels read worse than one. */
+.dsh-home-widget[data-size="s"] :is(.dsh-recent-workspace, .dsh-session-workspace) { display: none; }
 .dsh-recent-item {
   display: flex; flex-direction: column; justify-content: center; gap: 3px;
   box-sizing: border-box; width: 100%; min-width: 0;

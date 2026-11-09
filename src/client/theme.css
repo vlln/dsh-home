@@ -303,9 +303,9 @@ body[data-ds-dark-theme] {
     transition: background-color 160ms ease, box-shadow 160ms ease;
   }
 
-  .dsh-card:hover {
-    background: var(--dsh-card-hover);
-  }
+  /* No `.dsh-card:hover`. A card is a container, not a target: tinting the whole surface
+   * made the card look like one big button and destroyed the card/content distinction.
+   * Interaction feedback belongs to the row or column under the pointer. */
 
   .dsh-card-head {
     display: flex;

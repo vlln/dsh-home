@@ -61,7 +61,7 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
                       <StateDot state={sessionDotState(status)} />
                     </span>
                     <span className="dsh-recent-title truncate">{title}</span>
-                    <span className="dsh-recent-workspace max-w-40 shrink-0 truncate text-caption-1-medium text-text-tertiary">{workspace}</span>
+                    <span className="dsh-recent-workspace max-w-32 shrink truncate text-caption-1-medium text-text-tertiary">{workspace}</span>
                     {isWaiting(status) && <span className="dsh-recent-state shrink-0 text-caption-1-medium text-status-yellow-text">{statusLabel}</span>}
                   </span>
                 </RowButton>
@@ -73,12 +73,6 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
         <div className="dsh-empty" role="status">{t(loadError && all.length === 0 ? 'error.load' : `recent.${empty}`)}</div>
       )}
 
-      <div className="dsh-recent-footer mt-1 flex items-center gap-2 border-t-0 pt-1 text-caption-1-medium text-text-tertiary">
-        <span className="dsh-muted" role="status">{shown.length === all.length
-          ? t('recent.countAll', { n: all.length })
-          : t('recent.count', { shown: shown.length, total: all.length })}</span>
-        {indexing && shown.length > 0 && <span className="dsh-muted" role="status">{t('recent.indexing')}</span>}
-      </div>
     </div>
   )
 }

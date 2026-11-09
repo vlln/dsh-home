@@ -15,7 +15,7 @@ import { cx } from './lib/cx.ts'
 
 const ROW = [
   // 12px horizontal padding is BoardUI's table cell padding (measured 10/12).
-  'group flex w-full min-w-0 items-center gap-2 rounded-lg px-3 py-1.5 text-left',
+  'group flex w-full min-w-0 items-center gap-2 rounded-lg px-3 py-2.5 text-left',
   'text-body-medium text-text-secondary transition-colors duration-150',
   'hover:bg-background-primary-hover hover:text-text-primary',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring',
