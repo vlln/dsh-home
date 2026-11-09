@@ -77,12 +77,12 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
             </span>
           ))}
         </span>
-        <ShareRings size={compact ? 44 : 56} thickness={compact ? 6 : 8}
+        <ShareRings size={compact ? 52 : 68} thickness={compact ? 7 : 9} gap={4}
           segments={[
             { key: 'fresh', value: today.input + today.output, tone: PART_TONE.input },
             { key: 'cache', value: today.cacheRead + today.cacheWrite, tone: PART_TONE.cache },
           ]}
-          center={<span className="text-caption-1-semibold tabular-nums text-text-primary">{total === 0 ? '—' : percent(1 - (hit ?? 0))}</span>} />
+          />
       </span>
     </div>
     {week && <div className="mt-auto flex min-h-0 flex-1 flex-col gap-1.5">
