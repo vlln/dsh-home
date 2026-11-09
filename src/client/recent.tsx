@@ -49,7 +49,7 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
   return (
     <div className="dsh-recent" data-status-source={source}>
       {empty === null ? (
-        <ol className="dsh-recent-list flex min-h-0 flex-1 flex-col divide-y divide-[var(--dsh-hairline)] overflow-hidden">
+        <ol className="dsh-recent-list flex min-h-0 flex-1 flex-col overflow-hidden">
           {grouped.map(group => (
             <li key={group.key} className="dsh-recent-group">
               {/* Sessions are grouped by workspace: with one flat list, two sessions from

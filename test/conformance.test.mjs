@@ -141,6 +141,7 @@ test('recent and pinned share one row implementation', async () => {
   assert.match(recent, /RowButton/, 'recent builds on RowButton')
   assert.match(pinned, /SessionRow/, 'pinned reuses the shared session row')
   assert.match(plan, /同一套行/, 'the shared-row decision is recorded')
+  assert.doesNotMatch(recent, /divide-y/, 'no per-row rules: the pinned card separates by space')
   // Group headings are table headers: 14/500 with header-cell padding, not an invented gap.
   const styles = await read('styles.ts')
   assert.match(styles, /\.dsh-recent-group-title \{[^}]*padding: 10px 12px 4px/s)
