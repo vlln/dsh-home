@@ -143,6 +143,13 @@ test('recent and pinned share one row implementation', async () => {
   assert.match(plan, /同一套行/, 'the shared-row decision is recorded')
 })
 
+test('session status and tokens use the measured primitives', async () => {
+  const [status, usage] = await Promise.all([read('session-status-widget.tsx'), read('usage-widget.tsx')])
+  assert.match(status, /StatGrid/, 'session status is three stat tiles')
+  assert.match(usage, /<Donut/, 'tokens draws the ring primitive')
+  assert.match(usage, /SparkBars/, 'tokens draws the bar primitive')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')

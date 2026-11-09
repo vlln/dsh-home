@@ -16,8 +16,8 @@
 |---|---|---|---|---|
 | 最近会话 | `recent` | `data-table` 行（已量） | ✅ | 内边距/字号/分隔线照做；行高 32 是记录在案的密度偏差 |
 | 今天 | `today` | 无（24h 轨自研） | ⬜ | 轨道高度/刻度字号未量；决定是否改用 `progress` |
-| 会话状态 | `running` | `stat-cards`（已量） | 🔶 | `StatGrid` 格内边距未量；三格宽度比未定 |
-| Token 用量 | `usage` | `bar-chart-card` + 环（已量） | 🔶 | 图例与环的间距未量；0 值时环的空态未定义 |
+| 会话状态 | `running` | `stat-cards`（已量） | ✅ | 三格等分；`StatGrid` 已按 `p-4`/14-500 对齐 |
+| Token 用量 | `usage` | `bar-chart-card` + 环（已量） | ✅ | 柱 32/r10、悬停盒 38/r13、环 10%；0 值时环显示空轨道 |
 | 最近活跃 | `active` | `bar-chart-card`（已量） | ✅ | 分段控件与柱状图的垂直间距未量 |
 | 工作足迹 | `activity` | `heatmap-chart-card`（已量） | 🔶 | 格子是正方形 vs 他们的 28×21；月份间隔未量 |
 | 待办 | `todo` | `data-table`（表头+勾选框，已量） | ✅ | 行不是 `RowButton`：一行有两态（勾选/编辑），见下方例外说明 |
