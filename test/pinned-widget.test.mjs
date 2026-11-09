@@ -41,7 +41,7 @@ test('native display title is preferred and service scope replacement unsubscrib
 }))
 test('pinned widget shows as many rows as fit, with no pager, ledger or config writes',async()=>{
  const source=await readFile(new URL('../src/client/pinned-widget.tsx',import.meta.url),'utf8'),builtin=await readFile(new URL('../src/client/builtin-registration.tsx',import.meta.url),'utf8')
- assert.match(source,/shown\.map/);assert.match(source,/useVisibleRows\(rowsRef/);assert.doesNotMatch(source,/recentPageSize|state\.ledger|saveConfig|pinSession\(|Show \{count\} more|Button/)
+ assert.match(source,/groups\.map/);assert.match(source,/group\.items\.map/);assert.match(source,/useVisibleRows\(rowsRef/);assert.doesNotMatch(source,/recentPageSize|state\.ledger|saveConfig|pinSession\(|Show \{count\} more|Button/)
  assert.match(source,/actions\.openSession\(session\.id\)/);assert.match(builtin,/pinned: \{ default: \{ w:4,h:8 \}, supported: \[\{w:4,h:8\},\{w:8,h:8\}\] \}/)
  assert.match(builtin,/nativePins: \{ ids: \['sample-0'/)
 })

@@ -400,7 +400,10 @@ export const CSS = `
    fit a grandfathered 6-row card. A taller card hands the extra space to the entries,
    capped at 86px so a 10-row card gets air instead of a stretched list. */
 .dsh-recent-list > li { display: flex; flex: 0 0 auto; min-height: 32px; }
-/* Workspace groups: a quiet heading, then its sessions. Same size as the table header. */
+/* Workspace groups: a quiet heading, then its rows. Same size as the table header. */
+.dsh-pinned-group { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; }
+.dsh-pinned-group:first-child { padding-top: 0; }
+.dsh-pinned-group-title { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0 12px; font: var(--dsh-font-s-strong-14); color: var(--color-text-tertiary); }
 .dsh-recent-group { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; }
 .dsh-recent-group:first-child { padding-top: 0; }
 .dsh-recent-group-title { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0 12px; font: var(--dsh-font-s-strong-14); color: var(--color-text-tertiary); }
