@@ -34,13 +34,14 @@ export interface SessionRowProps {
   t: Translate
   onOpen: () => void
   /** Waiting rows explain *why* in place of the plain time. */
+  /** Kept for callers, but not rendered: the state dot already carries the state. */
   reason?: string
   /** Waiting rows can be muted until the session has new activity. */
   onDismiss?: () => void
 }
 
 export function SessionRow({
-  session, title, workspace, workspaceTitle, status, now, t, onOpen, reason, onDismiss,
+  session, title, workspace, workspaceTitle, status, now, t, onOpen, onDismiss,
 }: SessionRowProps): ReactNode {
   const trailing = session.lastAt === null ? t('recent.unknownActivity') : compactAgo(session.lastAt, now, t)
   const statusLabel = t(`recent.status.${status}`)
@@ -57,8 +58,6 @@ export function SessionRow({
           <StateDot state={DOT[status]} />
         </span>
         <span className="dsh-session-title truncate text-text-primary" title={title}>{title}</span>
-        <span className="dsh-session-workspace max-w-32 shrink truncate text-caption-1-medium text-text-tertiary" title={workspaceTitle ?? workspace}>{workspace}</span>
-        {reason !== undefined && <Chip variant="caption" color="yellow">{reason}</Chip>}
       </span>
     </RowButton>
     {onDismiss !== undefined && <Button variant="ghost" size="xs" className="dsh-session-dismiss ml-1 flex-none opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"

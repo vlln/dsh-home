@@ -75,7 +75,6 @@ export function RecentBody({ t, data, sessions, now, actions, statuses, statusSo
                             <StateDot state={sessionDotState(status)} />
                           </span>
                           <span className="dsh-recent-title truncate">{title}</span>
-                          {isWaiting(status) && <span className="dsh-recent-state shrink-0 text-caption-1-medium text-status-yellow-text">{statusLabel}</span>}
                         </span>
                       </RowButton>
                     </li>

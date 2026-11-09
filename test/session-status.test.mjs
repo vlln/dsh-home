@@ -59,15 +59,14 @@ test('the chosen view wins while it has rows; an empty choice falls back to the 
   assert.equal(effectiveGroup({ running: 0, waiting: 0, done: 0 }, 'waiting'), 'waiting')
 })
 
-test('a workspace name is context, not a tag: rows carry it as dim text', async () => {
-  // The 10px capsule is gone. It cost a second line per row, and a column of them read as
-  // a stack of tags rather than as "which directory". Rows now carry the workspace as
-  // plain tertiary text on the same line, with no colour of its own.
+test('a workspace name belongs to the group heading, not to every row', async () => {
+  // History: a 10px capsule per row, then dim text per row. Both repeated what the
+  // workspace group heading already says, so rows now carry only the title and the time.
   const row = await (await import('node:fs/promises')).readFile(new URL('../src/client/session-row.tsx', import.meta.url), 'utf8')
   const recent = await (await import('node:fs/promises')).readFile(new URL('../src/client/recent.tsx', import.meta.url), 'utf8')
   for (const source of [row, recent]) {
     assert.doesNotMatch(source, /WorkspacePill|dsh-ws-pill/)
     assert.doesNotMatch(source, /data-hue/)
-    assert.match(source, /text-text-tertiary/)
+    assert.doesNotMatch(source, /dsh-session-workspace|dsh-recent-workspace/, 'the row does not repeat the workspace')
   }
 })
