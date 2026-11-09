@@ -116,6 +116,6 @@ test('the board surface ladder keeps the card above the canvas, in both themes',
   assert.match(theme, /body\[data-ds-dark-theme\] \{[^}]*--dsh-card-line: transparent/s)
   assert.match(theme, /\.dsh-card \{[^}]*border-radius: var\(--dsh-card-radius\)/s)
   // The page markup must not restate the surface with utilities, or the ladder splits again.
-  assert.match(page, /className="dsh-card dsh-home-widget dsh-enter"/)
+  assert.match(page, /WidgetCardShell[^>]*className="dsh-enter"/s)
   assert.doesNotMatch(page, /dsh-home-widget[^`"]*\bbg-background-primary-default\b/)
 })

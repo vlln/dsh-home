@@ -40,7 +40,7 @@ test('the card keeps the measured numbers: 16 radius, 16 pad, no dark border', (
 })
 
 test('a card is composed from the shared parts, never hand-rolled again', () => {
-  assert.match(page, /className="dsh-card dsh-home-widget dsh-enter"/)
+  assert.match(page, /WidgetCardShell[^>]*className="dsh-enter"/s)
   // 24px corners were the previous card; a card never declares its own radius now.
   assert.doesNotMatch(page, /rounded-3xl/)
   // Stat tiles are the stat-card values, not an invented size.
@@ -198,7 +198,7 @@ test('the drag ghost is the card it will become', async () => {
   // would produce. Both are gone — the ghost takes the real card's geometry and size.
   const [styles, page] = await Promise.all([read('library-styles.ts'), read('page.tsx')])
   // The ghost is a real card element, not a look-alike: same classes, same size attribute.
-  assert.match(page, /libraryGhost=\{libraryDrag && <div className="dsh-card dsh-home-widget" data-size=\{sizeFromRect/, 'ghost renders a real card')
+  assert.match(page, /libraryGhost=\{libraryDrag && <WidgetCardShell/, 'ghost renders the same shell as the board')
   assert.doesNotMatch(styles, /\.dsh-library-ghost \{[^}]*padding:/s, 'the outer box adds no padding of its own')
   assert.match(page, /size=\{sizeFromRect\(/, 'ghost takes the size the drop will produce')
   assert.match(page, /width=\{widgetWidthForColumns\(libraryDrag\.item\.w\)\}/, 'ghost width is a card width')

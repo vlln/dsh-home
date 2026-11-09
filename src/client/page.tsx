@@ -16,6 +16,7 @@ import { widgetText } from './widget-settings.tsx'
 import { validateWidgetConfig } from './widget-registry.ts'
 import { WidgetGallery } from './widget-gallery.tsx'
 import { WidgetContentPreview } from './widget-preview.tsx'
+import { WidgetCardBody, WidgetCardShell } from './widget-card-shell.tsx'
 import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
 import { legacyInstanceProjection } from './widget-sizing.ts'
@@ -274,11 +275,11 @@ export function HomePage(props: HomePageProps): ReactNode {
             deleteZone={deleteZoneRef} onDeleteRequest={requestDelete}
             libraryDrag={libraryDrag} onLibraryEnd={() => setLibraryDrag(null)}
             onLibraryDrop={(drag,accepted) => {try {if(registry.get(drag.definition.typeId)!==drag.definition||JSON.stringify(store.getSnapshot().layout)!==drag.baseLayout)throw new Error('Widget or layout changed');store.dropInstance(drag.definition,drag.id,accepted,cols)}catch{setManagementError(true)}}}
-            libraryGhost={libraryDrag && <div className="dsh-card dsh-home-widget" data-size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)}><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
-              <CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetContentPreview definition={libraryDrag.definition} t={t} language={locale()}
+            libraryGhost={libraryDrag && <WidgetCardShell size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)} editing><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
+              <WidgetCardBody><CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetContentPreview definition={libraryDrag.definition} t={t} language={locale()}
                 size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)}
                 width={widgetWidthForColumns(libraryDrag.item.w)}
-                height={libraryDrag.item.h * SPATIAL_ROW_HEIGHT + (libraryDrag.item.h - 1) * SPATIAL_GAP}/></CardBoundary></div>}>
+                height={libraryDrag.item.h * SPATIAL_ROW_HEIGHT + (libraryDrag.item.h - 1) * SPATIAL_GAP}/></CardBoundary></WidgetCardBody></WidgetCardShell>}>
           {geometry.map((rect, cardIndex) => {
             const instance = instancesById.get(rect.i)
             if (instance === undefined) return null
@@ -290,21 +291,19 @@ export function HomePage(props: HomePageProps): ReactNode {
                 await store.saveInstanceConfig(instance.instanceId, definition, config)
               } } : {}),
             }
-            return <section key={instance.instanceId}
-              className="dsh-card dsh-home-widget dsh-enter"
+            return <WidgetCardShell key={instance.instanceId} className="dsh-enter" size={widgetProps.size} editing={editing}
               style={{ '--dsh-enter-index': cardIndex } as React.CSSProperties}
-              data-widget-id={instance.instanceId} data-widget-type={instance.typeId} data-size={widgetProps.size}
-              data-editing={String(editing)} aria-label={t('aria.widget', { title })}>
+              data-widget-id={instance.instanceId} data-widget-type={instance.typeId} aria-label={t('aria.widget', { title })}>
               <WidgetFrameHeader title={title} t={t} editing={editing} disabled={!writable || busy || interacting} gripDisabled={!writable || busy}
                 icon={definition?.icon !== undefined && <CardBoundary key={definitionIds.current.get(definition)} fallback={null}><WidgetIcon definition={definition}/></CardBoundary>}
                 onKeyDelete={() => requestDelete(instance.instanceId)} onNudge={key => nudge(instance.instanceId,key)} />
-              <div className="dsh-card-body dsh-home-widget-content" inert={editing || undefined}>
+              <WidgetCardBody editing={editing}>
                 {definition === undefined ? <div className="dsh-empty" role="status">{t('widget.unavailable', { typeId: instance.typeId })}</div>
                   : <CardBoundary key={renderKey(instance, definition)} fallback={<CardError title={t('error.card')} />}>
                     <WidgetBody definition={definition} widgetProps={widgetProps} />
                   </CardBoundary>}
-              </div>
-            </section>
+              </WidgetCardBody>
+            </WidgetCardShell>
           })}
           </SpatialGrid>}
         </div>
