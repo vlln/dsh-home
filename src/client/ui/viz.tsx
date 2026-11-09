@@ -195,3 +195,42 @@ const TONE = {
   'chart-5': 'stroke-chart-5',
 } as const
 
+
+/**
+ * Activity rings, after BoardUI's card: each ring is one category drawn as a full circle,
+ * split into its parts. Unlike concentric *gauges*, everything is a share of that ring's
+ * own total, and every arc answers a hover with what it is.
+ */
+export function ActivityRings({ size, rings, className }: {
+  size: number
+  rings: { key: string; segments: { key: string; value: number; tone: string; opacity?: number; label: string }[] }[]
+  className?: string
+}) {
+  const thickness = Math.max(4, Math.round(size * 0.1))
+  const gap = Math.max(2, Math.round(size * 0.035))
+  return <span className={cx('relative inline-flex flex-none items-center justify-center', className)} style={{ width: size, height: size }}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="absolute inset-0 -rotate-90">
+      {rings.map((ring, ringIndex) => {
+        const radius = size / 2 - thickness / 2 - ringIndex * (thickness + gap)
+        const circumference = 2 * Math.PI * radius
+        const total = ring.segments.reduce((sum, segment) => sum + Math.max(0, segment.value), 0)
+        let offset = 0
+        return <g key={ring.key}>
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--color-chart-track)" strokeWidth={thickness} />
+          {ring.segments.map(segment => {
+            const share = total === 0 ? 0 : Math.max(0, segment.value) / total
+            const length = circumference * share
+            const dash = `${Math.max(0, length - gap / 2)} ${circumference}`
+            const rotate = (offset / circumference) * 360
+            offset += length
+            return <circle key={segment.key} cx={size / 2} cy={size / 2} r={radius} fill="none"
+              className="dsh-ring-arc" style={{ stroke: `var(--color-${segment.tone})`, strokeOpacity: segment.opacity ?? 1, transformOrigin: 'center', transform: `rotate(${rotate}deg)` }}
+              strokeWidth={thickness} strokeLinecap="round" strokeDasharray={dash}>
+              <title>{segment.label}</title>
+            </circle>
+          })}
+        </g>
+      })}
+    </svg>
+  </span>
+}

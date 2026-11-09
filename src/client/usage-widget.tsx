@@ -11,7 +11,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
-import { Donut, SparkBars } from './ui/index.ts'
+import { ActivityRings } from './ui/index.ts'
 import { useHoverTip } from './hover-tip.tsx'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
@@ -34,7 +34,7 @@ function validateUsageConfig(value: unknown): value is UsageConfig {
 export interface UsagePreviewData { today: { tokens: TokenBuckets; runMs: number }; days: DayBucket[] }
 
 /** Token 卡的三段配色，与环形、图例共用一处定义——两处写颜色迟早会漂。 */
-const PART_TONE = { input: 'chart-4', cache: 'chart-2', output: 'chart-5' } as const
+const PART_TONE = { input: 'chart-4', output: 'chart-5', cache: 'chart-2', cacheWrite: 'chart-2' } as const
 
 function percent(value: number): string {
   return `${Math.round(value * 100)}%`
@@ -57,50 +57,42 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
   const windowBuckets = week ? sumDays(days) : today
   const [hover] = useState<string | null>(null)
   const tip = useHoverTip()
+  // One card, one graphic: two rings, each a category split into its parts. The bars are
+  // gone — a strip of per-day bars next to a ring made the same card answer two questions.
+  const fresh = today.input + today.output
+  const cache = today.cacheRead + today.cacheWrite
+  // Reference layout: a headline, a row of tiles (one per part), then the ring. The ring
+  // alone left the rest of the card empty, which is the fill-rate rule again.
+  const parts = [
+    { key: 'input', tone: PART_TONE.input, opacity: 1, value: today.input, label: t('usage.input') },
+    { key: 'output', tone: PART_TONE.input, opacity: 0.55, value: today.output, label: t('usage.output') },
+    { key: 'cacheRead', tone: PART_TONE.cache, opacity: 1, value: today.cacheRead, label: t('usage.cacheRead') },
+    { key: 'cacheWrite', tone: PART_TONE.cache, opacity: 0.55, value: today.cacheWrite, label: t('usage.cacheWrite') },
+  ]
+  const share = (value: number) => total === 0 ? '—' : percent(value / total)
   return <div className="flex h-full min-h-0 flex-col gap-3">
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <div className="dsh-metric">
-          <span className="dsh-metric-value" aria-label={t('usage.today')}>{compactCount(total)}</span>
-          <span className="dsh-metric-unit">{t('usage.today')} · {t('usage.unit')}</span>
-        </div>
-
-      </div>
-      <span className="flex flex-none items-center gap-3">
-        <span className="flex flex-col gap-1">
-          {[{ key: 'fresh', label: t('usage.fresh'), value: today.input + today.output, tone: PART_TONE.input },
-            { key: 'cache', label: t('usage.cache'), value: today.cacheRead + today.cacheWrite, tone: PART_TONE.cache }].map(part => (
-            <span key={part.key} className="flex items-center gap-1.5 text-caption-1-medium text-text-tertiary">
-              <i className="size-2 flex-none rounded-[3px]" style={{ background: `var(--color-${part.tone})` }} aria-hidden="true" />
-              <span>{part.label}</span>
-              <span className="tabular-nums text-text-secondary">{compactCount(part.value)}</span>
-              {/* A 1% ring reads as "all green" unless the share is also a number. */}
-              <span className="tabular-nums text-text-tertiary">{total === 0 ? '—' : percent(part.value / total)}</span>
-            </span>
-          ))}
-        </span>
-        {/* ONE ring split in two: the relationship is the message. Two concentric rings
-            read as two independent gauges, which is exactly what these are not. */}
-        <Donut size={compact ? 44 : 60} thickness={compact ? 6 : 7}
-          segments={[
-            { key: 'fresh', value: today.input + today.output, tone: PART_TONE.input },
-            { key: 'cache', value: today.cacheRead + today.cacheWrite, tone: PART_TONE.cache },
-          ]} />
-      </span>
+    <div className="dsh-metric flex items-baseline gap-2">
+      <span className="dsh-metric-value" aria-label={t('usage.today')}>{compactCount(total)}</span>
+      <span className="dsh-metric-unit">{t('usage.today')} · {t('usage.unit')}</span>
     </div>
-    {week && <div className="mt-auto flex min-h-0 flex-1 flex-col gap-1.5">
-      <SparkBars items={days.map(day => {
-      const buckets = bucketsOf(day)
-      const value = totalTokens(buckets)
-      const label = [`${day.key.slice(5)} · ${compactCount(value)} ${t('usage.unit')}`,
-        `${t('usage.input')} ${compactCount(buckets.input)} · ${t('usage.cache')} ${compactCount(buckets.cacheRead)} · ${t('usage.output')} ${compactCount(buckets.output)}`].join('\n')
-      return { key: day.key, ratio: value / peak, label, empty: value === 0, emphasis: value === peak }
-      })} className="min-h-6 flex-1" wrap={(item, bar) => <span className="flex w-full justify-center" {...tip.bind(item.label)}>{bar}</span>} />
-      <div className="flex gap-1.5" aria-hidden="true">
-        {days.map(day => <span key={day.key} className="min-w-0 flex-1 text-center text-caption-1-medium tabular-nums text-text-tertiary">{day.key.slice(8)}</span>)}
-      </div>
-    </div>}
-    {tip.node}
+    <div className="grid grid-cols-2 gap-1.5">
+      {parts.map(part => <div key={part.key} className="flex min-w-0 flex-col gap-0.5 rounded-[10px] bg-[var(--dsh-sunken)] px-2.5 py-2">
+        <span className="flex items-center gap-1.5 text-caption-1-medium text-text-tertiary">
+          <i className="size-2 rounded-[3px]" style={{ background: `var(--color-${part.tone})`, opacity: part.opacity }} aria-hidden="true" />
+          <span className="truncate">{part.label}</span>
+        </span>
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-body-medium tabular-nums text-text-primary">{compactCount(part.value)}</span>
+          <span className="text-caption-1-medium tabular-nums text-text-tertiary">{share(part.value)}</span>
+        </span>
+      </div>)}
+    </div>
+    <div className="flex min-h-0 flex-1 items-center justify-center">
+      <ActivityRings size={compact ? 96 : 132} rings={[
+        { key: 'fresh', segments: parts.slice(0, 2).map(part => ({ ...part, label: `${part.label} · ${compactCount(part.value)} ${t('usage.unit')} · ${share(part.value)}` })) },
+        { key: 'cache', segments: parts.slice(2).map(part => ({ ...part, label: `${part.label} · ${compactCount(part.value)} ${t('usage.unit')} · ${share(part.value)}` })) },
+      ]} />
+    </div>
   </div>
 }
 
