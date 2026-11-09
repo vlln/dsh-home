@@ -79,6 +79,13 @@ test('group headings are table headers, not overline labels', async () => {
   assert.match(planner, /\.dsh-todo-heading \{[^}]*text-transform:none/s)
 })
 
+test('habit checkbox keeps the measured 16px / 4px box', async () => {
+  // components/checkbox (2026-11-09): 16x16, radius 4, 1px border.
+  const habit = await read('habit-widget.tsx')
+  assert.match(habit, /size-4/, '16px box')
+  assert.match(habit, /rounded-\[4px\]/, '4px radius')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')
