@@ -118,6 +118,12 @@ test('the quote mark is decoration: tertiary ink, never the data colour', async 
   assert.match(quote, /text-headline-regular/, 'quote body is headline size')
 })
 
+test('the picture card always renders a slot, never an empty card', async () => {
+  const picture = await read('picture-widget.tsx')
+  assert.match(picture, /No picture chosen|picture\.empty/i, 'empty slot has a label')
+  assert.match(plan, /虚线框/, 'the dashed frame is recorded as a deliberate exception')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')
