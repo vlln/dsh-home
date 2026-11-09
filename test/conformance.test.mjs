@@ -71,6 +71,14 @@ test('stat tiles keep the measured padding and label size', async () => {
   assert.match(parts, /text-body-medium text-text-tertiary/, 'tile label 14/500')
 })
 
+test('group headings are table headers, not overline labels', async () => {
+  // data-table header: 14/500, normal case, no tracking. The board used 10px uppercase
+  // with 0.04em, which reads as a different product's overline.
+  const planner = await read('planner-styles.ts')
+  assert.match(planner, /\.dsh-todo-heading \{[^}]*font:var\(--dsh-font-s-strong-14\)/s)
+  assert.match(planner, /\.dsh-todo-heading \{[^}]*text-transform:none/s)
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')

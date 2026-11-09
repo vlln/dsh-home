@@ -33,7 +33,9 @@ export const plannerStyles = `
 .dsh-todo { display:flex; flex-direction:column; height:100%; min-height:0; gap:6px; }
 .dsh-todo-scroll { flex:1 1 auto; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:10px; padding-inline-end:2px; scrollbar-width:thin; }
 .dsh-todo-group { display:flex; flex-direction:column; gap:2px; }
-.dsh-todo-heading { display:flex; align-items:center; gap:6px; margin:0; padding:0 2px; color:var(--color-text-tertiary); font-size:10px; line-height:14px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+/* data-table header (2026-11-09): 14/500, no uppercase, no tracking, 10/12 padding.
+   Ours was 10px uppercase + 0.04em tracking — one size and one case away from theirs. */
+.dsh-todo-heading { display:flex; align-items:center; gap:6px; margin:0; padding:4px 12px; color:var(--color-text-tertiary); font:var(--dsh-font-s-strong-14); letter-spacing:normal; text-transform:none; }
 .dsh-todo-count { color:var(--color-text-tertiary); font-variant-numeric:tabular-nums; font-weight:500; letter-spacing:0; }
 .dsh-todo-list { display:flex; flex-direction:column; gap:1px; margin:0; padding:0; list-style:none; }
 .dsh-todo-item { display:flex; align-items:flex-start; gap:8px; padding:3px 6px; border-radius:8px; }
