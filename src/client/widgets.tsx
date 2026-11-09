@@ -199,39 +199,6 @@ function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
   )
 }
 
-function RhythmBody({ t, data }: WidgetProps) {
-  // 账本保留 30 天（最近的 30 天窗口要用），这张卡只画最近 14 天。
-  const days = (data?.days ?? []).slice(-14)
-  if (days.length === 0) return <Empty>{t('widget.rhythm.empty')}</Empty>
-  const total = days.reduce((sum, day) => sum + day.activeMs, 0)
-  const best = days.reduce((winner, day) => (day.activeMs > winner.activeMs ? day : winner), days[0]!)
-  const todayKey = days[days.length - 1]?.key
-  // SparkBars owns the track, the rounding and the peak emphasis, so this card and the
-  // token card cannot drift into two different-looking bar charts again.
-  return (
-    <div className="dsh-rhythm-content flex h-full min-h-0 flex-col gap-2">
-      <div className="dsh-metric">
-        <span className="dsh-number">{formatDuration(total, t)}</span>
-        <span className="dsh-label">{t('widget.rhythm.totalLabel')}</span>
-      </div>
-      <SparkBars items={days.map(day => ({
-        key: day.key,
-        ratio: day.activeMs / Math.max(1, best.activeMs),
-        label: `${shortDay(day.key)} · ${formatDuration(day.activeMs, t)}`,
-        empty: day.activeMs <= 0,
-        emphasis: day.key === todayKey || day.key === best.key,
-      }))} className="h-20" />
-      <div className="dsh-rhythm-days flex gap-1.5" aria-hidden="true">
-        {days.map(day => <span key={day.key} className="min-w-0 flex-1 text-center text-caption-1-medium tabular-nums text-text-tertiary">{day.key.slice(8)}</span>)}
-      </div>
-      <div className="flex items-center justify-between gap-2 text-caption-1-medium text-text-tertiary">
-        <span>{t('widget.rhythm.peak', { dur: formatDuration(best.activeMs, t), day: shortDay(best.key) })}</span>
-        <span>{t('widget.rhythm.range')}</span>
-      </div>
-    </div>
-  )
-}
-
 /** 内置小组件表：顺序即默认排布。 */
 export const BUILTIN_WIDGETS: readonly BuiltinWidget[] = [
   {
@@ -245,9 +212,5 @@ export const BUILTIN_WIDGETS: readonly BuiltinWidget[] = [
   {
     id: 'today', order: 20, defaultSize: 'm', defaultHeight: 4, Glyph: IconToday,
     title: t => t('widget.today.title'), body: TodayBody,
-  },
-  {
-    id: 'rhythm', order: 50, defaultSize: 'm', defaultHeight: 4, Glyph: IconRhythm,
-    title: t => t('widget.rhythm.title'), body: RhythmBody,
   },
 ]

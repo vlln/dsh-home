@@ -3,15 +3,13 @@
 /**
  * The composed first-run board, in 12 columns.
  *
- * `recent` is the tall left rail; `today` spans the rest of the top; the two
- * small status cards sit under it, and the two remaining cards close the bottom.
- * Twelve columns by twelve rows, tiled with no gap — the shape is the point.
+ * `recent` is the tall left rail; `today` spans the rest of the top; session status
+ * sits under it. Eight rows, three cards, no gap — the shape is the point.
  */
 export const DEFAULT_BOARD: Readonly<Record<string, { x: number; y: number; w: number; h: number }>> = Object.freeze({
   recent: { x: 0, y: 0, w: 4, h: 8 },
   today: { x: 4, y: 0, w: 8, h: 4 },
   running: { x: 4, y: 4, w: 8, h: 4 },
-  rhythm: { x: 0, y: 8, w: 12, h: 4 },
 })
 import type { GridRect, Layout, WidgetSize } from './api.ts'
 import { isGridColumns } from './canvas-width.ts'

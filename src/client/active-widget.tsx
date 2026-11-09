@@ -15,7 +15,7 @@ import type { WidgetContentProps } from './widget-contract.ts'
 import type { DayBucket, LedgerSnapshot } from './api.ts'
 import { ACTIVE_DAY_COUNT as DAY_COUNT, ACTIVE_RANGES as RANGES, activePreviewData, migrateActiveConfig, validateActiveConfig, type ActiveConfig } from './active-model.ts'
 import { IconBars } from './widget-glyphs.tsx'
-import { CardBody, CardHero, CardMeta, SegmentedControl, SegmentedControlItem, SparkBars, Tooltip, TooltipTrigger, type VizItem } from './ui/index.ts'
+import { CardBody, SegmentedControl, SegmentedControlItem, SparkBars, Tooltip, TooltipTrigger, type VizItem } from './ui/index.ts'
 
 function barLabel(day: DayBucket, t: Translate): string {
   return `${shortDay(day.key)} · ${formatDuration(day.activeMs, t)}`
@@ -33,7 +33,7 @@ function Bars({ days, t, todayKey }: { days: readonly DayBucket[]; t: Translate;
   return <div className="flex min-h-0 flex-1 flex-col gap-1.5">
     <SparkBars items={items} wrap={(item, bar) => (
       <TooltipTrigger delay={60}>{bar}<Tooltip>{item.label}</Tooltip></TooltipTrigger>
-    )} className="h-20" />
+    )} className="min-h-6 flex-1" />
     {/* 30 天不再逐日写 30 个数字：每 5 天一个刻度，最后一天始终保留。 */}
     <div className="flex gap-1 text-center text-caption-1-medium text-text-tertiary" aria-hidden="true">
       {days.map((day, index) => <span key={day.key} className="flex-1 truncate">{
@@ -54,8 +54,10 @@ function ActiveBody({ config, saveConfig, preview }: WidgetContentProps<ActiveCo
   return <CardBody>
     <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
       <div className="flex min-w-0 flex-col gap-0.5">
-        <CardHero value={formatDuration(total, t)} />
-        <CardMeta>{t('active.total', { range: t(`active.${range}`) })}</CardMeta>
+        <div className="dsh-metric">
+          <span className="dsh-metric-value">{formatDuration(total, t)}</span>
+          <span className="dsh-metric-unit">{t('active.total', { range: t(`active.${range}`) })}</span>
+        </div>
       </div>
       <SegmentedControl
         aria-label={t('active.range')}

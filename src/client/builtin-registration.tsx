@@ -113,7 +113,6 @@ const BUILTIN_SIZING: Record<string, WidgetSizing> = {
   // 最近会话是一份窄列表：5 条、每条两行，4 列正好；8/12 列只会把标题拉成一条长带。
   recent: { default: { w:4,h:8 }, supported: [{w:4,h:8},{w:4,h:10}] },
   today: { default: { w:8,h:4 }, supported: [{w:4,h:4},{w:8,h:4}] },
-  rhythm: { default: { w:12,h:4 }, supported: [{w:4,h:4},{w:8,h:4},{w:12,h:4},{w:12,h:6}] },
 }
 export function registerBuiltins(registry: HomeWidgetRegistry, t: Translate): () => void {
   const disposers = BUILTIN_WIDGETS.map(widget => {

@@ -1,5 +1,5 @@
 /** Durable widget identities. Registry availability never determines stored instances. */
-export const BUILTIN_WIDGET_IDS = Object.freeze(['recent', 'today', 'running', 'rhythm'])
+export const BUILTIN_WIDGET_IDS = Object.freeze(['recent', 'today', 'running'])
 /**
  * 已下线类型 → 替代类型（`null` 表示没有替代）。
  *
@@ -15,6 +15,7 @@ export const RETIRED_WIDGET_TYPES = Object.freeze({
   // "New session" and the session status card, and the per-workspace breakdown
   // said the same thing as "Recent sessions" with worse resolution.
   '@vlln/dsh-home:quick': null,
+  '@vlln/dsh-home:rhythm': null,
   '@vlln/dsh-home:areas': null,
 })
 

@@ -11,13 +11,12 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
-import { Donut, SparkBars } from './ui/index.ts'
+import { Donut, SparkBars, Tooltip, TooltipTrigger } from './ui/index.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { JsonValue, WidgetContentProps } from './widget-contract.ts'
 import type { DayBucket, LedgerSnapshot } from './api.ts'
 import { IconUsage } from './widget-glyphs.tsx'
-import { useHoverTip } from './hover-tip.tsx'
 
 export type UsageConfig = { week: boolean }
 
@@ -35,17 +34,6 @@ export interface UsagePreviewData { today: { tokens: TokenBuckets; runMs: number
 
 /** Token 卡的三段配色，与环形、图例共用一处定义——两处写颜色迟早会漂。 */
 const PART_TONE = { input: 'chart-4', cache: 'chart-2', output: 'chart-5' } as const
-const PART_COLOR = {
-  input: 'var(--color-chart-4)',
-  cache: 'var(--color-chart-2)',
-  output: 'var(--color-chart-5)',
-} as const
-
-/** 周几：柱状图下方只放单个字母，日期留给 tooltip。 */
-function weekday(key: string): string {
-  const date = new Date(`${key}T00:00:00`)
-  return Number.isNaN(date.getTime()) ? key.slice(8) : 'SMTWTFS'[date.getDay()]!
-}
 
 function percent(value: number): string {
   return `${Math.round(value * 100)}%`
@@ -66,14 +54,7 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
   const days = week ? data.days.slice(-7) : []
   const peak = Math.max(1, ...days.map(day => totalTokens(bucketsOf(day))))
   const windowBuckets = week ? sumDays(days) : today
-  const windowTotal = totalTokens(windowBuckets)
-  const [hover, setHover] = useState<string | null>(null)
-  const tip = useHoverTip()
-  const legend = [
-    { key: 'input' as const, label: t('usage.input'), value: today.input },
-    { key: 'cache' as const, label: t('usage.cache'), value: today.cacheRead },
-    { key: 'output' as const, label: t('usage.output'), value: today.output },
-  ]
+  const [hover] = useState<string | null>(null)
   return <div className="flex h-full min-h-0 flex-col gap-3">
     <div className="flex items-start justify-between gap-3">
       <div className="flex min-w-0 flex-col gap-1.5">
@@ -81,16 +62,9 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
           <span className="dsh-metric-value" aria-label={t('usage.today')}>{compactCount(total)}</span>
           <span className="dsh-metric-unit">{t('usage.today')} · {t('usage.unit')}</span>
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {legend.map(part => <span key={part.key} className="flex items-center gap-1.5 text-caption-1-medium text-text-tertiary"
-            onPointerEnter={() => setHover(part.key)} onPointerLeave={() => setHover(null)}>
-            <i className="block size-2 flex-none rounded-full" style={{ background: PART_COLOR[part.key] }} aria-hidden="true" />
-            {part.label}
-            <b className="font-medium tabular-nums text-text-secondary">{compactCount(part.value)}</b>
-          </span>)}
-        </div>
+
       </div>
-      <Donut size={compact ? 56 : 72} thickness={8} label={t('usage.split')} activeKey={hover}
+      <Donut size={compact ? 32 : 44} thickness={6} label={t('usage.split')} activeKey={hover}
         segments={[
           { key: 'input', value: today.input, tone: PART_TONE.input },
           { key: 'cache', value: today.cacheRead, tone: PART_TONE.cache },
@@ -105,24 +79,16 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
       const label = [`${day.key.slice(5)} · ${compactCount(value)} ${t('usage.unit')}`,
         `${t('usage.input')} ${compactCount(buckets.input)} · ${t('usage.cache')} ${compactCount(buckets.cacheRead)} · ${t('usage.output')} ${compactCount(buckets.output)}`].join('\n')
       return { key: day.key, ratio: value / peak, label, empty: value === 0, emphasis: value === peak }
-      }).reverse()} className="min-h-6 flex-1" wrap={(item, bar) => <span className="flex w-full justify-center" {...tip.bind(item.label)}>{bar}</span>} />
+      })} className="min-h-6 flex-1" wrap={(item, bar) => (
+        <TooltipTrigger delay={60}>{bar}<Tooltip>{item.label}</Tooltip></TooltipTrigger>
+      )} />
       <div className="flex gap-1.5" aria-hidden="true">
-        {[...days].reverse().map(day => <span key={day.key} className="min-w-0 flex-1 text-center text-caption-1-medium tabular-nums text-text-tertiary">{weekday(day.key)}</span>)}
+        {days.map(day => <span key={day.key} className="min-w-0 flex-1 text-center text-caption-1-medium tabular-nums text-text-tertiary">{day.key.slice(8)}</span>)}
       </div>
     </div>}
-    {tip.node}
-    {partitionNote(t, windowTotal, days)}
   </div>
 }
 
-/** 柱状下方的口径说明：一句话说清“这七天”，不重复柱子的数。 */
-function partitionNote(t: Translate, windowTotal: number, days: readonly DayBucket[]): ReactNode {
-  if (days.length === 0) return null
-  return <div className="mt-auto flex items-center justify-between gap-2 text-caption-1-medium text-text-tertiary">
-    <span>{t('usage.week')}</span>
-    <span className="tabular-nums">{compactCount(windowTotal)} {t('usage.unit')}</span>
-  </div>
-}
 
 function ConnectedUsage(props: WidgetContentProps<UsageConfig>): ReactNode {
   const { t, state } = useBuiltin()
