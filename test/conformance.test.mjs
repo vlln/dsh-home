@@ -63,6 +63,13 @@ test('list rows keep BoardUI\'s cell metrics', () => {
   })
 })
 
+test('rings keep BoardUI\'s ratio and caps', async () => {
+  // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
+  const viz = await read('ui/viz.tsx')
+  assert.match(viz, /strokeLinecap="round"/)
+  assert.match(doc, /约直径的 10%/)
+})
+
 test('every primitive we implement is recorded in the conformance doc', () => {
   // If a primitive is not in the doc, it was not measured, and "looks like BoardUI"
   // is a guess. Keep this list in step with docs/boardui-conformance.md.

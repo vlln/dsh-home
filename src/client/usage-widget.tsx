@@ -66,7 +66,7 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
         </div>
 
       </div>
-      <Donut size={compact ? 32 : 44} thickness={6} label={t('usage.split')} activeKey={hover}
+      <Donut size={compact ? 32 : 44} thickness={compact ? 3 : 4} label={t('usage.split')} activeKey={hover}
         segments={[
           { key: 'input', value: today.input, tone: PART_TONE.input },
           { key: 'cache', value: today.cacheRead, tone: PART_TONE.cache },

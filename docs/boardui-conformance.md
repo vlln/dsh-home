@@ -89,11 +89,25 @@
 > 59 是**整页表格**的行高，塞不进一张摘要卡：5 行就 295px。摘要卡刻意用 32，
 > 只采用它的内边距、字号和分隔线。这是清单里唯一一处有意的密度偏差。
 
+## 3.7 环形图（`Donut` / 计时环）
+
+量于 2026-11-09，`components/activity-rings-card`。
+
+| 属性 | BoardUI | 我们 |
+|---|---|---|
+| 描边宽度 | 18，直径 176 → **约直径的 10%** | `thickness` 默认按 10% 取（44 直径 → 4–5） |
+| 端头 | **round** | `strokeLinecap="round"` ✅ |
+| 轨道 | 整圈、无 dash | 整圈 `stroke-chart-track` ✅ |
+| 同心环间距 | 半径差 24 − 描边 18 = **6px** | 单环，无此项 |
+| 中心读数 | 小字、tabular | `text-caption-1-semibold tabular-nums` ✅ |
+
+> 环的粗细**随直径走**，不是固定像素：同一个组件在 44 和 96 上都能用，靠的是比例。
+
 ## 4. 我们的卡片 → BoardUI 的同类
 
 | 我们的卡 | BoardUI 里最接近 | 状态 |
 |---|---|---|
-| Tokens / Recent activity | `bar-chart-card`（Pro，量了柱子） | 结构照做，柱状图按第 2 节 |
+| Tokens / Recent activity | `bar-chart-card`（Pro，量了柱子） | 结构照做，柱状图按第 2 节；环按 3.7 |
 | Work footprints | `heatmap-chart-card`（Pro，量了格子） | 见第 3.5 节；圆角一致，比例待定 |
 | Session status | `stat-cards`（Pro，量了字号与圆角） | 用 `StatGrid` |
 | Recent sessions / Pinned | `data-table` 的行 | 用 `RowButton`；见 3.6（内边距/字号/分隔照做，行高刻意 32） |
