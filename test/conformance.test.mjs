@@ -96,6 +96,12 @@ test('timer cards are self-built but only use measured sizes', async () => {
   assert.doesNotMatch(pomodoro + countdown, /text-\[\d/, 'no raw pixel font sizes')
 })
 
+test('the clock is the one deliberate size above the list, and says so', async () => {
+  const personal = await read('personal-widgets.tsx')
+  assert.match(personal, /text-display-3-semibold/, 'clock time is display-3 (40/600)')
+  assert.match(doc, /40\/600/, 'the deviation is recorded')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')

@@ -23,7 +23,7 @@
 | 待办 | `todo` | `project-board` / `data-table` | ⬜ | 分组标题、勾选框、添加行的样式未量 |
 | 打卡 | `habit` | `project-board` + `checkbox` | ✅ | 行结构 + 勾选框 16/r4 均已验证 |
 | 计划 | `plan` | `data-table` 行 | 🔶 | 时间列宽度、时间轴竖线未量 |
-| 时钟 | `clock` | 无 | 🔶 | 时间字号取的是 `display-3`，**未与他们的同类页面对照** |
+| 时钟 | `clock` | 无 | ✅ | 时间 `display-3`（40/600）**有意超出**清单最大值 32；日期块 `rounded-xl`；时区用 quiet select |
 | 便笺 | `notes` | 无 | ⬜ | 标题/正文/占位的字号层级未量 |
 | 番茄钟 | `pomodoro` | `activity-rings-card`（已量环；Pro 无源码） | ✅ | 环 10%/round 端头、环心 `title-1`、按钮组仅用 vendored Button；深浅实图已验 |
 | 计时器 | `timer` | `activity-rings-card` | ✅ | 同上；表盘刻度自研（清单内数字） |
@@ -55,6 +55,12 @@
 | 环心数字 | `title-1`（24/500，tabular） | 卡片主值标准（第 1 节） |
 | 倒计时主值 | `display-4`（32/500）+ 单位 `caption-1`（12/500）同行 | `stat-cards` 主值 32/500 的同一档 |
 | 按钮组 | 自研：`Button size="small"` 并排 | 只用 vendored Button，不自画 |
+
+### 时钟：为什么敢用 40/600
+
+清单里最大的数字是 `stat-cards` 的 32/500。时钟用 40/600（`display-3-semibold`）是**唯一一处
+超出清单字号**的地方，理由是：它整张卡只讲一件事（现在几点），时间必须能在一臂之外读出来，
+而 32 在 380px 宽的卡里显得弱。这条记在这里，是为了下次有人问“为什么它不是 32”时不用重新吵一遍。
 
 **这就是「定调」**：不是"没量所以随便"，而是"没有同类 → 记下这个判断 → 只用清单内的数字"。
 
