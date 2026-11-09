@@ -25,9 +25,9 @@
 | 计划 | `plan` | `data-table` 行 | 🔶 | 时间列宽度、时间轴竖线未量 |
 | 时钟 | `clock` | 无 | 🔶 | 时间字号取的是 `display-3`，**未与他们的同类页面对照** |
 | 便笺 | `notes` | 无 | ⬜ | 标题/正文/占位的字号层级未量 |
-| 番茄钟 | `pomodoro` | `activity-rings-card`（已量环；Pro 无源码） | 🔶→**自研定调** | 环心用 `title-1/24`（清单内数字）；按钮组排布自研，理由见下 |
-| 计时器 | `timer` | `activity-rings-card` | 🔶→**自研定调** | 同上；表盘刻度自研 |
-| 倒计时 | `countdown` | 无 | 🔶→**自研定调** | 主值 `display-4/32` + 单位 `caption-1/12` 同行；比例取自清单 |
+| 番茄钟 | `pomodoro` | `activity-rings-card`（已量环；Pro 无源码） | ✅ | 环 10%/round 端头、环心 `title-1`、按钮组仅用 vendored Button；深浅实图已验 |
+| 计时器 | `timer` | `activity-rings-card` | ✅ | 同上；表盘刻度自研（清单内数字） |
+| 倒计时 | `countdown` | 无 | ✅ | 主值 `display-4/32` + 单位 `caption-1/12` 同行；深浅实图已验 |
 | 引用 | `quote` | 无 | 🔶 | 引号装饰尺寸未量（现用 display-4） |
 | 图片 | `picture` | 无 | ⬜ | 圆角/留白未量；空态未定义 |
 | 置顶 | `pinned` | `data-table` 行 | 🔶 | 与最近会话共用行，行高偏差同上 |
