@@ -46,6 +46,18 @@ export function activityYearWidth(today: string, cell = ACTIVITY_MIN_CELL): numb
  *   而是由布局量出来再交给这里，卡片就永远不会因为多一行说明文字而溢出。
  * @returns 单元格大小、周数、区块与图表宽度
  */
+/**
+ * Days in the rolling year that ends at `today`. A leap day inside the window makes it 366;
+ * the grid then has one more cell than the usual 365, which is the point.
+ */
+export function yearDays(today: string): number {
+  for (let back = 1; back <= 366; back++) {
+    const key = shiftCalendarDay(today, -back)
+    if (key.endsWith('-02-29')) return 366
+  }
+  return 365
+}
+
 export function activityWeeks(days: ActivityDay[], today: string, width: number, range: ActivityConfig['range'], height = Infinity) {
   let available = Math.max(0, Number.isFinite(width) ? width - 2 * ACTIVITY_SCROLL_PADDING : 0)
   // Auto begins on Monday and ends today; each extra natural column adds seven actual

@@ -50,4 +50,19 @@ button.dsh-activity-cell:is(:hover,:focus-visible) { box-shadow:0 0 0 1px var(--
 .dsh-settings-field { display:flex; flex-direction:column; gap:6px; font:var(--dsh-font-xs-13); }
 .dsh-settings-field select { max-width:100%; padding:8px; border:0.5px solid var(--color-border-button-default); border-radius:var(--dsh-radius-md); color:var(--color-text-primary); background:var(--dsh-sunken); font:inherit; }
 @media (prefers-reduced-motion: reduce) { button.dsh-activity-cell { transition:none; } }
+/* The plot is "axis + weeks". The axis is the weekday column the reference card has:
+   four labels (Mon/Wed/Fri/Sun) lined up with their rows, one cell each. */
+.dsh-activity-plot { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.dsh-activity-axis {
+  display: grid; flex: none;
+  grid-auto-rows: var(--dsh-activity-cell-size, 12px);
+  row-gap: var(--dsh-activity-gap, 2px);
+  padding-top: 16px; /* clears the month label row above the weeks */
+  font-size: 10px; line-height: var(--dsh-activity-cell-size, 12px);
+  color: var(--color-text-tertiary);
+}
+.dsh-activity-axis span { display: block; white-space: nowrap; }
+/* Legend on the left, the exact range on the right: the range used to share space with a
+   range picker that no longer exists. */
+.dsh-activity-caption { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 `

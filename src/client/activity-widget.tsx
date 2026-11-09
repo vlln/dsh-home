@@ -99,7 +99,9 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
   const days = result.days.filter(day => day.key >= first && day.key <= result.today)
   const active = days.filter(day => day.messages > 0).length
   const messages = days.reduce((n, day) => n + day.messages, 0)
-  const dayLabel = (day: {key: string; messages: number; sessions: number}) => t(result.complete ? 'activity.day' : 'activity.partialDay', { date: day.key, messages: day.messages, sessions: day.sessions })
+  // Two lines, like the reference: the date first, then the numbers for that day.
+  const dayLabel = (day: {key: string; messages: number; sessions: number}) =>
+    `${day.key}\n${t(result.complete ? 'activity.dayStats' : 'activity.partialDayStats', { messages: day.messages, sessions: day.sessions })}`
   const cell = (day: (typeof weeks)[number][number], index: number) => day ? <span key={day.key} className="dsh-activity-cell-slot" data-date={day.key}
     {...tip.bind(dayLabel(day))}>
     <HeatCell size={cellSize} level={activityLevel(day.messages) as HeatLevel} label={dayLabel(day)}
@@ -131,25 +133,23 @@ function ActivityBody({ config, width, height, preview, saveConfig }: WidgetCont
         <div className="dsh-activity-block-label" title={`${block.first} – ${block.last}`}>{block.first.slice(5)} – {block.last.slice(5)}</div>
         <div className="dsh-activity-weekdays" aria-hidden="true">{weekdays.map(day => <span key={day}>{t(`activity.${day}`)}</span>)}</div>
         <div className="dsh-activity-block-days">{block.weeks.flat().map(cell)}</div>
-      </section>)}</div> : <div className="dsh-activity-grid" style={{ gridTemplateColumns: `repeat(${weeks.length}, var(--dsh-activity-cell-size))` }}>
+      </section>)}</div> : <div className="dsh-activity-plot">
+        <div className="dsh-activity-axis" aria-hidden="true">
+          {weekdays.map((day, index) => <span key={day}>{index % 2 === 0 ? t(`activity.${day}`) : ''}</span>)}
+        </div>
+        <div className="dsh-activity-grid" style={{ gridTemplateColumns: `repeat(${weeks.length}, var(--dsh-activity-cell-size))` }}>
         {weeks.map((week, i) => <div className="dsh-activity-week" key={i}>
           <span className="dsh-activity-month" aria-hidden="true">{week.find(day => day?.key.endsWith('-01'))?.key.slice(5, 7) ?? ''}</span>
           {week.map(cell)}
         </div>)}
+        </div>
       </div>)}
     </div>
     {/* One quiet footer row: the exact range, the legend and the two filters. The time
         zone and the "empty cells are not inactivity" paragraph were noise for the reader. */}
     <div className="dsh-activity-caption">
-      <span className="dsh-activity-range">{first} – {result.today}</span>
       <div className="dsh-activity-legend"><span>{t('activity.less')}</span>{([0,1,2,3,4] as const).map(level => <HeatCell key={level} size={10} level={level} />)}<span>{t('activity.more')}</span></div>
-      <div className="dsh-activity-filters">
-        <select className="dsh-quiet-select dsh-activity-scale" aria-label={t('activity.range')} title={t('activity.range')}
-          value={config.range} disabled={saveConfig === undefined}
-          onChange={event => { void saveConfig?.({ ...config, range: event.target.value as ActivityConfig['range'] }) }}>
-          {(['auto', 'quarter', 'year'] as const).map(value => <option key={value} value={value}>{t(`activity.${value}`)}</option>)}
-        </select>
-      </div>
+      <span className="dsh-activity-range">{first} – {result.today}</span>
     </div>
     {tip.node}
   </div>
