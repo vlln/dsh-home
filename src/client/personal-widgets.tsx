@@ -42,7 +42,7 @@ export function NotesContent(props: WidgetContentProps<NotesConfig>): ReactNode 
       onClick={editable ? begin : undefined} onKeyDown={editable ? event => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); begin() }
       } : undefined}>
-      {(shownTitle ?? '').trim() !== '' && <h3 className="dsh-note-title text-body-medium text-text-primary">{shownTitle}</h3>}
+      {(shownTitle ?? '').trim() !== '' && <h3 className="dsh-note-title text-title-2-semibold text-text-primary">{shownTitle}</h3>}
       {shownBody.trim() !== '' && <p className="dsh-note-body line-clamp-[12] text-body-regular text-text-secondary">{shownBody}</p>}
       {shown.trim() === '' && <p className="dsh-note-title text-body-regular text-text-tertiary" data-placeholder="true">{t('notes.placeholder')}</p>}
     </div>

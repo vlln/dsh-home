@@ -107,7 +107,7 @@ test('notes keeps the three text roles from the list', async () => {
   // A note is the one card where read and edit share a surface, so it does not use Row.
   // What it must still do is take its three sizes from the ramp.
   const personal = await read('personal-widgets.tsx')
-  assert.match(personal, /dsh-note-title text-body-medium/, 'content title 14/500')
+  assert.match(personal, /dsh-note-title text-title-2-semibold/, 'content title 20/600')
   assert.match(personal, /dsh-note-body[^"]*text-body-regular/, 'body 14/400')
 })
 
@@ -145,17 +145,17 @@ test('recent and pinned share one row implementation', async () => {
 
 test('session status and tokens use the measured primitives', async () => {
   const [status, usage] = await Promise.all([read('session-status-widget.tsx'), read('usage-widget.tsx')])
-  assert.match(status, /StatGrid/, 'session status is three stat tiles')
+  assert.match(status, /SegmentedControlItem/, 'session status filters through one control, not two')
   assert.match(usage, /<Donut/, 'tokens draws the ring primitive')
   assert.match(usage, /SparkBars/, 'tokens draws the bar primitive')
 })
 
-test('heat cells are 4:3 inside the existing slots', async () => {
-  // boardui heatmap card: 28x21 cells. Adopted without touching the grid maths: the cell
-  // keeps the slot's width and takes 3/4 of it as height.
-  const [viz, activity] = await Promise.all([read('ui/viz.tsx'), read('activity-widget.tsx')])
-  assert.match(viz, /width\?: number/, 'HeatCell takes an explicit width')
-  assert.match(activity, /size=\{Math\.round\(cellSize \* 3 \/ 4\)\} width=\{cellSize\}/, 'cell is 4:3 of its slot')
+test('heat cells are square', async () => {
+  // BoardUI's heatmap cells are 28x21, but at this density 4:3 read as "the grid is
+  // broken" rather than as their card. Squares win; the deviation is recorded.
+  const activity = await read('activity-widget.tsx')
+  assert.match(activity, /<HeatCell size=\{cellSize\}/, 'cell is square')
+  assert.match(plan, /正方形/, 'the square decision is recorded in the plan')
 })
 
 test('a card is a container, not a target', async () => {
