@@ -58,13 +58,19 @@ export function yearDays(today: string): number {
   return 365
 }
 
+/**
+ * Days in the rolling year ending at `today`: 366 when a 29 February falls inside that
+ * window, 365 otherwise. The grid must draw the days the calendar has, not 52 x 7.
+ */
+
 export function activityWeeks(days: ActivityDay[], today: string, width: number, range: ActivityConfig['range'], height = Infinity) {
   let available = Math.max(0, Number.isFinite(width) ? width - 2 * ACTIVITY_SCROLL_PADDING : 0)
   // Auto begins on Monday and ends today; each extra natural column adds seven actual
   // days. Only the 365-day cap may start mid-week. Explicit ranges stay exact.
   const columns = Math.max(1, Math.floor((available + ACTIVITY_GAP) / (ACTIVITY_NATURAL_CELL + ACTIVITY_GAP)))
-  const count = range === 'year' ? 365 : range === 'quarter' ? 84
-    : Math.min(365, (columns - 1) * 7 + mondayIndex(today) + 1)
+  const yearCap = yearDays(today)
+  const count = range === 'year' ? yearCap : range === 'quarter' ? 84
+    : Math.min(yearCap, (columns - 1) * 7 + mondayIndex(today) + 1)
   const first = shiftCalendarDay(today, 1 - count)
   const values = new Map(days.map(day => [day.key, day]))
   const makeWeeks = (from: string, to: string) => {

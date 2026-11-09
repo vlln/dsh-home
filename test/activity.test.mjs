@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildActivity, validateActivityQuery } from '../src/activity.mjs'
 import { foldSession } from '../src/ledger.mjs'
-import { activityChartHeight, activityWeeks, activityYearWidth, activityLevel, migrateActivityConfig, shiftCalendarDay, validateActivityConfig, ACTIVITY_NATURAL_CELL, ACTIVITY_MIN_CELL, ACTIVITY_MAX_CELL, ACTIVITY_COMPACT_CELL } from '../src/client/activity-model.ts'
+import { activityChartHeight, activityWeeks, activityYearWidth, activityLevel, migrateActivityConfig, shiftCalendarDay, validateActivityConfig, ACTIVITY_NATURAL_CELL, ACTIVITY_MIN_CELL, ACTIVITY_MAX_CELL, ACTIVITY_COMPACT_CELL, yearDays } from '../src/client/activity-model.ts'
 const now = Date.parse('2026-11-04T18:00:00Z')
 const user = time => ({ type: 'user/message', time: Date.parse(time), data: { source: { kind: 'user' }, content: [{ type: 'text', text: 'hello' }] } })
 function session(id, events, extra = {}) { return foldSession({ id, createdAt: now - 86400000, cwd: '/project', ...extra }, events, now) }
@@ -66,11 +66,16 @@ test('auto adds natural full weeks monotonically, fitting intermediate windows b
       previous = grid.count
     }
     const full = activityWeeks([], today, activityYearWidth(today, ACTIVITY_NATURAL_CELL), 'auto')
-    assert.equal(full.count, 365)
+    // Behaviour, not a constant: the grid draws exactly as many days as the window holds,
+    // and the window is a calendar year — 365, or 366 when a 29 February is inside it.
+    assert.equal(full.weeks.flat().filter(Boolean).length, full.count)
+    // `auto` fills whole Monday-started weeks, so its count need not equal the year length;
+    // the calendar-year count belongs to the explicit `year` range (asserted below).
+    assert.ok(full.count <= yearDays(today), `auto never exceeds the calendar year (${full.count} <= ${yearDays(today)})`)
     const natural = activityWeeks([], today, 766, 'auto')
     assert.ok(natural.count > 84 && natural.count < 365)
     const explicitYear = activityWeeks([], today, 200, 'year')
-    assert.equal(explicitYear.count, 365)
+    assert.equal(explicitYear.count, yearDays(today))
     assert.ok(explicitYear.cellSize >= ACTIVITY_COMPACT_CELL && explicitYear.cellSize < ACTIVITY_MIN_CELL, 'a narrow year shrinks below the normal minimum')
     assert.ok(explicitYear.chartWidth + 6 <= 200, 'a narrow year fits the card instead of scrolling')
     for (const width of [180, 240, 338, 540, 766, 1200]) {
