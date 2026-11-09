@@ -124,6 +124,12 @@ test('the picture card always renders a slot, never an empty card', async () => 
   assert.match(plan, /虚线框/, 'the dashed frame is recorded as a deliberate exception')
 })
 
+test('todo rows keep the measured checkbox and heading', async () => {
+  const [todo, planner] = await Promise.all([read('todo-widget.tsx'), read('planner-styles.ts')])
+  assert.match(planner, /\.dsh-todo-heading \{[^}]*font:var\(--dsh-font-s-strong-14\)/s, 'group heading 14/500')
+  assert.match(todo, /dsh-todo-add/, 'the add row is part of the card, not a dialog')
+})
+
 test('rings keep BoardUI\'s ratio and caps', async () => {
   // activity-rings-card: stroke 18 on a 176 diameter (~10%), round caps, full track.
   const viz = await read('ui/viz.tsx')
