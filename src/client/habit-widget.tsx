@@ -87,7 +87,7 @@ function HabitBody({ habits, today, t, readOnly, showAll, onMark, onDelete, onCr
                 {!readOnly && <span role="button" tabIndex={-1} aria-label={t('habit.delete')} className="text-text-tertiary hover:text-text-primary"
                   onClick={event => { event.stopPropagation(); onDelete?.(habit) }}>×</span>}
               </>}>
-              <span className="flex min-w-0 items-center gap-2">
+              <span className="flex w-full min-w-0 items-center justify-start gap-2">
                 <span className="dsh-habit-box flex size-4 flex-none items-center justify-center rounded-[4px] border border-border-button-default text-text-primary" aria-hidden="true">
                   <span className="dsh-todo-tick" />
                 </span>
