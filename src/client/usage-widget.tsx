@@ -11,7 +11,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { bucketsOf, cacheHitRate, compactCount, sumDays, tokensPerSecond, totalTokens, type TokenBuckets } from './usage-model.ts'
-import { Donut, SparkBars } from './ui/index.ts'
+import { ShareRings, SparkBars } from './ui/index.ts'
 import { useHoverTip } from './hover-tip.tsx'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
@@ -66,13 +66,24 @@ function UsageBody({ data, t, compact, week }: { data: UsagePreviewData; t: Tran
         </div>
 
       </div>
-      <Donut size={compact ? 32 : 44} thickness={compact ? 3 : 4} label={t('usage.split')} activeKey={hover}
-        segments={[
-          { key: 'input', value: today.input, tone: PART_TONE.input },
-          { key: 'cache', value: today.cacheRead, tone: PART_TONE.cache },
-          { key: 'output', value: today.output, tone: PART_TONE.output },
-        ]}
-        center={<span className="text-caption-1-semibold tabular-nums text-text-primary" title={t('usage.hit')}>{total === 0 || hit === null ? '—' : percent(hit)}</span>} />
+      <span className="flex flex-none items-center gap-3">
+        <span className="flex flex-col gap-1">
+          {[{ key: 'fresh', label: t('usage.fresh'), value: today.input + today.output, tone: PART_TONE.input },
+            { key: 'cache', label: t('usage.cache'), value: today.cacheRead + today.cacheWrite, tone: PART_TONE.cache }].map(part => (
+            <span key={part.key} className="flex items-center gap-1.5 text-caption-1-medium text-text-tertiary">
+              <i className="size-2 flex-none rounded-[3px]" style={{ background: `var(--color-${part.tone})` }} aria-hidden="true" />
+              <span>{part.label}</span>
+              <span className="tabular-nums text-text-secondary">{compactCount(part.value)}</span>
+            </span>
+          ))}
+        </span>
+        <ShareRings size={compact ? 44 : 56} thickness={compact ? 6 : 8}
+          segments={[
+            { key: 'fresh', value: today.input + today.output, tone: PART_TONE.input },
+            { key: 'cache', value: today.cacheRead + today.cacheWrite, tone: PART_TONE.cache },
+          ]}
+          center={<span className="text-caption-1-semibold tabular-nums text-text-primary">{total === 0 ? '—' : percent(1 - (hit ?? 0))}</span>} />
+      </span>
     </div>
     {week && <div className="mt-auto flex min-h-0 flex-1 flex-col gap-1.5">
       <SparkBars items={days.map(day => {

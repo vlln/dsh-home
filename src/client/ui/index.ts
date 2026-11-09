@@ -33,7 +33,7 @@ export { cx }
 export { CardBody, CardHero, CardMeta, CardFooter, CardEmpty, CardError, CardSkeleton, StatGrid } from './parts.tsx'
 
 /** 图形原语（柱、轨道、热力格）；读数由调用方用 Tooltip 负责。 */
-export { SparkBars, Meter, HeatCell, Donut } from './viz.tsx'
+export { SparkBars, Meter, HeatCell, Donut, ShareRings } from './viz.tsx'
 export type { VizItem, HeatLevel } from './viz.tsx'
 
 /** 动效原语：入场错峰与数字滚动（只动 opacity/filter，把 transform 留给网格）。 */
