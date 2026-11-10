@@ -12,7 +12,7 @@ export const zhPersonal = {
   'clock.timeZone': '时区',
   'clock.followBrowser': '跟随浏览器',
   'clock.toggleFormat': '点击切换 12/24 小时制',
-  'clock.dateLocale': 'zh-CN',
+  'ui.dateLocale': 'zh-CN',
 } as const
 
 export const enPersonal: Record<keyof typeof zhPersonal, string> = {
@@ -28,5 +28,5 @@ export const enPersonal: Record<keyof typeof zhPersonal, string> = {
   'clock.timeZone': 'Time zone',
   'clock.followBrowser': 'Follow browser',
   'clock.toggleFormat': 'Click to switch 12/24-hour',
-  'clock.dateLocale': 'en-US',
+  'ui.dateLocale': 'en-US',
 }

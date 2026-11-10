@@ -41,7 +41,7 @@ export const plannerStyles = `
 .dsh-todo-heading { display:flex; align-items:center; gap:6px; margin:0; padding:4px 12px; color:var(--color-text-tertiary); font:var(--dsh-font-s-strong-14); letter-spacing:normal; text-transform:none; }
 .dsh-todo-count { color:var(--color-text-tertiary); font-variant-numeric:tabular-nums; font-weight:500; letter-spacing:0; }
 .dsh-todo-list { display:flex; flex-direction:column; gap:1px; margin:0; padding:0; list-style:none; }
-.dsh-todo-item { display:flex; align-items:flex-start; gap:8px; padding:3px 6px; border-radius:8px; }
+.dsh-todo-item { display:flex; align-items:flex-start; gap:8px; padding:3px 12px; border-radius:8px; }
 .dsh-todo-item:hover { background:var(--dsh-sunken); }
 .dsh-todo-check { flex:none; width:17px; height:17px; margin-top:2px; padding:0; display:inline-flex; align-items:center; justify-content:center; border:1.5px solid var(--color-border-button-hover); border-radius:5px; background:var(--dsh-card); color:var(--color-text-white); cursor:pointer; transition:background .12s ease, border-color .12s ease; }
 .dsh-todo-check:hover { border-color:var(--color-chart-4); }
@@ -55,8 +55,8 @@ export const plannerStyles = `
 .dsh-todo-item[data-done="true"] .dsh-todo-title { color:var(--color-text-tertiary); text-decoration:line-through; }
 .dsh-todo-meta { flex:none; display:inline-flex; align-items:baseline; gap:6px; font-size:11px; line-height:16px; color:var(--color-text-tertiary); font-variant-numeric:tabular-nums; }
 .dsh-todo-day { color:var(--color-text-tertiary); }
-.dsh-todo-empty { margin:4px 2px; color:var(--color-text-tertiary); font-size:12px; line-height:18px; }
-.dsh-todo-add { flex:none; display:flex; align-items:center; gap:6px; padding-top:6px; border-top:0; }
+.dsh-todo-empty { margin:4px 12px; color:var(--color-text-tertiary); font-size:12px; line-height:18px; }
+.dsh-todo-add { flex:none; display:flex; align-items:center; gap:6px; padding:6px 12px 0; border-top:0; }
 .dsh-todo-add input { flex:1 1 auto; min-width:0; height:30px; padding:0 11px; border:1.5px solid transparent; border-radius:9px; background:var(--dsh-sunken); color:var(--color-text-primary); font-size:12px; }
 .dsh-todo-add input::placeholder { color:var(--color-text-tertiary); }
 .dsh-todo-add input:focus { outline:none; border-color:var(--color-chart-4); background:var(--dsh-card); }
@@ -77,17 +77,18 @@ export const plannerStyles = `
 .dsh-plan-now-time { flex:0 0 72px; color:var(--color-chart-4); font:var(--dsh-font-xxs-strong-12); }
 .dsh-plan-now-rule { flex:1 1 auto; height:2px; border-radius:1px; background:var(--color-chart-4); }
 .dsh-plan-now-rule::before { content:''; display:block; width:7px; height:7px; margin-top:-2.5px; clip-path:circle(50%); border-radius:50%; background:var(--color-chart-4); }
-.dsh-plan-hint { margin:0 2px; color:var(--color-text-tertiary); font-size:12px; line-height:18px; }
-.dsh-plan-add { flex:none; align-self:flex-start; display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border:0; border-radius:999px; background:var(--dsh-hover); color:var(--color-text-secondary); font-size:11px; line-height:18px; font-weight:600; cursor:pointer; }
-.dsh-plan-add:hover { background:color-mix(in srgb, var(--color-chart-4) 12%, transparent); color:var(--color-chart-4); }
+.dsh-plan-hint { margin:0 12px; color:var(--color-text-tertiary); font-size:12px; line-height:18px; }
+.dsh-plan-add { flex:none; display:flex; align-items:center; gap:4px; height:28px; padding:0 12px; border:0; border-radius:8px; background:transparent; text-align:start; color:var(--color-text-tertiary); font:var(--dsh-font-xxs-strong-12); cursor:pointer; }
+.dsh-plan-add:hover { background:var(--dsh-hover); color:var(--color-text-primary); }
 
 /* ---------- 日程 ---------- */
-.dsh-calendar-head { flex:none; display:flex; align-items:center; gap:6px; }
-.dsh-calendar-title { flex:1 1 auto; min-width:0; color:var(--color-text-primary); font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dsh-calendar-head { flex:none; display:flex; align-items:center; gap:8px; }
+.dsh-calendar-title { flex:1 1 auto; min-width:0; color:var(--color-text-primary); font:var(--dsh-font-xs-strong-13); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dsh-calendar-navs { flex:none; display:flex; align-items:center; gap:2px; }
 .dsh-calendar-nav { flex:none; width:22px; height:22px; padding:0; border:0; border-radius:6px; background:transparent; color:var(--color-text-tertiary); font-size:15px; line-height:1; cursor:pointer; }
 .dsh-calendar-nav:hover { background:var(--dsh-sunken); color:var(--color-text-primary); }
-.dsh-calendar-today { flex:none; padding:3px 10px; border:0; border-radius:999px; background:var(--dsh-hover); color:var(--color-text-secondary); font-size:11px; line-height:16px; font-weight:600; cursor:pointer; }
-.dsh-calendar-today:hover { background:color-mix(in srgb, var(--color-chart-4) 12%, transparent); color:var(--color-chart-4); }
+.dsh-calendar-today { flex:none; height:22px; padding:0 6px; border:0; border-radius:6px; background:transparent; color:var(--color-text-tertiary); font:var(--dsh-font-xxs-strong-12); cursor:pointer; }
+.dsh-calendar-today:hover { background:var(--dsh-hover); color:var(--color-text-primary); }
 .dsh-calendar-weekdays { flex:none; display:grid; grid-template-columns:repeat(7,1fr); gap:2px; color:var(--color-text-tertiary); font-size:10px; line-height:14px; text-align:center; }
 .dsh-calendar-grid { flex:none; display:grid; grid-template-columns:repeat(7,1fr); grid-template-rows:repeat(6,1fr); gap:2px; }
 .dsh-calendar-cell { position:relative; display:flex; align-items:center; justify-content:center; min-height:28px; padding:0; border:0; border-radius:8px; background:transparent; color:var(--color-text-secondary); font-size:11px; font-variant-numeric:tabular-nums; cursor:pointer; transition:background .12s ease, color .12s ease; }
@@ -101,7 +102,6 @@ export const plannerStyles = `
 .dsh-calendar-dot { position:absolute; bottom:2px; left:50%; width:4px; height:4px; clip-path:circle(50%); margin-left:-2px; border-radius:50%; background:var(--color-chart-4); }
 .dsh-calendar-cell[data-selected="true"] .dsh-calendar-dot { display:none; }
 .dsh-calendar-day { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:2px; padding-top:6px; border-top:0; }
-.dsh-calendar-day-head { flex:none; display:flex; align-items:baseline; gap:6px; color:var(--color-text-tertiary); font-size:11px; line-height:16px; }
 .dsh-calendar-list { flex:1 1 auto; min-height:0; overflow:auto; scrollbar-width:thin; }
 
 /* ---------- 打卡 ---------- */

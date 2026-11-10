@@ -102,8 +102,12 @@ function PlanBody({ data, today, now, t, readOnly, showDone, onToggle, onUpdate,
 
   return <div className="dsh-plan">
     <div className="dsh-plan-scroll">
+      {/* 今天没有定时条目时，别用整卡空态去压「待办 n」这个分组标题：两者都是 14/500，
+          于是读起来像两个平级的标题。还有待办在，就退成一句 12px 的说明。 */}
       {timed.length === 0
-        ? <CardEmpty title={t('plan.empty')} />
+        ? (free.length > 0
+            ? <p className="dsh-plan-hint">{t('plan.empty')}</p>
+            : <CardEmpty title={t('plan.empty')} />)
         : <ul className="dsh-plan-list">{timeline}</ul>}
       {free.length > 0 && <section className="dsh-todo-group" data-group="free">
         <h4 className="dsh-todo-heading">{t('plan.unscheduled')}<span className="dsh-todo-count">{free.length}</span></h4>
@@ -112,8 +116,9 @@ function PlanBody({ data, today, now, t, readOnly, showDone, onToggle, onUpdate,
       {timed.length === 0 && free.length === 0 && <p className="dsh-plan-hint">{t('plan.emptyHint')}</p>}
       {adding && <ItemEditor t={t} initial={emptyDraft(today)} autoFocus
         onSave={fields => { onCreate?.(fields); setAdding(false) }} onCancel={() => setAdding(false)} />}
+      {/* 新增是列表的最后一行，不是卡底的一个浮标。 */}
+      {!readOnly && !adding && <button type="button" className="dsh-plan-add" onClick={() => setAdding(true)}>+ {t('planner.add')}</button>}
     </div>
-    {!readOnly && !adding && <button type="button" className="dsh-plan-add" onClick={() => setAdding(true)}>+ {t('planner.add')}</button>}
   </div>
 }
 
@@ -154,7 +159,7 @@ export function registerPlanWidget(registry: HomeWidgetRegistry, t: Translate): 
     typeId: '@vlln/dsh-home:plan', apiVersion: 1,
     title: () => t('widget.plan.title'), description: () => t('gallery.description.plan'), source: '@vlln/dsh-home', icon: IconPlan,
     preview: { data: { day: preview.day, now: preview.now, items: preview.items } as unknown as JsonValue },
-    sizing: { default: { w: 8, h: 6 }, supported: [{ w: 8, h: 4 }, { w: 8, h: 6 }, { w: 8, h: 8 }, { w: 12, h: 6 }] },
+    sizing: { default: { w: 4, h: 6 }, supported: [{ w: 4, h: 4 }, { w: 4, h: 6 }, { w: 4, h: 8 }] },
     configVersion: 1, defaultConfig: defaultPlanConfig, validateConfig: (config): config is PlanConfig => validatePlanConfig(config),
     Content: PlanContent,
   })

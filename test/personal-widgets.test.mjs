@@ -216,8 +216,9 @@ test('clock pauses hidden tabs, resumes immediately and cancels stale callbacks 
 
 test('personal dictionaries have matching keys and explicit date locale tags', () => {
   assert.deepEqual(Object.keys(enPersonal).sort(), Object.keys(zhPersonal).sort())
-  assert.equal(zhPersonal['clock.dateLocale'], 'zh-CN')
-  assert.equal(enPersonal['clock.dateLocale'], 'en-US')
+  // The tag names the UI language, not the clock: the calendar month reads it too.
+  assert.equal(zhPersonal['ui.dateLocale'], 'zh-CN')
+  assert.equal(enPersonal['ui.dateLocale'], 'en-US')
   for (const dictionary of [zhPersonal, enPersonal]) {
     for (const [key, value] of Object.entries(dictionary)) {
       assert.match(key, /^[a-z]+\./)

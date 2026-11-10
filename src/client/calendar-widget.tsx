@@ -35,9 +35,10 @@ function validateCalendarConfig(value: unknown): value is CalendarConfig {
 
 export interface CalendarPreviewData { day: string; items: PlannerItem[] }
 
-function monthTitle(anchor: string): string {
+// 月份跟着界面语言走，不跟浏览器走：中文界面里出现 "November 2026" 是这一张卡最刺眼的一行。
+function monthTitle(anchor: string, locale: string): string {
   const [year, month] = anchor.split('-').map(Number)
-  return new Date(year, month - 1, 1).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })
+  return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' }).format(new Date(year, month - 1, 1))
 }
 
 function CalendarBody({ data, today, t, readOnly, onToggle, onUpdate, onDelete, onCreate, weekStart }: {
@@ -62,17 +63,22 @@ function CalendarBody({ data, today, t, readOnly, onToggle, onUpdate, onDelete, 
     return t(`calendar.weekday.${day}`)
   })
   const selectedItems = itemsOnDay(data.items, selected)
+  const locale = t('ui.dateLocale')
+  // 月份在左、操作在右：两个箭头挨在一起（它们是同一件事的两半），"回到今天" 退成文字动作。
+  // 原来是 ‹ 在最左、› 在最右，两者之间隔着一个 flex:1 的月份标题，横向拉出 700px。
   return <div className="dsh-calendar">
     <div className="dsh-calendar-head">
-      <button type="button" className="dsh-calendar-nav" aria-label={t('calendar.prev')} onClick={() => setAnchor(shiftMonth(anchor, -1))}>‹</button>
-      <span className="dsh-calendar-title">{monthTitle(anchor)}</span>
-      <button type="button" className="dsh-calendar-today" onClick={() => { setAnchor(`${today.slice(0, 7)}-01`); setSelected(today) }}>{t('calendar.today')}</button>
-      <button type="button" className="dsh-calendar-nav" aria-label={t('calendar.next')} onClick={() => setAnchor(shiftMonth(anchor, 1))}>›</button>
+      <span className="dsh-calendar-title">{monthTitle(anchor, locale)}</span>
+      <div className="dsh-calendar-navs">
+        <button type="button" className="dsh-calendar-today" onClick={() => { setAnchor(`${today.slice(0, 7)}-01`); setSelected(today) }}>{t('calendar.today')}</button>
+        <button type="button" className="dsh-calendar-nav" aria-label={t('calendar.prev')} onClick={() => setAnchor(shiftMonth(anchor, -1))}>‹</button>
+        <button type="button" className="dsh-calendar-nav" aria-label={t('calendar.next')} onClick={() => setAnchor(shiftMonth(anchor, 1))}>›</button>
+      </div>
     </div>
     <div className="dsh-calendar-weekdays" aria-hidden="true">
       {weekdayLabels.map((label, index) => <span key={index}>{label}</span>)}
     </div>
-    <div className="dsh-calendar-grid" role="grid" aria-label={monthTitle(anchor)}>
+    <div className="dsh-calendar-grid" role="grid" aria-label={monthTitle(anchor, locale)}>
       {weeks.map((week, row) => week.map(day => {
         const date = Number(day.slice(8))
         const outside = !inMonth(day, anchor)
@@ -88,10 +94,11 @@ function CalendarBody({ data, today, t, readOnly, onToggle, onUpdate, onDelete, 
       }))}
     </div>
     <div className="dsh-calendar-day">
-      <div className="dsh-calendar-day-head">
-        <span>{selected === today ? t('plan.today') : selected}</span>
+      {/* 所选日期的条目是一个分组，用和「待办 n」同一个分组标题：14/500 + 计数。 */}
+      <h4 className="dsh-todo-heading">
+        {selected === today ? t('plan.today') : selected}
         <span className="dsh-todo-count">{selectedItems.filter(item => !item.done).length}</span>
-      </div>
+      </h4>
       <div className="dsh-calendar-list">
         {selectedItems.length === 0 && <p className="dsh-todo-empty">{t('calendar.empty')}</p>}
         {selectedItems.length > 0 && <ul className="dsh-todo-list">
@@ -105,11 +112,12 @@ function CalendarBody({ data, today, t, readOnly, onToggle, onUpdate, onDelete, 
         </ul>}
         {adding && <ItemEditor t={t} initial={emptyDraft(selected)} autoFocus
           onSave={fields => { onCreate?.(fields); setAdding(false) }} onCancel={() => setAdding(false)} />}
+        {/* 新增是列表的最后一行，不是卡底的一个浮标；列表短的时候空白落在它下面。 */}
+        {!readOnly && !adding && <button type="button" className="dsh-plan-add" onClick={() => setAdding(true)}>
+          + {t('calendar.addOn', { day: selected === today ? t('plan.today') : selected.slice(5) })}
+        </button>}
       </div>
     </div>
-    {!readOnly && !adding && <button type="button" className="dsh-plan-add" onClick={() => setAdding(true)}>
-      + {t('calendar.addOn', { day: selected === today ? t('plan.today') : selected.slice(5) })}
-    </button>}
   </div>
 }
 
@@ -149,7 +157,7 @@ export function registerCalendarWidget(registry: HomeWidgetRegistry, t: Translat
     typeId: '@vlln/dsh-home:calendar', apiVersion: 1,
     title: () => t('widget.calendar.title'), description: () => t('gallery.description.calendar'), source: '@vlln/dsh-home', icon: IconCalendar,
     preview: { data: { day: preview.day, items: preview.items } as unknown as JsonValue },
-    sizing: { default: { w: 8, h: 8 }, supported: [{ w: 8, h: 6 }, { w: 8, h: 8 }, { w: 12, h: 8 }] },
+    sizing: { default: { w: 4, h: 8 }, supported: [{ w: 4, h: 6 }, { w: 4, h: 8 }] },
     configVersion: 1, defaultConfig: defaultCalendarConfig,
     validateConfig: (config): config is CalendarConfig => validateCalendarConfig(config),
     Content: CalendarContent,

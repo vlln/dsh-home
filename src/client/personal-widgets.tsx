@@ -74,7 +74,7 @@ export function ClockContent(props: WidgetContentProps<ClockConfig>): ReactNode 
       },
     })
   }, [visible, preview])
-  const locale = t('clock.dateLocale')
+  const locale = t('ui.dateLocale')
   const { time, date } = formatPersonalClock(now, config, locale)
   const { timeParts, day, month } = personalClockDisplayParts(now, config, locale)
   const editable = saveConfig !== undefined && preview === undefined && !editing

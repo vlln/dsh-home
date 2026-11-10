@@ -68,7 +68,7 @@ export const zhPlanner = {
   'calendar.today': '回到今天',
   'calendar.empty': '这天还没有安排',
   'calendar.back': '返回月视图',
-  'calendar.addOn': '在 {day} 添加',
+  'calendar.addOn': '在{day}添加',
   'calendar.doneHint': '已完成',
   'calendar.weekday.1': '一',
   'calendar.weekday.2': '二',

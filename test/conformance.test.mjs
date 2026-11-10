@@ -112,6 +112,39 @@ test('the balance card has no buttons and no placeholder value', async () => {
   assert.doesNotMatch(parts, /export function CardAction/, 'the text-action part went with the button')
 })
 
+test('the calendar and the plan are column cards', async () => {
+  // Both were declared 8 wide (the calendar also 12), so a month grid spread its seven columns
+  // over 740px — numbers floating with 60px of air between them — and a list of two rows
+  // stretched a single line across the screen. A calendar needs seven columns of ~44 and a
+  // list wants a column: 4 wide, which also migrates saved 8s on load (declaredWidthFor).
+  const [calendar, plan] = await Promise.all([read('calendar-widget.tsx'), read('plan-widget.tsx')])
+  for (const source of [calendar, plan]) {
+    assert.match(source, /default: \{ w: 4,/, 'four columns wide by default')
+    assert.doesNotMatch(source, /supported: \[[^\]]*\{ w: (?:8|12),/, 'no wide shape is declared')
+  }
+})
+
+test('planner cards share one left edge and one add row', async () => {
+  // Three insets used to meet in one card: group heading 12, row 6, empty line 2 — and the add
+  // control was a pill floating in the leftover space at the bottom edge. Now every body line
+  // starts at 12, and "add" is the last row of the list.
+  const planner = await read('planner-styles.ts')
+  assert.match(planner, /\.dsh-todo-item \{[^}]*padding:3px 12px/s, 'rows sit at the heading inset')
+  assert.match(planner, /\.dsh-todo-empty \{[^}]*margin:4px 12px/s, 'the empty line sits there too')
+  assert.match(planner, /\.dsh-plan-add \{[^}]*height:28px; padding:0 12px/s, 'add is a list row')
+  assert.doesNotMatch(planner, /\.dsh-plan-add \{[^}]*border-radius:999px/s, 'add is not a pill')
+  assert.doesNotMatch(planner, /\.dsh-calendar-today \{[^}]*background:var\(--dsh-hover\)/s, 'back-to-today is text, not a chip')
+})
+
+test('the calendar month follows the UI language, not the browser', async () => {
+  // The month came from toLocaleDateString(undefined, ...), i.e. the browser's locale, so a
+  // Chinese board showed "November 2026". The tag is the dictionary's, like the clock card's.
+  const calendar = await read('calendar-widget.tsx')
+  assert.match(calendar, /new Intl\.DateTimeFormat\(locale, \{ year: 'numeric', month: 'long' \}\)/)
+  assert.match(calendar, /t\('ui\.dateLocale'\)/)
+  assert.doesNotMatch(calendar, /toLocaleDateString\(undefined/)
+})
+
 test('the pomodoro card does not say the phase twice', async () => {
   // The phase chip sat in its own header row above the dial, saying what the ring ink and the
   // caption inside the ring already said. Removing it gives the dial the height back; the round
