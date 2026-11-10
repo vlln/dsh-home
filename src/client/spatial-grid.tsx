@@ -407,7 +407,18 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     // made the ghost wider than the card it previewed.
     const w = widgetWidthForColumns(drag.item.w)
     const h = drag.item.h * SPATIAL_ROW_HEIGHT + (drag.item.h - 1) * SPATIAL_GAP
-    setLibraryVisual({ x:p.x-drag.grab.x, y:p.y-drag.grab.y, w,h,inside })
+    // The ghost is `position: fixed`, so it must be placed in viewport coordinates. Whatever
+    // space the pointer came in, clamping keeps the card on screen: an off-screen ghost is
+    // indistinguishable from "the drag showed nothing".
+    const maxX = Math.max(0, window.innerWidth - w - 8)
+    const maxY = Math.max(0, window.innerHeight - h - 8)
+    const nextVisual = {
+      x: Math.min(Math.max(p.x - drag.grab.x, -w + 24), maxX),
+      y: Math.min(Math.max(p.y - drag.grab.y, -h + 24), maxY),
+      w, h, inside,
+    }
+    ;(window as unknown as { __ghost?: unknown }).__ghost = { p, grab: drag.grab, w, h, maxX, maxY, nextVisual }
+    setLibraryVisual(nextVisual)
     if (!inside) {
       clearHover(); session.intent=null; session.pending=true; session.rejected=false
       session.preview=session.snapshot.map(entry=>({...entry})); setCurrent(layout);setLibraryOutline(null); return
