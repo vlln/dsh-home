@@ -109,7 +109,6 @@ export const widgetRefinementStyles = `
 .dsh-home-widget .dsh-activity-footer > .dsh-widget-own-editor { margin:0; padding:0; flex:none; }
 @container widget (max-width:480px) {
   .dsh-personal-clock .dsh-personal-label { font:var(--dsh-font-xs-13); }
-  .dsh-rhythm-days span:last-child { white-space:nowrap; }
 }
 
 /* Local feedback only; no entrance choreography or changes to placement. */

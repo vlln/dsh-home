@@ -12,8 +12,6 @@ export const personalStyles = `
 .dsh-note-input{flex:1 1 auto;box-sizing:border-box;width:100%;min-height:100%;margin:0;padding:0;border:0;outline:none;resize:none;background:transparent;color:var(--color-text-primary);font:inherit;font-size:var(--dsh-content-font-size,13px);line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4}
 .dsh-note-input::placeholder{color:var(--color-text-tertiary)}
 .dsh-note-error{margin:0;color:var(--color-text-error-primary);font:var(--dsh-font-xxs-12)}
-.dsh-personal-label{margin:0;font:var(--dsh-font-s-strong-14);white-space:pre-wrap;overflow-wrap:anywhere}
-.dsh-personal-hint{margin:0;color:var(--color-text-tertiary);font:var(--dsh-font-xs-13);overflow-wrap:anywhere}
 /* 时钟：大号时间 + 日期牌 + 一行时区选择。没有标题、没有整行日期、没有设置弹窗，
    4×4 的卡片里也不再需要滚动。 */
 .dsh-personal-clock{box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:8px;height:100%;min-height:0;color:var(--color-text-primary)}
@@ -47,10 +45,4 @@ button.dsh-personal-clock-time:focus-visible{outline:var(--dsh-focus-ring-width,
   .dsh-personal-clock-day{font-size:21px}
 }
 .dsh-personal-settings{display:flex;flex-direction:column;gap:8px;min-width:0}
-.dsh-personal-field{display:flex;flex-direction:column;gap:6px;font:var(--dsh-font-xs-13);color:var(--color-text-primary)}
-.dsh-personal-textarea{box-sizing:border-box;width:100%;min-height:120px;padding:8px 12px;resize:vertical;border:.5px solid var(--color-border-button-hover);border-radius:var(--dsh-radius-md);background:var(--dsh-sunken);color:var(--color-text-primary);font-family:var(--font-sans);font-size:var(--dsh-content-font-size);line-height:1.6}
-.dsh-personal-textarea:is(:hover,:focus-visible){border-color:var(--color-border-button-default)}
-.dsh-personal-textarea:focus-visible{outline:2px solid var(--color-chart-4);outline-offset:2px}
-.dsh-personal-switch-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;font:var(--dsh-font-xs-13);color:var(--color-text-primary)}
-.dsh-personal-error{margin:0;color:var(--color-text-error-primary);font:var(--dsh-font-xs-13)}
 `

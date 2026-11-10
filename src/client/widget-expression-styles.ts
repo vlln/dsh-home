@@ -12,8 +12,6 @@ export const widgetExpressionStyles = `
 .dsh-today-hero .dsh-metric { align-items:flex-start; flex-direction:column; gap:0; min-width:0; }
 .dsh-day-dial { width:clamp(52px, 15cqi, 96px); height:auto; aspect-ratio:1; flex:none; overflow:visible; }
 .dsh-day-dial circle { fill:none; }
-.dsh-day-dial-track { stroke:var(--dsh-hairline); stroke-width:4; }
-.dsh-day-dial-arc { stroke:var(--color-chart-4); stroke-width:5; stroke-linecap:butt; }
 .dsh-day-dial .dsh-day-dial-now { fill:var(--color-status-yellow-text); }
 .dsh-day-dial text { fill:var(--color-text-tertiary); font:14px var(--font-sans); }
 .dsh-home-widget .dsh-band-track { height:10px; margin-top:1px; }

@@ -208,9 +208,6 @@ export const CSS = `
   outline: var(--dsh-focus-ring-width, 2px) solid var(--dsh-focus-ring-color, var(--color-chart-4));
   outline-offset: 1px;
 }
-.dsh-row-static { cursor: default; }
-.dsh-row-static:hover { background: transparent; }
-.dsh-row-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .dsh-row-title {
   font-size: 13px;
   line-height: 19px;
@@ -237,7 +234,6 @@ export const CSS = `
   background: var(--color-chart-4);
   opacity: 0.5;
 }
-.dsh-band-seg[data-now="true"] { opacity: 0.95; }
 .dsh-band-now {
   position: absolute;
   top: 0;
@@ -257,7 +253,6 @@ export const CSS = `
 }
 
 .dsh-rhythm { display: flex; align-items: flex-end; gap: 4px; height: 56px; }
-.dsh-rhythm-col { display: flex; align-items: flex-end; flex: 1 1 0; min-width: 0; height: 100%; }
 .dsh-rhythm-bar {
   display: block;
   width: 100%;
@@ -274,16 +269,12 @@ export const CSS = `
   line-height: 12px;
   color: var(--color-text-tertiary);
 }
-.dsh-rhythm-days span { flex: 1 1 0; min-width: 0; text-align: center; overflow: hidden; }
 
-.dsh-key { font-size: 11px; color: var(--color-text-tertiary); }
 
 @keyframes dsh-home-spin { to { transform: rotate(360deg); } }
 @keyframes dsh-home-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .dsh-w { animation: dsh-home-rise 200ms ease-out both; }
 .dsh-w:hover { border-color: var(--color-border-button-hover); }
-.dsh-band-seg { transition: opacity 120ms ease-out; }
-.dsh-band-seg:hover { opacity: 1; }
 .dsh-rhythm-col:hover .dsh-rhythm-bar { opacity: 1; }
 /* 最近活跃：同一个量换窗口看。范围切换在卡片顶部，图表填满剩余高度。 */
 /* 零活动的那一天不画柱子，也不留底色：只剩可悬停的列与日期标签。 */
@@ -301,7 +292,6 @@ export const CSS = `
 .dsh-w[data-drop="after"]::after { right: -7px; }
 @media (prefers-reduced-motion: reduce) {
   .dsh-w { animation: none; }
-  .dsh-band-seg { transition: none; }
 }
 .dsh-tools {
   display: flex;
@@ -511,7 +501,6 @@ export const CSS = `
 .dsh-session-line[data-dismissible="true"] .dsh-session-row { padding-inline-end: 26px; }
 .dsh-session-status { order: -1; flex: none; display: inline-flex; align-items: center; }
 .dsh-session-title { flex: 1 1 auto; min-width: 0; color: var(--color-text-primary); font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dsh-session-trailing { flex: none; font-size: 11px; line-height: 16px; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
 .dsh-session-dismiss { position: absolute; inset-inline-end: 2px; top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity 120ms ease-out; }
 .dsh-session-line:hover .dsh-session-dismiss,
 .dsh-session-line:focus-within .dsh-session-dismiss { opacity: 1; }

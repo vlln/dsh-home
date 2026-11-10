@@ -12,7 +12,6 @@ export const plannerStyles = `
 /* 颜色、字号与共用小部件（胶囊 / chip / quiet select / 悬停气泡）只在 design-system.ts
    定义；本模块只写排版与状态，不再声明第二套色板。 */
 .dsh-chip b { color:inherit; font-weight:600; font-variant-numeric:tabular-nums; }
-.dsh-chip-dot { width:6px; height:6px; border-radius:50%; clip-path:circle(50%); background:var(--dsh-part, currentColor); flex:none; }
 .dsh-muted { color:var(--color-text-tertiary); font-size:11px; }
 .dsh-muted b { color:var(--color-text-secondary); font-weight:600; font-variant-numeric:tabular-nums; }
 
@@ -116,16 +115,12 @@ export const plannerStyles = `
 [aria-checked="true"] .dsh-habit-box { background:var(--color-chart-4); border-color:var(--color-chart-4); color:var(--color-text-white); }
 [aria-checked="true"] .dsh-habit-box .dsh-todo-tick { opacity:1; }
 .dsh-habit-mark[aria-checked="true"] .dsh-todo-tick { opacity:1; }
-.dsh-habit-text { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
 .dsh-habit-title { color:var(--color-text-primary); font-size:13px; line-height:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dsh-habit-row[data-marked="true"] .dsh-habit-title { color:var(--color-text-tertiary); }
-.dsh-habit-meta { color:var(--color-text-tertiary); font-size:10px; line-height:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dsh-habit-streak { flex:none; padding:1px 8px; border-radius:999px; background:var(--dsh-active); color:var(--color-text-secondary); font-size:10px; line-height:16px; font-variant-numeric:tabular-nums; }
 .dsh-habit-streak[data-zero="true"] { background:transparent; color:var(--color-text-tertiary); }
 .dsh-habit-streak[data-zero="false"] { background:color-mix(in srgb, var(--color-status-lime-text) 12%, transparent); color:var(--color-status-lime-text); }
-.dsh-habit-delete { flex:none; width:18px; height:18px; padding:0; border:0; border-radius:6px; background:transparent; color:var(--color-text-tertiary); font-size:14px; line-height:1; cursor:pointer; opacity:0; }
 .dsh-habit-row:hover .dsh-habit-delete, .dsh-habit-delete:focus-visible { opacity:1; }
-.dsh-habit-delete:hover { color:var(--color-text-error-primary); }
 
 /* ---------- 计时器 ---------- */
 .dsh-timer-wrap, .dsh-countdown-wrap, .dsh-picture-wrap, .dsh-quote-wrap { display:flex; flex-direction:column; height:100%; min-height:0; gap:6px; }
@@ -155,9 +150,6 @@ export const plannerStyles = `
 .dsh-dial-note { color:var(--color-status-yellow-text); font-size:10px; line-height:12px; font-weight:600; }
 .dsh-timer-alert { position:absolute; left:0; top:0; padding:1px 6px; border-radius:var(--dsh-radius-xs); background:color-mix(in srgb, var(--color-status-yellow-text) 12%, transparent); color:var(--color-status-yellow-text); font-size:10px; line-height:16px; font-weight:600; cursor:help; }
 .dsh-timer-actions { display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; flex:none; }
-.dsh-timer-button { padding:4px 12px; border:0; border-radius:999px; background:var(--dsh-hover); color:var(--color-text-secondary); font-size:11px; line-height:18px; font-weight:600; cursor:pointer; }
-.dsh-timer-button:hover:not(:disabled) { background:var(--dsh-active); color:var(--color-text-primary); }
-.dsh-timer-button:disabled { opacity:.45; cursor:default; }
 .dsh-timer-primary { background:var(--color-accent-500); color:var(--color-text-white); }
 .dsh-timer-primary:hover:not(:disabled) { background:var(--color-accent-400); color:var(--color-text-white); }
 
@@ -176,24 +168,16 @@ export const plannerStyles = `
 .dsh-countdown-date { color:var(--color-text-tertiary); font-size:11px; font-variant-numeric:tabular-nums; }
 .dsh-countdown-expired { color:var(--color-status-yellow-text); font-size:22px; font-weight:600; }
 .dsh-countdown-hint { color:var(--color-text-tertiary); font-size:11px; }
-.dsh-countdown-row { display:flex; align-items:flex-end; gap:6px; }
 .dsh-countdown-row .dsh-item-field:first-child { flex:1 1 auto; }
 .dsh-countdown-row .dsh-item-field:nth-child(2) { flex:0 0 130px; }
 
 /* ---------- Token 用量 ---------- */
 .dsh-usage { display:flex; flex-direction:column; gap:8px; height:100%; min-height:0; overflow:hidden; }
-.dsh-usage-hero { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.dsh-usage-figure { display:flex; flex-direction:column; gap:0; min-width:0; }
 .dsh-usage-total { color:var(--color-text-primary); }
-.dsh-usage-unit { color:var(--color-text-tertiary); font-size:11px; }
 /* 圆盘跟着卡片走：宽卡里放大到 84px，数字与百分比才读得出来。 */
 .dsh-usage-donut { position:relative; width:76px; aspect-ratio:1; border-radius:50%; clip-path:circle(50%); flex:none; }
-.dsh-usage-donut-hole { position:absolute; inset:20%; border-radius:50%; clip-path:circle(50%); background:var(--dsh-card); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; }
-.dsh-usage-donut-hole b { color:var(--color-text-primary); font-size:14px; line-height:1.15; font-weight:600; font-variant-numeric:tabular-nums; }
-.dsh-usage-donut-hole i { color:var(--color-text-tertiary); font-size:9px; line-height:1.2; letter-spacing:.02em; font-style:normal; }
 .dsh-usage-chips { display:flex; flex-wrap:wrap; gap:6px; }
 /* 柱子填满剩余高度、按列宽取 64%：宽卡里不再是一排小方块夹着大缝。 */
-.dsh-usage-bars { display:flex; align-items:flex-end; gap:clamp(4px, 1.2cqi, 10px); flex:1 1 auto; min-height:0; max-height:180px; }
 .dsh-usage-col { flex:1 1 0; display:flex; align-items:flex-end; justify-content:center; height:100%; min-width:0; }
 .dsh-usage-bar { width:64%; max-width:none; min-height:3px; border-radius:5px 5px 2px 2px; background:var(--color-chart-4); }
 .dsh-usage-foot { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
@@ -209,11 +193,6 @@ export const plannerStyles = `
 
 /* ---------- 余额 ---------- */
 .dsh-balance { display:flex; flex-direction:column; gap:4px; height:100%; min-height:0; }
-.dsh-balance-label { color:var(--color-text-tertiary); font-size:11px; line-height:16px; }
-.dsh-balance-amount { color:var(--color-text-primary); }
-.dsh-balance-amount[data-unknown="true"] { color:var(--color-text-tertiary); }
-.dsh-balance-reason { color:var(--color-text-tertiary); font-size:12px; line-height:18px; }
-.dsh-balance-detail { display:flex; gap:12px; color:var(--color-text-tertiary); font-size:10px; font-variant-numeric:tabular-nums; }
 .dsh-balance .dsh-timer-button { margin-top:auto; align-self:flex-start; }
 
 /* ---------- 图片 / 一句话 ---------- */
@@ -235,9 +214,7 @@ export const plannerStyles = `
 .dsh-picture-empty-glyph { color:var(--color-text-tertiary); font-size:24px; line-height:1; }
 .dsh-picture-path { max-width:100%; color:var(--color-text-tertiary); font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:start; }
 .dsh-quote { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:6px; justify-content:center; padding:2px 4px; }
-.dsh-quote-mark { color:var(--color-chart-4); font-size:34px; line-height:.8; font-weight:600; }
 .dsh-quote-text { margin:0; color:var(--color-text-primary); font-size:13px; line-height:1.6; overflow:auto; scrollbar-width:thin; }
-.dsh-quote-hint { color:var(--color-text-tertiary); font-size:10px; }
 
 /* ---------- 共用表单 ---------- */
 .dsh-planner-loading, .dsh-planner-fallback { margin:0; color:var(--color-text-tertiary); font-size:12px; line-height:18px; }
@@ -277,7 +254,6 @@ export const plannerStyles = `
 
 /* 会话状态：三个视图共用同一种胶囊；选中态是墨色，状态含义由文字承担。 */
 .dsh-session-status { display:flex; flex-direction:column; gap:8px; min-height:0; min-width:0; }
-.dsh-status-filter { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
 .dsh-status-rows { margin:0; }
 .dsh-status-empty { margin:0; }
 

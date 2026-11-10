@@ -36,7 +36,6 @@ button.dsh-activity-cell { cursor:pointer; transition:box-shadow 120ms ease-out;
 .dsh-activity-cell[data-selected="true"], button.dsh-activity-cell:focus-visible { outline:2px solid var(--color-text-primary); outline-offset:1px; }
 button.dsh-activity-cell:is(:hover,:focus-visible) { box-shadow:0 0 0 1px var(--color-text-secondary); }
 .dsh-activity-spacer { visibility:hidden; }
-.dsh-activity-filters { display:flex; align-items:center; gap:10px; min-width:0; flex-wrap:wrap; flex:none; margin-inline-start:auto; }
 .dsh-activity-filters .dsh-quiet-select { max-width:160px; }
 .dsh-activity-legend { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; font:var(--dsh-font-xxs-12); color:var(--color-text-tertiary); }
 .dsh-activity-legend .dsh-activity-cell { width:12px; height:12px; }

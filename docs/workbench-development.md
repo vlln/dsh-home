@@ -464,3 +464,15 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 - 开发中分次检查过中英文 / 深浅主题、760px、布局隐藏恢复尺寸持久、多会话搜索目录筛选与分页；多会话数据为合成账本拦截，不是用户日志。
 - 最终包没有一次完整全量脚本通过的记录。首次启动弹窗与重复安装缓存曾令回归脚本失败，修正脚本后使用尾部诊断完成收尾；报告明确标记 partial。
 - 未发布 npm、未推送远端、未改主 GUI；原生目录 picker 和用户人工体验仍待确认。
+
+## 2026-11-10：从开发转向收缩
+
+README 收敛成发布版（这一版之前，它的「兼容性」表里堆着 0.4.0–0.53.x 的逐版本验收流水，约一千五百字）。
+那条历史没有删：`git show 974d92e:README.md` 的「兼容性」一节就是原文；之后逐版本的变化写进
+[CHANGELOG.md](../CHANGELOG.md)。
+
+同一天完成的整理：删掉 54 条没有消费者的 CSS 规则（见 [style-orphans.md](style-orphans.md)）、停发
+`locale/*.json`（词典早在代码里注册）、清掉仓库根目录的历史 tarball、刷新 `docs/preview/*.png`
+（视觉一轮改下来，README 第一屏还是十天前的界面）、新增 [release.md](release.md) 与 CHANGELOG。
+
+门禁：531 项单测、`tsc`、构建、`check:assets`、隔离宿主 16 项（含 zh/en × light/dark 四档与 760px 窄屏）。
