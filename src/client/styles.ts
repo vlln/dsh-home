@@ -416,6 +416,8 @@ export const CSS = `
 .dsh-modal-actions .dsh-modal-hint { flex: 1 1 auto; min-width: 0; }
 .dsh-modal-hint { margin: 0; font: var(--dsh-font-xxs-12); color: var(--color-text-tertiary); }
 .dsh-modal-error { margin: 0; font: var(--dsh-font-xxs-12); color: var(--color-text-error-primary); }
+/* The save failure sits under the fields, not in one of them. */
+.dsh-widget-settings > .dsh-modal-error { margin-top: 12px; }
 /* Fill only the content flex box, excluding the shell header and padding. The
    observer reports this available viewport, independent of overflowing children. */
 .dsh-widget-viewport { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; overflow: hidden; }

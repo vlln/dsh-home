@@ -31,6 +31,17 @@ export function validatePictureConfig(value: unknown): value is PictureConfig {
 /** 宿主的本地图片路由（与 `src/index.mjs` 的 `IMAGE_PATH` 同源）。 */
 export const IMAGE_PATH = '/api/dsh-home/image'
 
+/** 选图上传路由（与 `src/index.mjs` 的 `PICTURE_PATH` 同源）。 */
+export const PICTURE_UPLOAD_PATH = '/api/dsh-home/picture'
+
+/**
+ * 一张上传图片的上限，与宿主侧一致。
+ *
+ * 整份 widget 配置只有 8 KiB，图片字节永远进不了配置；选中的文件先由宿主落到
+ * 插件数据目录，配置里只记一条短路径。
+ */
+export const PICTURE_UPLOAD_MAX = 8 * 1024 * 1024
+
 export type PictureSource =
   | { kind: 'none' }
   | { kind: 'remote'; url: string }

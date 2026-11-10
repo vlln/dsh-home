@@ -19,7 +19,8 @@
  * @module @vlln/dsh-home
  */
 
-import { readFile, stat } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { isSameOrigin } from './trust.mjs'
@@ -27,7 +28,7 @@ import { buildActivity, validateActivityQuery } from './activity.mjs'
 import { applyFocusOp, emptyFocus } from './focus.mjs'
 import { buildSnapshot, foldSession, FOLD_VERSION } from './ledger.mjs'
 import { applyPlannerOp, emptyPlanner } from './planner.mjs'
-import { loadFocus, loadLedger, loadPlanner, loadState, normalizeLayout, normalizePrefs, readOnlyState, saveFocus, saveLedger, savePlanner, saveState, stateStorage } from './state.mjs'
+import { loadFocus, loadLedger, loadPlanner, loadState, normalizeLayout, normalizePrefs, readOnlyState, saveFocus, saveLedger, savePlanner, saveState, stateDir, stateStorage } from './state.mjs'
 import { BUILTIN_WIDGET_IDS, layoutInstanceIds, validateWorkbench, widgetStateError } from './widget-state.mjs'
 
 /** bundle 条目 id（= cordis.patch.yml 的 insert id）。 */
@@ -470,6 +471,15 @@ export function apply(ctx) {
       requestBody: 'buffered',
       fetch: async request => serveImage(request),
     }), 'dsh-home: connection image route')
+
+    // 选中的图片：浏览器给不出文件路径，而整份 widget 配置只有 8 KiB，
+    // 也放不下图片字节。所以先落到插件自己的目录，配置里只记一条短路径。
+    scoped.effect(() => register.call(connection.fetch, {
+      path: PICTURE_PATH,
+      methods: ['POST'],
+      requestBody: 'buffered',
+      fetch: async request => storePicture(request),
+    }), 'dsh-home: connection picture route')
   })
 }
 
@@ -586,6 +596,53 @@ async function serveImage(request) {
   } catch {
     return new Response('not found', { status: 404 })
   }
+}
+
+/** 选图上传路由（`/api` 围栏后）。 */
+export const PICTURE_PATH = '/api/dsh-home/picture'
+
+/** 上传图片的上限：手机照片够用，又不至于把内存和磁盘吃满。 */
+const PICTURE_LIMIT = 8 * 1024 * 1024
+
+/**
+ * 按内容开头的字节判断图片类型，不看客户端给的文件名。
+ * @param bytes 文件字节
+ * @returns 扩展名与 MIME；不认识就返回 undefined
+ */
+export function sniffPicture(bytes) {
+  const ascii = (start, end = start + 4) => bytes.subarray(start, end).toString('latin1')
+  if (bytes.length >= 8 && bytes[0] === 0x89 && ascii(1, 4) === 'PNG') return { ext: '.png', type: 'image/png' }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return { ext: '.jpg', type: 'image/jpeg' }
+  if (bytes.length >= 6 && (ascii(0) === 'GIF8')) return { ext: '.gif', type: 'image/gif' }
+  if (bytes.length >= 12 && ascii(0) === 'RIFF' && ascii(8) === 'WEBP') return { ext: '.webp', type: 'image/webp' }
+  if (bytes.length >= 12 && ascii(4) === 'ftyp' && ['avif', 'avis'].includes(ascii(8))) return { ext: '.avif', type: 'image/avif' }
+  return undefined
+}
+
+/**
+ * 把一张选中的图片存进插件数据目录，返回它的绝对路径。
+ * @param request Fetch 请求，body 为图片字节
+ * @returns `{ ok: true, path }` 或说明原因的空响应
+ */
+export async function storePicture(request) {
+  const declared = Number(request.headers.get('content-length') ?? '0')
+  if (Number.isFinite(declared) && declared > PICTURE_LIMIT) return new Response('picture too large', { status: 413 })
+  const bytes = Buffer.from(await request.arrayBuffer())
+  if (bytes.length === 0) return new Response('empty body', { status: 400 })
+  if (bytes.length > PICTURE_LIMIT) return new Response('picture too large', { status: 413 })
+  const kind = sniffPicture(bytes)
+  if (kind === undefined) return new Response('unsupported picture type', { status: 415 })
+  // 内容相同就是同一张图：重复选同一张不会在磁盘上堆副本。
+  const digest = createHash('sha256').update(bytes).digest('hex').slice(0, 32)
+  const dir = path.join(stateDir(), 'pictures')
+  const file = path.join(dir, `${digest}${kind.ext}`)
+  try {
+    await mkdir(dir, { recursive: true })
+    await writeFile(file, bytes, { mode: 0o600 })
+  } catch {
+    return new Response('cannot store picture', { status: 500 })
+  }
+  return Response.json({ ok: true, path: file, type: kind.type, bytes: bytes.length }, { headers: { 'cache-control': 'no-store' } })
 }
 
 /** `/api` 围栏后的新入口。 */

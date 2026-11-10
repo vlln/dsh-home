@@ -272,3 +272,17 @@ test('the picture card body is the trigger, and it fills the card', async () => 
   assert.doesNotMatch(personal, /\.dsh-picture-/)
   assert.match(planner, /\.dsh-picture-bleed \{ margin:calc\(-1 \* var\(--dsh-card-pad\)\)/)
 })
+
+test('a picked picture never becomes config text', async () => {
+  // A widget config is capped at 8 KiB (widget-registry WIDGET_JSON_LIMITS), so embedding
+  // the chosen file as a data URL made every save say "配置无效". The bytes go to the host
+  // storage route and the config keeps a short path.
+  const widget = await read('picture-widget.tsx')
+  assert.doesNotMatch(widget, /readAsDataURL|FileReader/)
+  assert.match(widget, /PICTURE_UPLOAD_PATH/)
+  assert.match(widget, /content-type': 'application\/octet-stream'/)
+  // The save failure had no stylesheet at all: it rendered as a default 16px <p>.
+  const settings = await read('widget-settings.tsx')
+  assert.doesNotMatch(settings, /dsh-task-error/)
+  assert.match(settings, /className="dsh-modal-error"/)
+})

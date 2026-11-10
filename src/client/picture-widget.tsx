@@ -14,7 +14,7 @@ import { useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { Button, SegmentedControl, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
-import { pictureSource, validatePictureConfig, type PictureConfig } from './picture-model.ts'
+import { pictureSource, validatePictureConfig, PICTURE_UPLOAD_MAX, PICTURE_UPLOAD_PATH, type PictureConfig } from './picture-model.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps, WidgetSettingsProps } from './widget-contract.ts'
@@ -35,17 +35,26 @@ function PictureSettings({ config, onConfigChange }: WidgetSettingsProps<Picture
   const { t } = useBuiltin()
   const id = useId()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [error, setError] = useState(false)
-  const embedded = config.src.startsWith('data:')
-  // A file that does not fit stays an error on screen: writing it into the config made the
-  // marker a saveable value, and a save then replaced the picture with an unreadable string.
-  const pick = (file: File | undefined): void => {
+  const [failure, setFailure] = useState<'idle' | 'busy' | 'too-large' | 'failed'>('idle')
+  // The picked file never becomes a config value: a widget config is capped at 8 KiB, so a
+  // data URL made every save invalid. The host stores the bytes and hands back a short path.
+  const pick = async (file: File | undefined): Promise<void> => {
     if (file === undefined) return
-    if (file.size > 400_000) { setError(true); return }
-    setError(false)
-    const reader = new FileReader()
-    reader.onload = () => { if (typeof reader.result === 'string') onConfigChange({ ...config, src: reader.result }) }
-    reader.readAsDataURL(file)
+    if (file.size > PICTURE_UPLOAD_MAX) { setFailure('too-large'); return }
+    setFailure('busy')
+    try {
+      const response = await fetch(PICTURE_UPLOAD_PATH, {
+        method: 'POST',
+        headers: { 'content-type': 'application/octet-stream' },
+        body: await file.arrayBuffer(),
+      })
+      if (!response.ok) { setFailure(response.status === 413 ? 'too-large' : 'failed'); return }
+      const stored: unknown = await response.json()
+      const path = stored !== null && typeof stored === 'object' ? (stored as { path?: unknown }).path : undefined
+      if (typeof path !== 'string' || path === '') { setFailure('failed'); return }
+      setFailure('idle')
+      onConfigChange({ ...config, src: path })
+    } catch { setFailure('failed') }
   }
   return <div className="dsh-modal-form">
     <div className="dsh-modal-field">
@@ -56,16 +65,18 @@ function PictureSettings({ config, onConfigChange }: WidgetSettingsProps<Picture
             input itself: a click on a nested button never forwards to a label. */}
         <span className="dsh-picture-pick">
           <input ref={fileRef} type="file" accept="image/*" className="sr-only"
-            onChange={event => { pick(event.target.files?.[0]); event.target.value = '' }} />
-          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>{t('picture.choose')}</Button>
+            onChange={event => { void pick(event.target.files?.[0]); event.target.value = '' }} />
+          <Button variant="outline" size="sm" disabled={failure === 'busy'} onClick={() => fileRef.current?.click()}>
+            {t(failure === 'busy' ? 'picture.uploading' : 'picture.choose')}
+          </Button>
         </span>
       </div>
       <input id={`${id}-src`} className="dsh-modal-input" type="text" maxLength={SRC_TEXT_MAX}
-        value={embedded ? '' : config.src}
+        value={config.src}
         placeholder={t('picture.srcPlaceholder')}
-        onChange={event => { setError(false); onConfigChange({ ...config, src: event.target.value }) }} />
-      {embedded && <p className="dsh-modal-hint">{t('picture.embedded')}</p>}
-      {error && <p className="dsh-modal-error" role="alert">{t('picture.tooLarge')}</p>}
+        onChange={event => { setFailure('idle'); onConfigChange({ ...config, src: event.target.value }) }} />
+      {failure === 'too-large' && <p className="dsh-modal-error" role="alert">{t('picture.tooLarge')}</p>}
+      {failure === 'failed' && <p className="dsh-modal-error" role="alert">{t('picture.saveFailed')}</p>}
     </div>
     <div className="dsh-modal-field">
       <label className="dsh-modal-label" htmlFor={`${id}-title`}>{t('picture.title')}</label>

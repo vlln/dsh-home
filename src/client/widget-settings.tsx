@@ -51,7 +51,7 @@ function ConfigDraft<C extends JsonValue>({ t, widgetProps, title, Fields, valid
             onConfigChange={config => { if (!saving && !disabled) { try { setDraft(cloneWidgetConfig(config) as C); setError(null) } catch { setError(t('settings.invalid')) } } }} />
         </CardBoundary>
       </div>
-      {error !== null && <p className="dsh-task-error" role="alert">{error}</p>}
+      {error !== null && <p className="dsh-modal-error" role="alert">{error}</p>}
     </div>
   </Modal>
 }
