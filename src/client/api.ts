@@ -186,6 +186,9 @@ async function postTo<T>(target: string, op: string, extra: Record<string, unkno
   return envelope.value as T
 }
 
+/** The board's own name: it travels in prefs, so it is bounded like the rest of them. */
+export const BOARD_TITLE_MAX = 40
+
 /** 首页偏好：上次看到的时间点 + 已 dismiss 的会话（新活动会让它复活）。 */
 export interface Prefs {
   lastSeenAt: number | null
@@ -194,11 +197,13 @@ export interface Prefs {
   canvasWidth: number | null
   /** Corner of the floating widget library; null means its default corner. */
   libraryPosition: LibraryPoint | null
+  /** The board's own name; null means the default heading. */
+  boardTitle: string | null
 }
 
 /** 空偏好。 */
 export function emptyPrefs(): Prefs {
-  return { lastSeenAt: null, dismissed: {}, canvasWidth: null, libraryPosition: null }
+  return { lastSeenAt: null, dismissed: {}, canvasWidth: null, libraryPosition: null, boardTitle: null }
 }
 
 /** 空布局。 */
@@ -235,10 +240,12 @@ export async function fetchPrefs(): Promise<Prefs> {
     || (prefs.libraryPosition !== null && prefs.libraryPosition !== undefined
       && (typeof prefs.libraryPosition !== 'object' || Array.isArray(prefs.libraryPosition)
         || typeof prefs.libraryPosition.x !== 'number' || !Number.isFinite(prefs.libraryPosition.x)
-        || typeof prefs.libraryPosition.y !== 'number' || !Number.isFinite(prefs.libraryPosition.y)))) {
+        || typeof prefs.libraryPosition.y !== 'number' || !Number.isFinite(prefs.libraryPosition.y)))
+    // Absent means "never renamed"; a present-but-wrong-typed name is a corrupt document.
+    || (prefs.boardTitle !== null && prefs.boardTitle !== undefined && typeof prefs.boardTitle !== 'string')) {
     throw new HomeApiError('Invalid saved preferences response', 'bad-prefs-response')
   }
-  return { ...prefs, libraryPosition: prefs.libraryPosition ?? null }
+  return { ...prefs, libraryPosition: prefs.libraryPosition ?? null, boardTitle: prefs.boardTitle ?? null }
 }
 
 /** 写首页偏好。 */

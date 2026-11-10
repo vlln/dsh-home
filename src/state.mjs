@@ -88,9 +88,12 @@ function writeJson(file, value) {
   renameSync(temporary, file)
 }
 
+/** 首页标题的上限：它进的是 state.json，不是卡片配置。 */
+export const BOARD_TITLE_MAX = 40
+
 /** 空偏好。 */
 export function emptyPrefs() {
-  return { lastSeenAt: null, dismissed: {}, canvasWidth: null, libraryPosition: null }
+  return { lastSeenAt: null, dismissed: {}, canvasWidth: null, libraryPosition: null, boardTitle: null }
 }
 
 /** 空状态文档。 */
@@ -300,6 +303,12 @@ export function normalizePrefs(raw) {
   const prefs = emptyPrefs()
   if (raw === null || raw === undefined || typeof raw !== 'object' || Array.isArray(raw)) return prefs
   if (typeof raw.lastSeenAt === 'number' && Number.isFinite(raw.lastSeenAt)) prefs.lastSeenAt = raw.lastSeenAt
+  // The board's name is the user's: a trimmed, bounded string, and empty means "use the
+  // default label" rather than a blank heading.
+  if (typeof raw.boardTitle === 'string') {
+    const title = Array.from(raw.boardTitle).slice(0, BOARD_TITLE_MAX).join('').trim()
+    prefs.boardTitle = title === '' ? null : title
+  }
   // One whole-board width; bounded here so a hand-edited file cannot produce an unusable canvas.
   if (typeof raw.canvasWidth === 'number' && Number.isFinite(raw.canvasWidth)) {
     prefs.canvasWidth = Math.round(Math.min(CANVAS_MAX_WIDTH, Math.max(CANVAS_MIN_WIDTH, raw.canvasWidth)))

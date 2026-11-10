@@ -314,3 +314,21 @@ test('the Today card reports the day: one rail, no call to action', async () => 
   assert.doesNotMatch(locales, /widget\.empty\.action/)
   assert.match(locales, /'widget\.today\.empty': '今天还没有记录'/)
 })
+
+test('the header is a name and its actions, nothing else', async () => {
+  // The date/session-count/scan-time line and the edit-mode hint bar both lived in the
+  // header. They are gone: the header carries the board's name, the two tools that only
+  // exist while editing, and the actions. The name itself is the rename control.
+  const [pageSource, styles] = await Promise.all([read('page.tsx'), read('styles.ts')])
+  assert.doesNotMatch(pageSource, /dsh-home-sub/)
+  assert.doesNotMatch(pageSource, /dsh-edit-bar|dsh-edit-hint/)
+  assert.doesNotMatch(pageSource, /action\.newSession/)
+  assert.match(pageSource, /dsh-home-title-edit/)
+  assert.match(pageSource, /store\.setBoardTitle\(/)
+  assert.match(pageSource, /BOARD_TITLE_MAX/)
+  // The board can be wider than the window; the actions stay at the scrollport's edge.
+  assert.match(styles, /\.dsh-home-actions \{ position: sticky; right: 0;/)
+  const server = await readFile(new URL('../../src/state.mjs', client), 'utf8')
+  assert.match(server, /export const BOARD_TITLE_MAX = 40/)
+  assert.match(await read('api.ts'), /export const BOARD_TITLE_MAX = 40/)
+})

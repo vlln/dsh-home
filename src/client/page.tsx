@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import type { ReactNode } from 'react'
 import { IconTrashOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { Button, CardError, IconButton } from './ui/index.ts'
-import { formatAgo, formatDay, type Translate } from './format.ts'
+import type { Translate } from './format.ts'
 import type { WidgetActions } from './widgets.tsx'
 import type { SessionStatusMap } from './session-model.ts'
 import { CardBoundary } from './boundary.tsx'
@@ -11,6 +11,7 @@ import { SpatialGrid } from './spatial-grid.tsx'
 import { buildSpatialLayout, moveSpatialItem, sizeFromRect, SPATIAL_GAP, SPATIAL_ROW_HEIGHT, type SpatialItem } from './spatial-model.ts'
 import type { HomeStore } from './store.ts'
 import { homeData } from './home-data.ts'
+import { BOARD_TITLE_MAX } from './api.ts'
 import type { HomeWidgets, RegisteredWidgetDefinition, WidgetContentProps, WidgetInstance } from './widget-contract.ts'
 import { widgetText } from './widget-settings.tsx'
 import { validateWidgetConfig } from './widget-registry.ts'
@@ -90,13 +91,22 @@ export function HomePage(props: HomePageProps): ReactNode {
   const [libraryDrag, setLibraryDrag] = useState<LibraryDrag | null>(null)
   /** Cards already dropped on the delete target: hidden immediately, persisted after. */
   const [deleting, setDeleting] = useState<ReadonlySet<string>>(() => new Set())
-  const [sinceCount, setSinceCount] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const [managementError, setManagementError] = useState(false)
   const [interacting, setInteracting] = useState(false)
   const seenRef = useRef(false)
+  const [renamingTitle, setRenamingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
   const writable = state.workbenchLoaded && state.storage.writable
+  const boardTitle = state.prefs.boardTitle ?? t('panel.title')
+  /** Rename commits on blur or Enter; an empty draft means "use the default heading". */
+  const commitTitle = (): void => {
+    if (!renamingTitle) return
+    setRenamingTitle(false)
+    const next = titleDraft.trim().slice(0, BOARD_TITLE_MAX)
+    store.setBoardTitle(next === '' ? null : next)
+  }
   const busy = saving || state.workbenchBusy
   const editable = editing && writable && !busy
   useEffect(() => { void store.refresh() }, [store])
@@ -114,13 +124,9 @@ export function HomePage(props: HomePageProps): ReactNode {
   }, [])
   useEffect(() => {
     if (seenRef.current || state.ledger === null || !state.prefsLoaded || !writable) return
-    const previous = state.prefs.lastSeenAt
-    if (previous !== null) setSinceCount(state.ledger.sessions.filter(session => (
-      session.parentSessionId === undefined && session.turns > 0 && session.lastAt > previous
-    )).length)
     seenRef.current = true
     store.markSeen()
-  }, [state.ledger, state.prefs.lastSeenAt, state.prefsLoaded, writable, store])
+  }, [state.ledger, state.prefsLoaded, writable, store])
   // Re-registering the same type/version must recover a previous render error too.
   const definitionIds = useRef(new WeakMap<RegisteredWidgetDefinition, number>())
   const nextDefinitionId = useRef(0)
@@ -218,16 +224,29 @@ export function HomePage(props: HomePageProps): ReactNode {
     <div ref={homeRef} className="dsh-home" data-editing={editing ? 'true' : 'false'}>
       <div className="dsh-home-inner">
         <header className="dsh-home-head">
-          <div className="flex min-w-0 flex-col">
-            <div className="dsh-home-title-row">
-              <h1 className="dsh-home-title">{t('panel.title')}</h1>
-            </div>
-            <div className="dsh-home-sub">
-              <span>{formatDay(state.now, locale())}</span>
-              {!editing && sinceCount !== null && sinceCount > 0 && <><span aria-hidden="true">·</span><span>{t('panel.since', { count: sinceCount })}</span></>}
-              <span aria-hidden="true">·</span>
-              <span className="dsh-home-updated">{editing ? t('edit.mode') : state.lastLoadedAt === null ? t('summary.scanning') : t('summary.updated', { time: formatAgo(state.lastLoadedAt, state.now, t) })}</span>
-            </div>
+          <div className="dsh-home-title-block">
+            {renamingTitle
+              ? <input className="dsh-home-title-input" value={titleDraft} maxLength={BOARD_TITLE_MAX} autoFocus
+                aria-label={t('panel.rename')} placeholder={t('panel.title')}
+                onBlur={commitTitle}
+                onChange={event => setTitleDraft(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter') { event.preventDefault(); commitTitle() }
+                  else if (event.key === 'Escape') { event.preventDefault(); setRenamingTitle(false) }
+                }} />
+              : <h1 className="dsh-home-title">
+                {/* In edit mode the heading is the rename affordance: one click, no dialog. */}
+                {editing
+                  ? <button type="button" className="dsh-home-title-edit" title={t('panel.rename')}
+                    onClick={() => { setTitleDraft(state.prefs.boardTitle ?? t('panel.title')); setRenamingTitle(true) }}>
+                    {boardTitle}<span className="dsh-home-title-pencil" aria-hidden="true">✎</span>
+                  </button>
+                  : boardTitle}
+              </h1>}
+            {editing && <div className="dsh-home-title-tools" inert={!editable || interacting || undefined}>
+              <Button variant="secondary" size="small" disabled={!writable || busy} aria-expanded={trayOpen} onClick={() => { setTrayOpen(!trayOpen) }}>{t('action.widgets')}</Button>
+              <Button variant="secondary" size="small" disabled={libraryDrag !== null || geometry.length === 0} title={t('action.compactHint')} onClick={() => manage(() => { store.compactSpatialLayout(geometry, cols) })}>{t('action.compact')}</Button>
+            </div>}
           </div>
           <div className="dsh-home-actions" role="group" aria-label={t('aria.actions')}>
             {!editing && <IconButton aria-label={t('action.refresh')} title={t('action.refresh')} onClick={() => { void store.refresh() }}>↻</IconButton>}
@@ -235,10 +254,7 @@ export function HomePage(props: HomePageProps): ReactNode {
               onClick={() => { if (editing) void finish(); else { setEditing(true); setSaveError(false) } }}>
               {t(saving ? 'edit.saving' : editing ? 'action.done' : 'action.edit')}
             </Button>
-            {!editing && <>
-              <Button variant="primary" size="small" onClick={() => { actions.startSession() }}>{t('action.newSession')}</Button>
-              <Button variant="secondary" size="small" onClick={() => { actions.leave() }}>{t('action.back')}</Button>
-            </>}
+            {!editing && <Button variant="secondary" size="small" onClick={() => { actions.leave() }}>{t('action.back')}</Button>}
           </div>
         </header>
         {editable && interacting && libraryDrag === null && <div ref={deleteZoneRef} className="dsh-home-delete-zone border-border-button-default bg-background-primary-default text-text-secondary shadow-dropdown" aria-hidden="true">
@@ -249,13 +265,6 @@ export function HomePage(props: HomePageProps): ReactNode {
         {!state.workbenchLoaded && <p className="dsh-workbench-notice" role="status">{t('workbench.loading')}</p>}
         {state.workbenchLoaded && !state.storage.writable && <div className="dsh-workbench-notice" role="alert">{t('workbench.readOnly')}{state.storage.error !== null && <span>{state.storage.error.message}</span>}</div>}
         {state.storage.status === 'write-error' && <div className="dsh-error" role="alert">{t('workbench.writeError')}</div>}
-        {editing && <div className="dsh-edit-bar flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border-button-default bg-background-secondary-default px-3 py-2" inert={!editable || interacting || undefined} role="region" aria-label={t('edit.mode')}>
-          <span className="dsh-edit-hint text-caption-1-medium text-text-tertiary">{t('edit.hint')}</span>
-          <div className="dsh-edit-actions flex items-center gap-1.5">
-            <Button variant="secondary" size="small" aria-expanded={trayOpen} onClick={() => { setTrayOpen(!trayOpen) }}>{t('action.widgets')}</Button>
-            <Button variant="ghost" size="small" disabled={libraryDrag !== null || geometry.length === 0} title={t('action.compactHint')} onClick={() => manage(() => { store.compactSpatialLayout(geometry, cols) })}>{t('action.compact')}</Button>
-          </div>
-        </div>}
         {saveError && <div className="dsh-error" role="alert">{t('edit.saveError')}</div>}
         {managementError && <div className="dsh-error" role="alert">{t('manager.error')}</div>}
         {state.error !== null && <div className="dsh-error" role="alert">

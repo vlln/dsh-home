@@ -76,27 +76,57 @@ export const CSS = `
   padding: calc(var(--dsh-frame-top-clearance, 0px) + 16px) 0 16px;
   background: var(--dsh-canvas, var(--dsh-canvas));
 }
-.dsh-home-title-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
-.dsh-home-updated { font-size: 13px; line-height: 20px; color: var(--color-text-tertiary); }
+/* Title block: the heading and, while editing, the two board actions. No subtitle line —
+   the date and the scan time were never the reason anyone opened this page. */
+.dsh-home-title-block { display: flex; align-items: center; gap: 12px; min-width: 0; flex-wrap: wrap; }
+.dsh-home-title-tools { display: flex; align-items: center; gap: 6px; }
 .dsh-home-title {
   margin: 0;
+  min-width: 0;
   font-size: 20px;
   line-height: 28px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--color-text-primary);
 }
-.dsh-home-sub {
-  margin-top: 2px;
-  display: flex;
+/* Editing the board's name is a click on its own heading: the text is the control. */
+.dsh-home-title-edit {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--color-text-tertiary);
+  gap: 6px;
+  margin: 0;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--dsh-radius-sm);
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: text;
 }
-.dsh-home-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dsh-home-title-edit:hover { background: var(--dsh-hover); }
+.dsh-home-title-edit:focus-visible { outline: var(--dsh-focus-ring-width, 2px) solid var(--dsh-focus-ring-color, var(--color-chart-4)); outline-offset: 2px; }
+.dsh-home-title-pencil { color: var(--color-text-tertiary); font-size: 13px; line-height: 1; }
+.dsh-home-title-input {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 2px 6px;
+  border: 0.5px solid var(--color-border-button-default);
+  border-radius: var(--dsh-radius-sm);
+  background: var(--dsh-card);
+  font: inherit;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+  min-width: 12ch;
+  max-width: 40ch;
+}
+.dsh-home-title-input:focus-visible { outline: none; border-color: var(--color-chart-4); }
+/* The board can be wider than the window, and the header scrolls with it. Pinning the
+   actions to the scrollport's right edge keeps "edit / done" reachable instead of
+   dragging the whole heading out of view to click it. */
+.dsh-home-actions { position: sticky; right: 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 /* Drag-to-delete target. Fixed to the top of the viewport so it stays reachable no
    matter how far the board is scrolled or how wide it is; it exists only while a card
    is being dragged, and the grid arms it from the live pointer position. */
@@ -247,17 +277,6 @@ export const CSS = `
 .dsh-rhythm-days span { flex: 1 1 0; min-width: 0; text-align: center; overflow: hidden; }
 
 .dsh-key { font-size: 11px; color: var(--color-text-tertiary); }
-
-.dsh-edit-bar {
-  margin-top: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.dsh-edit-hint { font-size: 12px; color: var(--color-text-tertiary); }
-.dsh-edit-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 @keyframes dsh-home-spin { to { transform: rotate(360deg); } }
 @keyframes dsh-home-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
@@ -573,7 +592,7 @@ export const CSS = `
 body.dsh-home-dragging { user-select: none; cursor: grabbing; }
 body.dsh-home-dragging * { cursor: grabbing !important; }
 /* 标题行本身就是拖拽面：用户会先试着拖标题，而不是先找把手。 */
-.dsh-edit-bar { margin-top: 12px; }
+.dsh-home-title-block { margin-top: 0; }
 
 @media (max-width: 1100px) {
   .dsh-w[data-size="l"] { grid-column: span 2; }

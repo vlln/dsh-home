@@ -294,6 +294,14 @@ export class HomeStore {
     this.persistPrefsSoon()
   }
 
+  /** The board's own name; `null` restores the default heading. */
+  setBoardTitle(title: string | null): void {
+    if (!this.canWritePrefs()) return
+    if (this.state.prefs.boardTitle === title) return
+    this.set({ prefs: { ...this.state.prefs, boardTitle: title } })
+    this.persistPrefsSoon()
+  }
+
   /** Where the floating widget library was parked; `null` restores its default corner. */
   setLibraryPosition(position: LibraryPoint | null): void {
     if (!this.canWritePrefs()) return

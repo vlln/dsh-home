@@ -110,6 +110,12 @@ test('saved preferences carry the board width across a host round trip', () => {
   assert.equal(normalizePrefs({ canvasWidth: 100 }).canvasWidth, CANVAS_MIN_WIDTH)
   assert.equal(normalizePrefs({ canvasWidth: 'wide' }).canvasWidth, null)
   assert.equal(normalizePrefs({ canvasWidth: Number.NaN }).canvasWidth, null)
+  // The board's own name: a trimmed, bounded string; empty means the default heading.
+  assert.equal(normalizePrefs({}).boardTitle, null)
+  assert.equal(normalizePrefs({ boardTitle: '  我的工作台 ' }).boardTitle, '我的工作台')
+  assert.equal(normalizePrefs({ boardTitle: '   ' }).boardTitle, null)
+  assert.equal(normalizePrefs({ boardTitle: 'x'.repeat(200) }).boardTitle.length, 40)
+  assert.equal(normalizePrefs({ boardTitle: 42 }).boardTitle, null)
   // Normalizing is idempotent, which the "corrupt file" comparison relies on.
   const once = normalizePrefs({ canvasWidth: 1428, lastSeenAt: 5, dismissed: {} })
   assert.deepEqual(normalizePrefs(once), once)
