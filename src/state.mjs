@@ -73,6 +73,11 @@ export function ledgerFile() {
   return path.join(stateDir(), 'ledger.json')
 }
 
+/** 余额读数（今日消费的基线就存在这里）。 */
+export function balanceFile() {
+  return path.join(stateDir(), 'balance.json')
+}
+
 function readJson(file) {
   try {
     return JSON.parse(readFileSync(file, 'utf8'))
@@ -243,6 +248,29 @@ export function loadLedger() {
  */
 export function saveLedger(ledger) {
   writeJson(ledgerFile(), ledger)
+}
+
+/** 余额读数的口径版本：裁剪规则变了就让它重建，别继承旧账。 */
+export const BALANCE_VERSION = 1
+
+/**
+ * 读余额读数；损坏或版本不符按空账处理（下次读取就重建一条基线）。
+ * @returns 读数数组（升序，每天最多两条）
+ */
+export function loadBalanceHistory() {
+  const parsed = readJson(balanceFile())
+  if (parsed?.version !== BALANCE_VERSION || !Array.isArray(parsed.reads)) return []
+  return parsed.reads
+    .filter(entry => Number.isFinite(entry?.at) && Number.isFinite(entry?.total))
+    .sort((left, right) => left.at - right.at)
+}
+
+/**
+ * 原子写余额读数。
+ * @param reads 读数数组
+ */
+export function saveBalanceHistory(reads) {
+  writeJson(balanceFile(), { version: BALANCE_VERSION, reads })
 }
 
 function isWidgetId(value) {

@@ -172,18 +172,13 @@ export const zhPlanner = {
   'picture.settings': '图片选项',
   'widget.balance.title': '余额',
   'gallery.description.balance': 'DeepSeek 平台账户余额；key 只在宿主侧使用，失败时不显示旧值。',
-  'balance.title': '账户余额',
   'balance.notConfigured': '未配置 API key',
   'balance.unavailable': '暂不可用',
   'balance.timeout': '请求超时',
-  'balance.loading': '正在查询…',
   'balance.idle': '还没查过',
-  'balance.query': '查询余额',
-  'balance.refresh': '刷新',
   'balance.toppedUp': '充值',
   'balance.granted': '赠送',
-  'balance.hint': '在设置里配置 API key 后刷新',
-  'balance.hint.failed': '没读到余额，稍后再试',
+  'balance.todaySpent': '今日消费',
 
 
 
@@ -362,18 +357,13 @@ export const enPlanner: Record<keyof typeof zhPlanner, string> = {
   'picture.settings': 'Picture options',
   'widget.balance.title': 'Balance',
   'gallery.description.balance': 'The DeepSeek platform balance; the key stays on the host and failures show nothing stale.',
-  'balance.title': 'Account balance',
   'balance.notConfigured': 'No API key configured',
   'balance.unavailable': 'Unavailable',
   'balance.timeout': 'The request timed out',
-  'balance.loading': 'Checking…',
   'balance.idle': 'Not checked yet',
-  'balance.query': 'Check balance',
-  'balance.refresh': 'Refresh',
   'balance.toppedUp': 'Topped up',
   'balance.granted': 'Granted',
-  'balance.hint': 'Set an API key in settings, then refresh',
-  'balance.hint.failed': 'The balance could not be read; try again',
+  'balance.todaySpent': 'Spent today',
 
 
 

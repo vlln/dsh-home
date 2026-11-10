@@ -97,18 +97,19 @@ test('timer cards are self-built but only use measured sizes', async () => {
   assert.doesNotMatch(pomodoro + countdown, /text-\[\d/, 'no raw pixel font sizes')
 })
 
-test('a card with no number shows no number', async () => {
-  // The balance card used to draw a muted `¥ —` at 24px — the largest thing on the card,
-  // carrying nothing — with the actual reason at 12px under it, and the only bordered button
-  // on the board pinned to the bottom edge, a hole in between. Now the reason is the first
-  // line, the action follows the words, and the card hangs its block on the centre line.
+test('the balance card has no buttons and no placeholder value', async () => {
+  // The card used to draw a muted `¥ —` at 24px — the largest thing on the card, carrying
+  // nothing — then the reason at 12px, then a bordered "refresh" pinned to the bottom edge with
+  // a hole in between. The read is automatic (and re-runs on a timer), so there is no action at
+  // all: the reason is the card, and the number it does know is the spend.
   const [balance, parts] = await Promise.all([read('balance-widget.tsx'), read('ui/parts.tsx')])
   assert.doesNotMatch(balance, /CardHero value="¥ —"/, 'no placeholder value at metric size')
   assert.match(balance, /CardEmpty title=\{t\(reasonKey/, 'the reason is the card\'s empty state')
   assert.match(balance, /justify-center/, 'the block is centred, not pinned top and bottom')
-  assert.match(balance, /CardAction/, 'the in-card action is text, not a bordered control')
-  assert.doesNotMatch(balance, /CardFooter/, 'nothing is pinned to the bottom edge')
-  assert.match(parts, /export function CardAction/, 'the flat text action is a shared part')
+  assert.match(balance, /BALANCE_REFRESH_MS/, 'the read is automatic, on a timer')
+  assert.match(balance, /balance\.todaySpent/, 'the card says what today costs')
+  assert.doesNotMatch(balance, /<Button|CardFooter|CardAction/, 'no action, nothing pinned to the bottom')
+  assert.doesNotMatch(parts, /export function CardAction/, 'the text-action part went with the button')
 })
 
 test('the pomodoro card does not say the phase twice', async () => {
@@ -142,9 +143,15 @@ test('the dial moves as one picture: one clock, no easing of its own', async () 
 })
 
 test('the clock is the one deliberate size above the list, and says so', async () => {
-  const personal = await read('personal-widgets.tsx')
-  assert.match(personal, /text-display-3-semibold/, 'clock time is display-3 (40/600)')
-  assert.match(plan, /40\/600/, 'the deviation is recorded in the plan')
+  // The numeral is the one size above the ramp — and it scales with the card (34–58px through
+  // the widget container) instead of sitting at a fixed 40. It used to carry
+  // `text-display-3-semibold`, which won by cascade layer and froze it; the same happened to
+  // the card's `justify-between` and the date tile's grey background.
+  const [personal, personalStyles] = await Promise.all([read('personal-widgets.tsx'), read('personal-styles.ts')])
+  assert.match(personalStyles, /\.dsh-personal-clock-time\{[^}]*font-size:clamp\(34px,16cqi,58px\)/,
+    'the numeral scales with the card')
+  assert.doesNotMatch(personal, /className="dsh-personal-clock-time [^"]*text-/, 'the stylesheet owns the numeral')
+  assert.match(plan, /clamp\(34px,16cqi,58px\)/, 'the deviation is recorded in the plan')
 })
 
 test('notes keeps the three text roles from the list', async () => {

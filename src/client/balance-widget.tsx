@@ -16,7 +16,7 @@ import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
 import { IconBalance } from './widget-glyphs.tsx'
-import { CardAction, CardBody, CardEmpty, CardError, CardHero, CardMeta, CardSkeleton, CountUp } from './ui/index.ts'
+import { CardBody, CardEmpty, CardError, CardHero, CardMeta, CardSkeleton, CountUp } from './ui/index.ts'
 
 export type BalanceConfig = { auto: boolean }
 
@@ -27,7 +27,12 @@ export interface BalanceState {
   total?: number
   granted?: number | null
   toppedUp?: number | null
+  /** 今日消费：平台没有这个数，是宿主按余额差值算的（见 balance-history.mjs）。 */
+  todaySpent?: number | null
 }
+
+/** 自动刷新间隔：宿主把平台读数缓存 5 分钟，跟着它的节奏就够了。 */
+export const BALANCE_REFRESH_MS = 5 * 60_000
 
 function defaultBalanceConfig(): BalanceConfig {
   return { auto: true }
@@ -39,7 +44,7 @@ function validateBalanceConfig(value: unknown): value is BalanceConfig {
   return Object.keys(config).every(key => key === 'auto') && typeof config.auto === 'boolean'
 }
 
-const PREVIEW_STATE: BalanceState = { available: true, currency: 'CNY', total: 128.5, granted: 0, toppedUp: 128.5 }
+const PREVIEW_STATE: BalanceState = { available: true, currency: 'CNY', total: 128.5, granted: 0, toppedUp: 128.5, todaySpent: 0.42 }
 
 function reasonKey(reason: string | undefined): string {
   if (reason === undefined) return 'balance.unavailable'
@@ -48,23 +53,14 @@ function reasonKey(reason: string | undefined): string {
   return 'balance.unavailable'
 }
 
-function BalanceBody({ state, t, loading, onRefresh, readOnly }: {
+function BalanceBody({ state, t }: {
   state: BalanceState
   t: Translate
-  loading: boolean
-  onRefresh: () => void
-  readOnly: boolean
 }): ReactNode {
-  const refresh = readOnly ? undefined
-    : <CardAction disabled={loading} onClick={onRefresh}>{t('balance.refresh')}</CardAction>
-  // No number, no hero. A muted `¥ —` at 24px was the loudest thing on the card and it said
-  // nothing; the reason is what the reader needs, so it takes the first line and the action
-  // follows the words that explain it.
+  // 没有数字就不画数字：`¥ —` 那种占位主值曾经是卡上最大的东西，却什么也没说。
   if (!state.available) {
     return <CardBody className="justify-center">
-      <CardEmpty title={t(reasonKey(state.reason))}
-        detail={state.reason === 'not-configured' ? t('balance.hint') : undefined}
-        action={refresh} />
+      <CardEmpty title={t(reasonKey(state.reason))} />
     </CardBody>
   }
   const currency = state.currency === 'CNY' ? '¥' : state.currency === 'USD' ? '$' : `${state.currency ?? ''} `
@@ -72,12 +68,13 @@ function BalanceBody({ state, t, loading, onRefresh, readOnly }: {
     state.toppedUp !== null && state.toppedUp !== undefined ? `${t('balance.toppedUp')} ${state.toppedUp.toFixed(2)}` : null,
     state.granted !== null && state.granted !== undefined && state.granted > 0 ? `${t('balance.granted')} ${state.granted.toFixed(2)}` : null,
   ].filter(part => part !== null)
-  // One number, one line under it, one action under that: a centred block instead of a
-  // header, a hole, and a button pinned to the bottom edge.
   return <CardBody className="justify-center">
     <CardHero value={<CountUp value={state.total ?? 0} format={total => `${currency}${total.toFixed(2)}`} />} />
+    {/* 今日消费紧贴主值：它是这张卡除了余额之外唯一会动的数，也是「今天还能不能跑」的答案。 */}
+    {typeof state.todaySpent === 'number' && <CardMeta>
+      <span>{t('balance.todaySpent')} <span className="tabular-nums">{`${currency}${state.todaySpent.toFixed(2)}`}</span></span>
+    </CardMeta>}
     {split.length > 0 && <CardMeta><span>{split.join(' · ')}</span></CardMeta>}
-    {refresh !== undefined && <div className="-mt-1">{refresh}</div>}
   </CardBody>
 }
 
@@ -103,25 +100,24 @@ function ConnectedBalance(props: WidgetContentProps<BalanceConfig>): ReactNode {
   useEffect(() => {
     if (!props.config.auto || readOnly) return
     void load()
-    // 只在实例挂载时拉一次；之后由按钮触发（宿主另有 5 分钟缓存）。
+    // 自动刷新，没有按钮：跟着宿主的 5 分钟缓存走，多打一次也只是命中缓存。
+    const timer = window.setInterval(() => { void load() }, BALANCE_REFRESH_MS)
+    return () => { window.clearInterval(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.config.auto, readOnly])
   if (failed) {
-    return <CardError title={t('balance.unavailable')} detail={t('balance.hint.failed')}
-      action={readOnly ? undefined : <CardAction onClick={() => void load()}>{t('balance.refresh')}</CardAction>} />
+    return <CardError title={t('balance.unavailable')} />
   }
   if (state === null) {
     if (loading) return <CardSkeleton />
-    return <CardBody className="justify-center">
-      <CardEmpty title={t('balance.idle')}
-        action={readOnly ? undefined : <CardAction onClick={() => void load()}>{t('balance.query')}</CardAction>} />
-    </CardBody>
+    return <CardBody className="justify-center"><CardEmpty title={t('balance.idle')} /></CardBody>
   }
-  return <BalanceBody state={state} t={t} loading={loading} readOnly={readOnly} onRefresh={() => void load()} />
+  return <BalanceBody state={state} t={t} />
 }
 
 export function BalanceContent(props: WidgetContentProps<BalanceConfig>): ReactNode {
   const { t } = useBuiltin()
-  if (props.preview !== undefined) return <BalanceBody state={PREVIEW_STATE} t={t} loading={false} readOnly onRefresh={() => {}} />
+  if (props.preview !== undefined) return <BalanceBody state={PREVIEW_STATE} t={t} />
   return <ConnectedBalance {...props} />
 }
 

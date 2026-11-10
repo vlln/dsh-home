@@ -30,7 +30,7 @@ import { cx } from './lib/cx.ts'
 export { cx }
 
 /** 卡片内部的四段结构（主值 / 说明 / 空态 / 错误 / 骨架）。 */
-export { CardBody, CardHero, CardMeta, CardFooter, CardAction, CardEmpty, CardError, CardSkeleton, StatGrid } from './parts.tsx'
+export { CardBody, CardHero, CardMeta, CardFooter, CardEmpty, CardError, CardSkeleton, StatGrid } from './parts.tsx'
 
 /** 图形原语（柱、轨道、热力格）；读数由调用方用 Tooltip 负责。 */
 export { SparkBars, Meter, HeatCell, Donut } from './viz.tsx'

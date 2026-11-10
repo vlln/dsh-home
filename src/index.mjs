@@ -25,10 +25,11 @@ import { homedir } from 'node:os'
 import path from 'node:path'
 import { isSameOrigin } from './trust.mjs'
 import { buildActivity, validateActivityQuery } from './activity.mjs'
+import { appendRead, spentToday } from './balance-history.mjs'
 import { applyFocusOp, emptyFocus } from './focus.mjs'
 import { buildSnapshot, foldSession, FOLD_VERSION } from './ledger.mjs'
 import { applyPlannerOp, emptyPlanner } from './planner.mjs'
-import { loadFocus, loadLedger, loadPlanner, loadState, normalizeLayout, normalizePrefs, readOnlyState, saveFocus, saveLedger, savePlanner, saveState, stateDir, stateStorage } from './state.mjs'
+import { loadBalanceHistory, loadFocus, loadLedger, loadPlanner, loadState, normalizeLayout, normalizePrefs, readOnlyState, saveBalanceHistory, saveFocus, saveLedger, savePlanner, saveState, stateDir, stateStorage } from './state.mjs'
 import { BUILTIN_WIDGET_IDS, layoutInstanceIds, validateWorkbench, widgetStateError } from './widget-state.mjs'
 
 /** bundle 条目 id（= cordis.patch.yml 的 insert id）。 */
@@ -460,7 +461,7 @@ export function apply(ctx) {
       path: BALANCE_PATH,
       methods: ['POST'],
       requestBody: 'buffered',
-      fetch: async () => Response.json(await readBalance(scoped), { headers: { 'cache-control': 'no-store' } }),
+      fetch: async () => Response.json(withSpentToday(await readBalance(scoped)), { headers: { 'cache-control': 'no-store' } }),
     }), 'dsh-home: connection balance route')
 
     // 本地图片：`<img>` 只能读同源 URL，所以由宿主把这个路径读成响应体。
@@ -519,6 +520,7 @@ let balanceCache = null
 async function readBalance(ctx) {
   if (balanceCache !== null && Date.now() - balanceCache.at < BALANCE_TTL_MS) return balanceCache.value
   const finish = value => {
+    if (value.available) recordRead(value)
     balanceCache = { at: Date.now(), value }
     return value
   }
@@ -534,6 +536,40 @@ async function readBalance(ctx) {
   } catch (error) {
     return finish({ available: false, reason: error?.name === 'TimeoutError' ? 'timeout' : 'unreachable' })
   }
+}
+
+/**
+ * 记一条余额读数。
+ *
+ * 「今日消费」只能靠余额差值算出来（平台没有消费接口），所以每次真去平台的读数都要留档。
+ * 记账失败不影响余额本身：读数是账，余额是数，不能因为账写不下就把数丢了。
+ * @param value 刚解析出来的余额
+ */
+function recordRead(value) {
+  try {
+    saveBalanceHistory(appendRead(loadBalanceHistory(), { at: Date.now(), total: value.total, toppedUp: value.toppedUp }))
+  } catch {
+    // 账写不下不影响余额本身：读数是账，余额是数，不能因为账丢了就把数也丢了。
+  }
+}
+
+/**
+ * 给余额补上「今日消费」。
+ *
+ * 缓存命中也要重算：缓存的是平台那几个数（5 分钟内不会变），消费是拿落盘读数算的，
+ * 跨过零点以后不能还端出昨天的数。
+ * @param value readBalance 的结果
+ * @returns 可用时带 `todaySpent`（没有今天之前的基线时也照实给，只是偏小）
+ */
+function withSpentToday(value) {
+  if (value.available !== true) return value
+  let spent = null
+  try {
+    spent = spentToday(loadBalanceHistory())
+  } catch {
+    spent = null
+  }
+  return { ...value, todaySpent: spent === null ? null : spent.spent }
 }
 
 /**
