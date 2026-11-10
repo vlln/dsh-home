@@ -46,6 +46,38 @@ export function useNow(intervalMs = 1000, enabled = true): number {
   return now
 }
 
+/**
+ * 画面帧时钟：给「一直在动」的图形用（计时器的圆环和圆点）。
+ *
+ * 一秒一跳的时钟只够改数字；圆环要连着走，就得每帧重算。反过来，
+ * 如果让圆环自己去缓动（CSS transition on stroke-dasharray）、圆点直接跳，
+ * 同一帧算出的两个形状会分开——圆点领先圆环一个刻度，看上去就是「没跟上」。
+ * 所以宁可整张卡每帧重算，也不给形状单独加缓动。
+ *
+ * 隐藏的标签页里 rAF 会停，另外一个 1 秒心跳让数值不会卡在离开时的样子。
+ * @param enabled 是否走时（预览、暂停都传 false）
+ * @param minIntervalMs 两次重算的最小间隔，默认 32（约 30 fps）
+ */
+export function useFrameNow(enabled = true, minIntervalMs = 32): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!enabled) return
+    setNow(Date.now())
+    const beat = setInterval(() => setNow(Date.now()), 1000)
+    let frame = 0
+    let last = 0
+    const step = (at: number): void => {
+      frame = requestAnimationFrame(step)
+      if (at - last < minIntervalMs) return
+      last = at
+      setNow(Date.now())
+    }
+    frame = requestAnimationFrame(step)
+    return () => { cancelAnimationFrame(frame); clearInterval(beat) }
+  }, [enabled, minIntervalMs])
+  return now
+}
+
 /** 今天的日键（本地时区）。 */
 export function todayKey(now: number = Date.now()): string {
   const d = new Date(now)

@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
-import { useHomeData, useNow } from './home-data.ts'
+import { useFrameNow, useHomeData } from './home-data.ts'
 import { formatClock, timerElapsed } from './focus-model.ts'
 import { Button, Chip } from './ui/index.ts'
 import type { Translate } from './format.ts'
@@ -246,15 +246,19 @@ function ConnectedTimer(props: WidgetContentProps<TimerConfig>): ReactNode {
     setTargetMs(slot.targetMs > 0 ? slot.targetMs : DEFAULT_TARGET_MS)
   }, [slot])
   const running = slot?.running === true
-  const now = useNow(1000, running)
+  // 圆盘是画面不是数字：圆环和白色圆点都从这一个 now 算出来，同一个刻度、同一次重渲染。
+  // 只要给其中一个加自己的缓动，两者就会在每秒钟里分开一小段（见 useFrameNow）。
+  const now = useFrameNow(running)
   const elapsed = slot === undefined ? 0 : timerElapsed(slot, now)
+  // 到点仍是逻辑：按秒看一次就够，不必每帧都发一次 pause。
+  const second = Math.floor(elapsed / 1000)
   // A countdown stops itself at zero, even if the page was closed at the boundary.
   useEffect(() => {
     if (data.focus === null || slot === undefined || !slot.running) return
     if (slot.targetMs > 0 && timerElapsed(slot, Date.now()) >= slot.targetMs) {
       void data.store.mutateFocus({ op: 'timer.pause', instanceId }).catch(() => {})
     }
-  }, [data.focus, slot, instanceId, elapsed])
+  }, [data.focus, slot, instanceId, second])
   if (data.focusError !== null) {
     return <div className="dsh-planner-fallback" role="status">
       <p>{t('planner.unavailable')}</p>

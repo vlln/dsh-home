@@ -139,10 +139,13 @@ export const plannerStyles = `
 .dsh-timer-dial[data-draggable="true"]:active { cursor:grabbing; }
 .dsh-timer-dial:focus-visible { outline:var(--dsh-focus-ring-width,2px) solid var(--dsh-focus-ring-color,var(--color-chart-4)); outline-offset:3px; }
 .dsh-timer-dial svg { display:block; width:100%; height:100%; overflow:visible; }
+/* 环的长度不做缓动：圆点位置和环是同一次重渲染、同一个 now 算出来的，
+   环自己缓动就会在每一秒里落后圆点一个刻度（1 分钟档差 6°，一眼能看出来）。
+   颜色切换可以缓，形状不行。 */
 .dsh-dial-track { fill:none; stroke:var(--dsh-sunken); stroke-width:7; }
-.dsh-dial-arc { fill:none; stroke:var(--color-chart-4); stroke-width:7; stroke-linecap:round; transition:stroke-dasharray 220ms linear; }
+.dsh-dial-arc { fill:none; stroke:var(--color-chart-4); stroke-width:7; stroke-linecap:round; transition:stroke 200ms ease; }
 .dsh-timer[data-reached="true"] .dsh-dial-arc { stroke:var(--color-status-yellow-text); }
-.dsh-dial-handle { fill:var(--color-text-white); stroke:var(--color-chart-4); stroke-width:2.4; }
+.dsh-dial-handle { fill:var(--color-text-white); stroke:var(--color-chart-4); stroke-width:2.4; transition:stroke 200ms ease; }
 .dsh-timer[data-reached="true"] .dsh-dial-handle { stroke:var(--color-status-yellow-text); }
 .dsh-timer-face { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; pointer-events:none; }
 .dsh-dial-value { color:var(--color-text-primary); font-family:var(--font-sans); font-size:22px; font-weight:650; line-height:1.1; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }

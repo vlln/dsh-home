@@ -97,6 +97,23 @@ test('timer cards are self-built but only use measured sizes', async () => {
   assert.doesNotMatch(pomodoro + countdown, /text-\[\d/, 'no raw pixel font sizes')
 })
 
+test('the dial moves as one picture: one clock, no easing of its own', async () => {
+  // The white dot sits on the ring's end, and both come from one fraction: the ring from
+  // stroke-dasharray, the dot from cx/cy. With `transition: stroke-dasharray` on the ring
+  // the dot jumped while the ring caught up, so for part of every second they were apart:
+  // measured 6.01° at a one minute target, on a fifth of all frames. The rule is now that
+  // a shape never eases itself; the card advances on the frame clock instead.
+  const [planner, timer, data] = await Promise.all([
+    read('planner-styles.ts'), read('timer-widget.tsx'), read('home-data.ts'),
+  ])
+  assert.doesNotMatch(planner, /\.dsh-dial-arc \{[^}]*transition:stroke-dasharray/s,
+    'the ring must not ease its own length')
+  assert.match(planner, /\.dsh-dial-arc \{[^}]*transition:stroke /s, 'only the ink may ease')
+  assert.match(data, /export function useFrameNow/, 'the picture clock lives beside the second clock')
+  assert.match(timer, /useFrameNow\(running\)/, 'the dial advances every frame, not every second')
+  assert.doesNotMatch(timer, /useNow\(/, 'no second clock mixed into the picture')
+})
+
 test('the clock is the one deliberate size above the list, and says so', async () => {
   const personal = await read('personal-widgets.tsx')
   assert.match(personal, /text-display-3-semibold/, 'clock time is display-3 (40/600)')
