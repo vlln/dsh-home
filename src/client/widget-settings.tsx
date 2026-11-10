@@ -56,14 +56,18 @@ function ConfigDraft<C extends JsonValue>({ t, widgetProps, title, Fields, valid
   </Modal>
 }
 /** Builtins opt in at their own content position; third-party widgets can build any editor. */
-export function WidgetConfigEditor<C extends JsonValue>({ t, widgetProps, title, label, Fields, validate }: {
+export function WidgetConfigEditor<C extends JsonValue>({ t, widgetProps, title, label, Fields, validate, renderTrigger }: {
   t: Translate; widgetProps: WidgetContentProps<C>; title: string; label: string
   Fields: ComponentType<WidgetSettingsProps<C>>; validate: (config: C) => WidgetConfigValidation
+  /** Cards whose whole body is the affordance pass a trigger instead of a separate button. */
+  renderTrigger?: (open: () => void) => ReactNode
 }): ReactNode {
   const [open, setOpen] = useState(false)
   if (widgetProps.editing || widgetProps.preview) return null
   return <div className="dsh-widget-own-editor">
-    <Button variant="ghost" size="sm" disabled={!widgetProps.saveConfig} onClick={() => setOpen(true)}>{label}</Button>
+    {renderTrigger === undefined
+      ? <Button variant="ghost" size="sm" disabled={!widgetProps.saveConfig} onClick={() => setOpen(true)}>{label}</Button>
+      : renderTrigger(() => setOpen(true))}
     {open && <ConfigDraft t={t} widgetProps={widgetProps} title={title} Fields={Fields} validate={validate} onClose={() => setOpen(false)} />}
   </div>
 }

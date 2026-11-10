@@ -41,7 +41,9 @@ export const personalStyles = `
 /* "Fill the card": the image takes the whole surface, ignoring the card padding. */
 .dsh-picture-bleed { margin: calc(-1 * var(--dsh-card-pad)); border-radius: var(--dsh-card-radius); overflow: hidden; }
 .dsh-picture-bleed img { width: 100%; height: 100%; }
+.dsh-picture-hit { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; text-align: inherit; }
 .dsh-picture-pick { display: inline-flex; }
+.dsh-picture-toggle { display: flex; align-items: center; gap: 8px; font: var(--dsh-font-s-medium-14); color: var(--color-text-primary); }
 .dsh-picture-pick-button { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--dsh-card-line); background: var(--dsh-sunken); font: var(--dsh-font-s-medium-14); color: var(--color-text-primary); cursor: pointer; }
 .dsh-picture-pick-button:hover { background: var(--dsh-card-hover); }
 .dsh-item-check { flex-direction: row; align-items: center; gap: 8px; }

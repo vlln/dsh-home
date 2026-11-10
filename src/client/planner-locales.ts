@@ -344,7 +344,7 @@ export const enPlanner: Record<keyof typeof zhPlanner, string> = {
   'picture.alt': 'Picture',
   'picture.fit': 'Fit',
   'picture.title': 'Caption (optional)',
-  'picture.pick': 'Picture',
+  'picture.pick': 'Choose an image',
   'picture.choose': 'Choose a file…',
   'picture.bleed': 'Fill the card (no padding)',
   'picture.tooLarge': 'Images over 400 KB need a URL instead.',

@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { useId } from 'react'
 import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
+import { Button, Input, SegmentedControl, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { pictureSource, validatePictureConfig, type PictureConfig } from './picture-model.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
@@ -53,34 +54,34 @@ function PictureSettings({ config, onConfigChange }: WidgetSettingsProps<Picture
             reader.onload = () => { if (typeof reader.result === 'string') onConfigChange({ ...config, src: reader.result }) }
             reader.readAsDataURL(file)
           }} />
-        <span className="dsh-picture-pick-button">{t('picture.choose')}</span>
+        <Button variant="outline" size="sm">{t('picture.choose')}</Button>
       </label>
       {config.src.startsWith('too-large:') && <p className="dsh-personal-hint">{t('picture.tooLarge')}</p>}
     </div>
-    <div className="dsh-item-field dsh-item-check">
-      <input id={`${id}-bleed`} type="checkbox" checked={config.bleed === true}
-        onChange={event => onConfigChange({ ...config, bleed: event.target.checked })} />
-      <label className="dsh-item-label" htmlFor={`${id}-bleed`}>{t('picture.bleed')}</label>
+    <div className="dsh-picture-toggle">
+      <Switch checked={config.bleed === true} label={t('picture.bleed')} title={t('picture.bleed')}
+        onChange={value => onConfigChange({ ...config, bleed: value })} />
+      <span>{t('picture.bleed')}</span>
     </div>
-    <label className="dsh-item-field" htmlFor={`${id}-fit`}>
+    <div className="dsh-item-field">
       <span className="dsh-item-label">{t('picture.fit')}</span>
-      <select id={`${id}-fit`} value={config.fit} onChange={event => onConfigChange({ ...config, fit: event.target.value === 'contain' ? 'contain' : 'cover' })}>
-        <option value="cover">{t('picture.fitCover')}</option>
-        <option value="contain">{t('picture.fitContain')}</option>
-      </select>
-    </label>
-    <p className="dsh-personal-hint">{t('picture.hint')}</p>
+      <SegmentedControl id={`${id}-fit`} label={t('picture.fit')} value={config.fit}
+        options={[{ value: 'cover', label: t('picture.fitCover') }, { value: 'contain', label: t('picture.fitContain') }]}
+        onChange={value => onConfigChange({ ...config, fit: value === 'contain' ? 'contain' : 'cover' })} />
+    </div>
   </div>
 }
 
-function PictureBody({ config, t, fallback }: { config: PictureConfig; t: Translate; fallback?: string }): ReactNode {
+function PictureBody({ config, t, fallback, onOpen }: { config: PictureConfig; t: Translate; fallback?: string; onOpen?: () => void }): ReactNode {
   const [failed, setFailed] = useState<string | null>(null)
   const source = pictureSource(fallback ?? config.src)
   if (source.kind === 'none') {
-    return <div className="dsh-picture-empty flex h-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border-button-default text-caption-1-medium text-text-tertiary" role="status">
-      <span className="dsh-picture-empty-glyph" aria-hidden="true">▧</span>
-      <span>{t('picture.empty')}</span>
-    </div>
+    return <button type="button" className="dsh-picture-hit" onClick={onOpen} aria-label={t('picture.settings')}>
+      <span className="dsh-picture-empty flex h-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border-button-default text-caption-1-medium text-text-tertiary">
+        <span className="dsh-picture-empty-glyph" aria-hidden="true">▧</span>
+        <span>{t('picture.empty')}</span>
+      </span>
+    </button>
   }
   if (failed === source.url) {
     return <div className="dsh-picture-empty flex h-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border-button-default text-caption-1-medium text-text-tertiary" role="status">
@@ -89,11 +90,13 @@ function PictureBody({ config, t, fallback }: { config: PictureConfig; t: Transl
       {source.kind === 'local' && <span className="dsh-picture-path">{config.src}</span>}
     </div>
   }
-  return <figure className={config.bleed === true ? 'dsh-picture dsh-picture-bleed' : 'dsh-picture'}>
+  const frame = <figure className={config.bleed === true ? 'dsh-picture dsh-picture-bleed' : 'dsh-picture'}>
     <img src={source.url} alt={config.title === '' ? t('picture.alt') : config.title}
       style={{ objectFit: config.fit }} loading="lazy" decoding="async" onError={() => setFailed(source.url)} />
     {config.title !== '' && <figcaption className="dsh-picture-caption text-caption-1-medium">{config.title}</figcaption>}
   </figure>
+  if (onOpen === undefined) return frame
+  return <button type="button" className="dsh-picture-hit" onClick={onOpen} aria-label={t('picture.settings')}>{frame}</button>
 }
 
 export function PictureContent(props: WidgetContentProps<PictureConfig>): ReactNode {
@@ -102,9 +105,9 @@ export function PictureContent(props: WidgetContentProps<PictureConfig>): ReactN
     return <PictureBody t={t} config={{ ...props.config, title: props.config.title === '' ? t('widget.picture.title') : props.config.title }} fallback={PREVIEW_SRC} />
   }
   return <div className="dsh-picture-wrap">
-    <PictureBody t={t} config={props.config} />
     <WidgetConfigEditor t={t} widgetProps={props} title={t('widget.picture.title')} label={t('picture.settings')}
-      Fields={PictureSettings} validate={validatePictureConfig} />
+      Fields={PictureSettings} validate={validatePictureConfig}
+      renderTrigger={open => <PictureBody t={t} config={props.config} onOpen={open} />} />
   </div>
 }
 
