@@ -412,13 +412,11 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     // indistinguishable from "the drag showed nothing".
     const maxX = Math.max(0, window.innerWidth - w - 8)
     const maxY = Math.max(0, window.innerHeight - h - 8)
-    const nextVisual = {
+    setLibraryVisual({
       x: Math.min(Math.max(p.x - drag.grab.x, -w + 24), maxX),
       y: Math.min(Math.max(p.y - drag.grab.y, -h + 24), maxY),
       w, h, inside,
-    }
-    ;(window as unknown as { __ghost?: unknown }).__ghost = { p, grab: drag.grab, w, h, maxX, maxY, nextVisual }
-    setLibraryVisual(nextVisual)
+    })
     if (!inside) {
       clearHover(); session.intent=null; session.pending=true; session.rejected=false
       session.preview=session.snapshot.map(entry=>({...entry})); setCurrent(layout);setLibraryOutline(null); return
@@ -486,6 +484,6 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     {children}
   </GridLayout>
     {libraryVisual && libraryOutline && createPortal(<div className="dsh-library-outline" data-pending={libraryOutline.pending} style={{left:libraryOutline.x,top:libraryOutline.y,width:libraryOutline.w,height:libraryOutline.h}} aria-hidden="true"/>,document.body)}
-    {libraryVisual && createPortal(<div className="dsh-library-ghost dsh-w" data-inside={libraryVisual.inside} style={{left:libraryVisual.x,top:libraryVisual.y,width:libraryVisual.w,height:libraryVisual.h}} inert aria-hidden="true">{libraryGhost}</div>,document.body)}
+    {libraryVisual && createPortal(<div className="dsh-library-ghost" data-inside={libraryVisual.inside} style={{left:libraryVisual.x,top:libraryVisual.y,width:libraryVisual.w,height:libraryVisual.h}} inert aria-hidden="true">{libraryGhost}</div>,document.body)}
   </>
 }

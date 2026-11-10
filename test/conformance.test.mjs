@@ -196,13 +196,18 @@ test('the drag ghost is the card it will become', async () => {
   // Two logics used to size the preview: the ghost had no padding while its content was
   // already sized as if padded, and it took `defaults.size` instead of the size the drop
   // would produce. Both are gone — the ghost takes the real card's geometry and size.
-  const [styles, page] = await Promise.all([read('styles.ts'), read('page.tsx')])
+  const [styles, page, grid] = await Promise.all([read('styles.ts'), read('page.tsx'), read('spatial-grid.tsx')])
   // Same shell AND same content path as the board: WidgetCardBody + WidgetBody, with sample
   // props. A third container of its own is what made the ghost a look-alike.
   assert.match(page, /libraryGhost=\{libraryDrag && <WidgetCardShell/, 'ghost renders the same shell as the board')
   assert.match(page, /WidgetContentPreview/, 'ghost renders through the preview container')
   assert.match(page, /\<WidgetCardBody\>/, 'ghost keeps the board body slot')
   assert.match(styles, /\.dsh-library-ghost \{/, 'ghost rules live in the main sheet')
+  // It must not carry dsh-w: that class sets position:relative and, being later in the same
+  // sheet with equal specificity, silently overrode position:fixed and pushed the ghost out
+  // of the viewport.
+  assert.match(grid, /className="dsh-library-ghost"/, 'the portal box is not a dsh-w')
+  assert.doesNotMatch(grid, /className="dsh-library-ghost dsh-w"/, 'no dsh-w on the ghost')
   assert.match(page, /size=\{sizeFromRect\(/, 'ghost takes the size the drop will produce')
   assert.match(page, /width=\{widgetWidthForColumns\(libraryDrag\.item\.w\)\}/, 'ghost width is a card width')
   assert.doesNotMatch(page, /cardContentSize\(libraryDrag/, 'no second sizing path')
