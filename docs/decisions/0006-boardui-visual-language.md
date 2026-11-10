@@ -2,7 +2,7 @@
 
 - 日期：2026-11-07
 - 状态：采纳
-- 推翻：`docs/widget-design.md` 第 55、66 行（“不为外观引入另一套 UI 框架”“不引入固定色板”）与 `design-system.md` 的 0.45 单色板结论
+- 推翻：`docs/archive/widget-design.md` 第 55、66 行（“不为外观引入另一套 UI 框架”“不引入固定色板”）与 `docs/design-system.md` 的 0.45 单色板结论
 
 ## 背景
 

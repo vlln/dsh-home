@@ -213,7 +213,7 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 
 - **用户反馈的组件库拖不进画布**：条查为抓取区过窄——只有标题条触发 `begin()`，占卡片大部分面积的 `.dsh-library-preview` 按下无反应（预览本身 `pointer-events:none`，事件落到 article）。改为整张 `.dsh-directory-item` 承接 `onPointerDown`，并补 `cursor:grab` / `touch-action:none` / `user-select:none`。单击与 Esc 仍不创建实例。原 `verify-library-drag` 每次都从标题条开始拖，所以一直没暴露；已补「从预览区开始拖」的检查。
 - 顺带修：组件库预览与拖动幽灵里的 `.dsh-recent-row` 没有网格化，目录首字标记叠在标题上；选择器扩到 `.dsh-library-preview` / `.dsh-library-ghost`。
-- **列宽上限**：`.dsh-home-inner` 增 `--dsh-home-max-width: 1280px` + `margin-inline: auto`，替换 0.21 的「不设内容上限」。理由与取舍见[视觉设计](<widget-design.md#组件自声明尺寸与组件库取舍>)。不改存储、断点与拖动链路。
+- **列宽上限**：`.dsh-home-inner` 增 `--dsh-home-max-width: 1280px` + `margin-inline: auto`，替换 0.21 的「不设内容上限」。理由与取舍见[视觉设计](<archive/widget-design.md#组件自声明尺寸与组件库取舍>)。不改存储、断点与拖动链路。
 - 实测同一保存布局：1280 / 1566 / 1920 / 2400 / 2560px 窗口下列宽 952 / 1238 / 1280 / 1280 / 1280，4 列卡宽 309 / 405 / 419 / 419 / 419（封顶前 2560px 为 736），居中两侧留白对称。旧单测 `wide desktop has no fixed content cap` 已按新决定改写为上限 + 居中断言，不是删掉。
 - 371 项单测、类型检查、构建通过。浏览器：视觉（新增 2400px 封顶与居中检查）、组件库、释放、画布延展、固定尺寸、置顶全部通过。原实例与布局 finally 还原，与用户备份逐字节一致。仍未完整验收原生触屏与中文大字体矩阵。
 
@@ -228,7 +228,7 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 
 ## 丰富视觉表达验收（2026-11-05，0.21.3 / dsh 0.2.1-rc.5）
 
-- BoardUI 参考先生成统计 / 会话个人两张设计稿，分析后落实内容图形与层级；实现语法见[视觉设计](<widget-design.md#丰富视觉表达021>)。不迁移布局或增加尺寸入口，无额外 UI 框架。
+- BoardUI 参考先生成统计 / 会话个人两张设计稿，分析后落实内容图形与层级；实现语法见[视觉设计](<archive/widget-design.md#丰富视觉表达021>)。不迁移布局或增加尺寸入口，无额外 UI 框架。
 - 361 项单测、类型检查、构建、diff 检查通过。新增目录首字 / 颜色稳定性、时间覆盖并集不膨胀、自然日 DST 23/25h、时钟配置时区跨日与 locale 字段顺序测试。
 - 实际安装包验证：1600 / 900 / 540px 无页面横溢，Today / Clock / Rhythm 外层无不必要滚动，热图格保持方形，便笺 / 时钟 / 足迹编辑入口可达；reduced-motion 下行过渡为零，装饰首字隐藏于辅助技术，SVG 不含循环动画。浅色与临时 DOM 宿主深色截图实际查看。证据工作区 `.work/dsh-home/evidence/visuals-1793885877445/`；5 项通过。数据为明确合成路由，不是用户会话审计。
 - 同包原生置顶6项 `pinned-1793885880685/`、释放10项 `pointer-1793885882416/`、固定尺寸5项 `fixed-1793885887195/`、组件库8项 `library-1793885889189/`通过。无模型请求，脚本 finally 恢复原实例 / 布局 / 偏好及原生置顶集合。
@@ -266,7 +266,7 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 
 ## 参考图内容打磨验收（2026-11-05，0.16.2 / dsh 0.2.1-rc.5）
 
-- 该历史轮次不变更缩放手势、公共 API、默认几何或用户保存的尺寸；当时尺寸方案仍为建议，不代表现行契约，后续纠正规则见[组件设计说明](<widget-design.md>)。
+- 该历史轮次不变更缩放手势、公共 API、默认几何或用户保存的尺寸；当时尺寸方案仍为建议，不代表现行契约，后续纠正规则见[组件设计说明](<archive/widget-design.md>)。
 - 数据卡适配层转发实测正文宽高；最近会话首批容量随高度估算，筛选 / 计数在列表滚动区外。容器查询控制宽窄内容，时钟使用 cqi 而非 viewport vw。
 - 统计卡、工作区细条、两周图表、任务选项、便笺和快捷内表面调整；工作足迹编辑入口并入可换行页脚，方格几何常量与自动全年适配阈值共源。
 - 324 项单测、类型 / 构建通过。视觉专项新增四类摘要无无谓外层滚动、Activity 编辑入口、加高最近会话增加容量的断言；1600 / 900 / 540px通过，12类细节截图可检查。合成数据、英文、DOM 临时深色别名；不是中文 / 字体放大 / 原生触屏全矩阵验收。
@@ -277,7 +277,7 @@ DSH_VERIFY_URL='<private-instance-url>' node scripts/verify-collision.mjs
 - Bug 修复独立提交 `c27f1ff`：gallery threshold 使用 flushSync，SpatialGrid layoutEffect 同步接管；捕获阶段释放 / mouseup 兜底，保持来源把手稳定，blur / cancel / buttons0 安全取消；没有重写碰撞 solver。普通 RGL stop 幂等，捕获释放后仅在其 document handler 未完成时延后兜底。
 - 删除弹窗保留 mounted library，不清搜索 / 筛选 / 滚动状态。说明只用宿主 Tooltip portal，移除原生 article title 和自绘气泡，避免双重显示与滚动裁切；拖动 / 模态时禁 tooltip。
 - `scripts/verify-pointer-regressions.mjs` 专门覆盖不截图、不等待 dwell 的真实快速释放，把手和标题分别测试；另覆盖事件截断、取消与浮层保持。旧回归只用标题且截图后松手，未覆盖真实把手失效路径。
-- 视觉依据与源码边界见 [widget-design.md](<widget-design.md>)；没有新增外部依赖、假指标、布局自动调整或功能扩张。12 周格固定16px、一年12px，窄卡内部横滚。
+- 视觉依据与源码边界见 [widget-design.md](<archive/widget-design.md>)；没有新增外部依赖、假指标、布局自动调整或功能扩张。12 周格固定16px、一年12px，窄卡内部横滚。
 - 最终交互专项、组件库与轴向证据分别位于工作区 `.work/dsh-home/evidence/pointer-1793868750256/`、`library-1793868564330/`、`axis-nflvKI/`；10 / 8 / 4项通过。控件专项9项见 `controls-1793868314075/`。
 - 视觉专项见工作区 `.work/dsh-home/evidence/visuals-1793868631220/`：1600 / 900 / 540px 无页面横向溢出，标题与方格尺寸断言、便笺和时钟编辑入口通过；已查看实际渲染图。统计数据为合成路由夹具，暗色为DOM临时触发宿主alias，不等于持久化主题设置或中文矩阵验收。脚本统一finally恢复原实例/布局/偏好；原生触屏未完整验收。
 

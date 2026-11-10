@@ -131,11 +131,10 @@ npm run check      # 上面两件事加资产校验，提交前的门
 npm run test:host  # 隔离宿主验收：先 npm pack，再传 --tarball
 ```
 
-| 文件 | 读它做什么 |
+| 入口 | 读它做什么 |
 |---|---|
+| [docs/README.md](docs/README.md) | 文档索引：改卡片、改能力、发布各读哪份 |
 | [docs/widget-development.md](docs/widget-development.md) | 扩展契约、预览、尺寸声明、打包 |
-| [docs/boardui-conformance.md](docs/boardui-conformance.md) | 视觉标准的实测数字 |
-| [docs/conformance-plan.md](docs/conformance-plan.md) | 每张卡的设计取舍 |
 | [docs/release.md](docs/release.md) | 发布前的检查清单 |
 
 <br>

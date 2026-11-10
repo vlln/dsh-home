@@ -3,7 +3,7 @@
 > **2026-11-08：表面层级、卡片解剖与图表原语已经落到代码里，本文件只讲规则。**
 > 配色/字阶在 `src/client/theme.css`（BoardUI 语义 token + 复合字阶）；卡片表面与解剖在
 > `.dsh-card`；图形原语在 `src/client/ui/viz.tsx`。新卡片的完整理由见
-> [`../decisions/0006-boardui-visual-language.md`](../decisions/0006-boardui-visual-language.md)。
+> [`decisions/0006-boardui-visual-language.md`](decisions/0006-boardui-visual-language.md)。
 
 ## 0. 表面阶梯：一条规则，两个主题
 
