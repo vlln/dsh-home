@@ -39,6 +39,29 @@ function PictureSettings({ config, onConfigChange }: WidgetSettingsProps<Picture
       <input id={`${id}-title`} type="text" maxLength={80} value={config.title}
         onChange={event => onConfigChange({ ...config, title: event.target.value })} />
     </label>
+    <div className="dsh-item-field">
+      <span className="dsh-item-label">{t('picture.pick')}</span>
+      {/* A text path is unusable on a machine you cannot browse: open the file manager instead
+          and embed the chosen image. */}
+      <label className="dsh-picture-pick">
+        <input type="file" accept="image/*" className="sr-only"
+          onChange={event => {
+            const file = event.target.files?.[0]
+            if (file === undefined) return
+            if (file.size > 400_000) { onConfigChange({ ...config, src: `too-large:${file.name}` }); return }
+            const reader = new FileReader()
+            reader.onload = () => { if (typeof reader.result === 'string') onConfigChange({ ...config, src: reader.result }) }
+            reader.readAsDataURL(file)
+          }} />
+        <span className="dsh-picture-pick-button">{t('picture.choose')}</span>
+      </label>
+      {config.src.startsWith('too-large:') && <p className="dsh-personal-hint">{t('picture.tooLarge')}</p>}
+    </div>
+    <div className="dsh-item-field dsh-item-check">
+      <input id={`${id}-bleed`} type="checkbox" checked={config.bleed === true}
+        onChange={event => onConfigChange({ ...config, bleed: event.target.checked })} />
+      <label className="dsh-item-label" htmlFor={`${id}-bleed`}>{t('picture.bleed')}</label>
+    </div>
     <label className="dsh-item-field" htmlFor={`${id}-fit`}>
       <span className="dsh-item-label">{t('picture.fit')}</span>
       <select id={`${id}-fit`} value={config.fit} onChange={event => onConfigChange({ ...config, fit: event.target.value === 'contain' ? 'contain' : 'cover' })}>
@@ -66,7 +89,7 @@ function PictureBody({ config, t, fallback }: { config: PictureConfig; t: Transl
       {source.kind === 'local' && <span className="dsh-picture-path">{config.src}</span>}
     </div>
   }
-  return <figure className="dsh-picture">
+  return <figure className={config.bleed === true ? 'dsh-picture dsh-picture-bleed' : 'dsh-picture'}>
     <img src={source.url} alt={config.title === '' ? t('picture.alt') : config.title}
       style={{ objectFit: config.fit }} loading="lazy" decoding="async" onError={() => setFailed(source.url)} />
     {config.title !== '' && <figcaption className="dsh-picture-caption text-caption-1-medium">{config.title}</figcaption>}

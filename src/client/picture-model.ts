@@ -6,9 +6,12 @@
  * @module @vlln/dsh-home/client/picture-model
  */
 
-export type PictureConfig = { src: string; title: string; fit: 'cover' | 'contain' }
+export type PictureConfig = { src: string; title: string; fit: 'cover' | 'contain'; bleed?: boolean }
 
-export const PICTURE_SRC_MAX = 1024
+// A picked file is embedded as a data URL: there is no host call that copies a file into the
+// DSH home, and a bare path from a <input type=file> is not readable. 400 KB keeps the
+// workbench document small; anything larger is meant to be referenced by path.
+export const PICTURE_SRC_MAX = 560_000
 export const PICTURE_TITLE_MAX = 80
 
 export function defaultPictureConfig(): PictureConfig {
@@ -18,10 +21,11 @@ export function defaultPictureConfig(): PictureConfig {
 export function validatePictureConfig(value: unknown): value is PictureConfig {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
   const config = value as Record<string, unknown>
-  return Object.keys(config).every(key => key === 'src' || key === 'title' || key === 'fit')
+  return Object.keys(config).every(key => key === 'src' || key === 'title' || key === 'fit' || key === 'bleed')
     && typeof config.src === 'string' && config.src.length <= PICTURE_SRC_MAX
     && typeof config.title === 'string' && config.title.length <= PICTURE_TITLE_MAX
     && (config.fit === 'cover' || config.fit === 'contain')
+    && (config.bleed === undefined || typeof config.bleed === 'boolean')
 }
 
 /** 宿主的本地图片路由（与 `src/index.mjs` 的 `IMAGE_PATH` 同源）。 */

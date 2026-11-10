@@ -131,7 +131,7 @@ export function registerUsageWidget(registry: HomeWidgetRegistry, t: Translate):
     typeId: '@vlln/dsh-home:usage', apiVersion: 1,
     title: () => t('widget.usage.title'), description: () => t('gallery.description.usage'), source: '@vlln/dsh-home', icon: IconUsage,
     preview: { data: previewData() },
-    sizing: { default: { w: 8, h: 4 }, supported: [{ w: 4, h: 4 }, { w: 8, h: 4 }, { w: 8, h: 6 }] },
+    sizing: { default: { w: 4, h: 6 }, supported: [{ w: 4, h: 6 }, { w: 6, h: 6 }, { w: 4, h: 8 }] },
     configVersion: 1, defaultConfig: defaultUsageConfig, validateConfig: (config): config is UsageConfig => validateUsageConfig(config),
     Content: UsageContent,
   })
