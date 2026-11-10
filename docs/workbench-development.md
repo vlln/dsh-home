@@ -476,3 +476,18 @@ README 收敛成发布版（这一版之前，它的「兼容性」表里堆着 
 （视觉一轮改下来，README 第一屏还是十天前的界面）、新增 [release.md](release.md) 与 CHANGELOG。
 
 门禁：531 项单测、`tsc`、构建、`check:assets`、隔离宿主 16 项（含 zh/en × light/dark 四档与 760px 窄屏）。
+
+## 2026-11-10：演示视频走 GitHub 附件
+
+README 的演示视频不进代码分支（`.gitignore` 里的 `*.mp4`）。源片在验证站的 `.work/dsh-home/demo/1.mp4`
+（1172×880、17.9 s、14.8 MB），压到 1100×826、1.3 MB：
+
+```sh
+ffmpeg -i 1.mp4 -vf "scale=1100:-2:flags=lanczos" -c:v libx264 -crf 27 -preset slow \
+  -pix_fmt yuv420p -movflags +faststart -an demo-1100.mp4
+```
+
+托管方式按 README 写作 skill 的做法：在仓库里建一条固定的 assets issue，用 `gh issue comment --attach`
+上传，取回 `user-attachments` 的 URL 放进 README（裸 URL 独占一行即渲染成播放器，没有 alt，所以视频前后
+各写一句它展示了什么）。附件不在仓库里，重传前先确认源片还在。
+
