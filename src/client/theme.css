@@ -40,7 +40,9 @@
  * components' utilities (a later layer) win over both.
  * ------------------------------------------------------------------------- */
 @layer dsh-reset {
-  .dsh-home :where(button, input, select, textarea) {
+  /* The drag ghost is portalled to <body>, outside .dsh-home, so it did not inherit this
+   reset and its rows rendered with the browser's 2px button border. */
+  :is(.dsh-home, .dsh-library-ghost) :where(button, input, select, textarea) {
     font: inherit;
     color: inherit;
     background-color: transparent;

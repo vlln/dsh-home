@@ -15,7 +15,7 @@ import type { HomeWidgets, RegisteredWidgetDefinition, WidgetContentProps, Widge
 import { widgetText } from './widget-settings.tsx'
 import { validateWidgetConfig } from './widget-registry.ts'
 import { WidgetGallery } from './widget-gallery.tsx'
-import { WidgetContentPreview } from './widget-preview.tsx'
+import { createWidgetPreviewProps } from './widget-registry.ts'
 import { WidgetCardBody, WidgetCardShell } from './widget-card-shell.tsx'
 import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
@@ -277,10 +277,20 @@ export function HomePage(props: HomePageProps): ReactNode {
             onLibraryDrop={(drag,accepted) => {try {if(registry.get(drag.definition.typeId)!==drag.definition||JSON.stringify(store.getSnapshot().layout)!==drag.baseLayout)throw new Error('Widget or layout changed');store.dropInstance(drag.definition,drag.id,accepted,cols)}catch{setManagementError(true)}}}
             libraryGhost={libraryDrag && <WidgetCardShell size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)} editing
               style={{ width: '100%', height: '100%', boxSizing: 'border-box' }}><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
-              <WidgetCardBody><CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetContentPreview definition={libraryDrag.definition} t={t} language={locale()}
-                size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)}
-                width={widgetWidthForColumns(libraryDrag.item.w)}
-                height={libraryDrag.item.h * SPATIAL_ROW_HEIGHT + (libraryDrag.item.h - 1) * SPATIAL_GAP}/></CardBoundary></WidgetCardBody></WidgetCardShell>}>
+              <WidgetCardBody>{(() => {
+                // Exactly the board's content path — WidgetBody inside WidgetCardBody — with
+                // sample props instead of live ones. The ghost used to render through a third
+                // container of its own, which is why its rows had borders and its heat cells
+                // a different size.
+                const size = sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)
+                const widgetProps = createWidgetPreviewProps(libraryDrag.definition, {
+                  size, width: widgetWidthForColumns(libraryDrag.item.w),
+                  height: libraryDrag.item.h * SPATIAL_ROW_HEIGHT + (libraryDrag.item.h - 1) * SPATIAL_GAP,
+                })
+                return <CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}>
+                  <WidgetBody definition={libraryDrag.definition} widgetProps={widgetProps} />
+                </CardBoundary>
+              })()}</WidgetCardBody></WidgetCardShell>}>
           {geometry.map((rect, cardIndex) => {
             const instance = instancesById.get(rect.i)
             if (instance === undefined) return null

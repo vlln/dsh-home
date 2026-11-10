@@ -196,12 +196,15 @@ test('the drag ghost is the card it will become', async () => {
   // Two logics used to size the preview: the ghost had no padding while its content was
   // already sized as if padded, and it took `defaults.size` instead of the size the drop
   // would produce. Both are gone — the ghost takes the real card's geometry and size.
-  const [styles, page] = await Promise.all([read('library-styles.ts'), read('page.tsx')])
-  // The ghost is a real card element, not a look-alike: same classes, same size attribute.
+  const [styles, page] = await Promise.all([read('styles.ts'), read('page.tsx')])
+  // Same shell AND same content path as the board: WidgetCardBody + WidgetBody, with sample
+  // props. A third container of its own is what made the ghost a look-alike.
   assert.match(page, /libraryGhost=\{libraryDrag && <WidgetCardShell/, 'ghost renders the same shell as the board')
-  assert.doesNotMatch(styles, /\.dsh-library-ghost \{[^}]*padding:/s, 'the outer box adds no padding of its own')
+  assert.match(page, /<WidgetBody definition=\{libraryDrag\.definition\}/, 'ghost renders the board body component')
+  assert.doesNotMatch(page, /WidgetContentPreview|data-widget-content-preview/, 'no third content path')
+  assert.match(styles, /\.dsh-library-ghost \{/, 'ghost rules live in the main sheet')
   assert.match(page, /size=\{sizeFromRect\(/, 'ghost takes the size the drop will produce')
-  assert.match(page, /width=\{widgetWidthForColumns\(libraryDrag\.item\.w\)\}/, 'ghost width is a card width')
+  assert.match(page, /width: widgetWidthForColumns\(libraryDrag\.item\.w\)/, 'ghost width is a card width')
   assert.doesNotMatch(page, /cardContentSize\(libraryDrag/, 'no second sizing path')
 })
 

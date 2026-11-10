@@ -22,6 +22,13 @@ import { themeCss } from './ui/generated/theme-css.ts'
 export const STYLE_ID = 'dsh-home-styles'
 
 export const CSS = `
+/* The drag ghost: an outer box that only positions, wrapping a real .dsh-card. This lives in
+   the main sheet because rules written in the library sheet were not reaching the page. */
+.dsh-library-ghost { position:fixed; z-index:1000; pointer-events:none; overflow:hidden; margin:0;
+  border-radius:var(--dsh-card-radius); box-shadow:var(--dsh-shadow-lv3); opacity:.9; }
+.dsh-library-ghost > .dsh-card { width:100%; height:100%; box-sizing:border-box; box-shadow:none; }
+.dsh-library-ghost { box-sizing:border-box; }
+
 .dsh-home {
   /* Fixed-pixel board width (cols*84 + (cols-1)*12); the handles rewrite it directly. */
   --dsh-home-board-width: 1140px;
