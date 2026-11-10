@@ -13,6 +13,7 @@
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "docs",
+    "!docs/preview",
     "examples/widget-counter"
   ],
   "publishConfig": {

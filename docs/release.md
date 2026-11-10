@@ -25,7 +25,7 @@ npm run test:host -- --tarball ../.work/dsh-home/vlln-dsh-home-<version>.tgz
 
 - [ ] `npm pack` 的清单里只有：`lib/`、`cordis.patch.yml`、`icon.svg`、`README.md`、`LICENSE`、`THIRD_PARTY_NOTICES.md`、`docs/`、`examples/widget-counter`。
 - [ ] 没有 `test/`、`scripts/`、`src/`、`.work/`、tarball、截图、`.env`。
-- [ ] `docs/preview/*.png` 是**当前界面**的截图（视觉一改就要重拍，这张图是 README 的第一屏）。
+- [ ] `docs/preview/*.png` 是**当前界面**的截图（视觉一改就要重拍，这张图是 README 的第一屏）。它**不进包**（`files` 里的 `!docs/preview`）：npm 会把 README 里的相对图片改写成 `raw.githubusercontent.com/<repo>/HEAD/...`，所以这两个文件要在仓库里、仓库要先推上去。
 - [ ] `THIRD_PARTY_NOTICES.md` 覆盖 vendored 的 BoardUI 组件；`npm run check:assets` 里的 `prune-vendor --check` 会挡住没用到的 vendored 文件。
 
 ## 3. 安装面（真机，不是隔离站）
