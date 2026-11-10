@@ -12,7 +12,7 @@
  * @module @vlln/dsh-home/client/ui/parts
  */
 
-import type { ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cx } from './lib/cx.ts'
 
 /** 卡片正文：占满剩余高度，纵向排列。 */
@@ -51,6 +51,24 @@ export function CardHero({ value, unit, tone = 'default', className }: {
 /** 主值下面的一行说明：分项、口径、时间范围。 */
 export function CardMeta({ children, className }: { children: ReactNode; className?: string }): ReactNode {
   return <div className={cx('flex flex-wrap items-center gap-x-2 gap-y-0.5 text-caption-1-medium text-text-tertiary', className)}>{children}</div>
+}
+
+/**
+ * 卡内文字动作：刷新、查询、重试。
+ *
+ * 卡片里唯一一个带边框的按钮会把视线从数字上拉走，也让它和正文分成两座孤岛——
+ * 余额卡就曾这样收尾（一个白底描边的「刷新」吊在卡底，中间空了一大块）。
+ * 所以卡内动作做成文字：12/600、次级墨、无底色，悬停才浮出一层表面；
+ * `-mx-2 px-2` 让热区比文字宽一圈，文字本身仍与卡片的内容边对齐。
+ */
+export function CardAction({ children, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>): ReactNode {
+  return <button type="button" className={cx(
+    '-mx-2 inline-flex h-6 flex-none items-center rounded-sm px-2 font-sans text-caption-1-semibold text-text-secondary',
+    'hover:bg-background-primary-hover hover:text-text-primary',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring',
+    'disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent',
+    className,
+  )} {...props}>{children}</button>
 }
 
 /** 卡片脚注：口径说明或次要动作，贴底对齐。 */

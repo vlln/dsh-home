@@ -17,7 +17,10 @@ export const plannerStyles = `
 .dsh-muted b { color:var(--color-text-secondary); font-weight:600; font-variant-numeric:tabular-nums; }
 
 /* 环：conic-gradient 画进度，内圆用底色遮出圆环。 */
-.dsh-ring { --ring-size:132px; position:relative; width:var(--ring-size); height:var(--ring-size); flex:none; display:grid; place-items:center; }
+/* 圆盘跟着空间缩放：原来写死 132×132，在小组件库里那个 154 高的预览框里会顶穿
+   自己的位置，压到下面的"今天 n 轮"和按钮上。和计时器圆盘同一套写法：
+   高度取 min(目标值, 容器高 - 那行说明)。 */
+.dsh-ring { --ring-size:132px; position:relative; flex:none; display:grid; place-items:center; height:min(var(--ring-size), calc(100% - 20px)); aspect-ratio:1; max-width:100%; }
 .dsh-ring-svg { position:absolute; inset:0; width:100%; height:100%; }
 .dsh-ring-track { fill:none; stroke:color-mix(in srgb, var(--color-chart-4) 12%, transparent); stroke-width:14; }
 .dsh-ring-progress { fill:none; stroke:var(--color-chart-4); stroke-width:14; stroke-linecap:round; transition:stroke-dasharray .4s ease; }
@@ -161,8 +164,6 @@ export const plannerStyles = `
 
 /* ---------- 番茄钟 ---------- */
 .dsh-pomodoro { display:flex; flex-direction:column; align-items:center; gap:10px; height:100%; min-height:0; padding-top:2px; }
-.dsh-pomodoro-head { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.dsh-pomodoro-rounds { color:var(--color-text-tertiary); font-size:11px; font-variant-numeric:tabular-nums; }
 .dsh-pomodoro .dsh-timer-actions { justify-content:center; }
 
 /* ---------- 倒计时 ---------- */

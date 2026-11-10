@@ -97,6 +97,33 @@ test('timer cards are self-built but only use measured sizes', async () => {
   assert.doesNotMatch(pomodoro + countdown, /text-\[\d/, 'no raw pixel font sizes')
 })
 
+test('a card with no number shows no number', async () => {
+  // The balance card used to draw a muted `¥ —` at 24px — the largest thing on the card,
+  // carrying nothing — with the actual reason at 12px under it, and the only bordered button
+  // on the board pinned to the bottom edge, a hole in between. Now the reason is the first
+  // line, the action follows the words, and the card hangs its block on the centre line.
+  const [balance, parts] = await Promise.all([read('balance-widget.tsx'), read('ui/parts.tsx')])
+  assert.doesNotMatch(balance, /CardHero value="¥ —"/, 'no placeholder value at metric size')
+  assert.match(balance, /CardEmpty title=\{t\(reasonKey/, 'the reason is the card\'s empty state')
+  assert.match(balance, /justify-center/, 'the block is centred, not pinned top and bottom')
+  assert.match(balance, /CardAction/, 'the in-card action is text, not a bordered control')
+  assert.doesNotMatch(balance, /CardFooter/, 'nothing is pinned to the bottom edge')
+  assert.match(parts, /export function CardAction/, 'the flat text action is a shared part')
+})
+
+test('the pomodoro card does not say the phase twice', async () => {
+  // The phase chip sat in its own header row above the dial, saying what the ring ink and the
+  // caption inside the ring already said. Removing it gives the dial the height back; the round
+  // count moves under the dial it counts, instead of sharing that header row.
+  const [pomodoro, planner] = await Promise.all([read('pomodoro-widget.tsx'), read('planner-styles.ts')])
+  assert.doesNotMatch(pomodoro, /dsh-pomodoro-head|Chip/, 'no phase chip row')
+  assert.match(pomodoro, /dsh-ring[\s\S]*pomodoro\.rounds/, 'the round count sits with the dial')
+  assert.doesNotMatch(pomodoro, /className="dsh-ring-(progress|track)[^"]*stroke-(chart|status)-/, 'the ring ink is the phase, set by the stylesheet')
+  // A fixed 132px dial pushed the caption and the actions out of the 154px gallery preview.
+  assert.match(planner, /\.dsh-ring \{[^}]*height:min\(var\(--ring-size\), calc\(100% - 20px\)\)/s,
+    'the dial shrinks into its box')
+})
+
 test('the dial moves as one picture: one clock, no easing of its own', async () => {
   // The white dot sits on the ring's end, and both come from one fraction: the ring from
   // stroke-dasharray, the dot from cx/cy. With `transition: stroke-dasharray` on the ring

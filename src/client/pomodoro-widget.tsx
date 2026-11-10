@@ -12,7 +12,7 @@ import type { ReactNode } from 'react'
 import { useBuiltin } from './builtin-registration.tsx'
 import { useHomeData, todayKey, useNow } from './home-data.ts'
 import { completedToday, formatClock, pomodoroSnapshot } from './focus-model.ts'
-import { Button, Chip } from './ui/index.ts'
+import { Button } from './ui/index.ts'
 import type { Translate } from './format.ts'
 import type { HomeWidgetRegistry } from './widget-registry.ts'
 import type { WidgetContentProps } from './widget-contract.ts'
@@ -51,23 +51,29 @@ function PomodoroBody({ pomodoro, today, t, readOnly, onStart, onPause, onSkip, 
   const snapshot = pomodoroSnapshot(pomodoro, now)
   const rounds = completedToday(pomodoro, today)
   const progress = snapshot.durationMs === 0 ? 0 : Math.min(1, (snapshot.durationMs - snapshot.remainingMs) / snapshot.durationMs)
-  return <div className="dsh-pomodoro flex h-full min-h-0 flex-col items-center justify-between gap-2" data-phase={snapshot.phase}>
-    <div className="dsh-pomodoro-head flex w-full items-center justify-between gap-2">
-      <Chip variant="caption" color="blue">
-        {snapshot.phase === 'focus' ? t('pomodoro.focus') : t('pomodoro.break')}
-      </Chip>
-      <span className="dsh-pomodoro-rounds text-caption-1-medium text-text-tertiary">{t('pomodoro.rounds', { count: rounds })}</span>
-    </div>
-    <div className="dsh-ring" data-running={running ? 'true' : 'false'}>
-      <svg className="dsh-ring-svg" viewBox="0 0 120 120" aria-hidden="true">
-        <circle className="dsh-ring-track stroke-chart-track" cx="60" cy="60" r="52" />
-        <circle className="dsh-ring-progress stroke-chart-4 transition-[stroke-dasharray] duration-500 ease-out" cx="60" cy="60" r="52" pathLength="1"
-          strokeDasharray={`${Math.max(0.001, progress).toFixed(4)} 1`} transform="rotate(-90 60 60)" />
-      </svg>
-      <div className="dsh-ring-inner flex flex-col items-center gap-0.5">
-        <span className="dsh-ring-value text-title-1-medium tabular-nums text-text-primary" role="timer">{formatClock(snapshot.remainingMs)}</span>
-        <span className="dsh-ring-caption text-caption-1-medium text-text-tertiary">{t(snapshot.phase === 'focus' ? 'pomodoro.focus' : 'pomodoro.break')}</span>
+  // The phase used to be printed three times: a chip in a header row, the ring's ink, and the
+  // caption inside the ring. The chip row was therefore all header and no information, and it
+  // pushed the dial down. What the card did owe the reader was the round count — and that
+  // belongs under the dial it counts, not in a row above it.
+  // The dial takes the free height and centres itself in it, the round count and the actions
+  // sit on the bottom edge — the same arrangement as the timer card beside it.
+  return <div className="dsh-pomodoro flex h-full min-h-0 flex-col items-center gap-2" data-phase={snapshot.phase}>
+    <div className="flex w-full min-h-0 flex-1 flex-col items-center justify-center gap-1">
+      <div className="dsh-ring" data-running={running ? 'true' : 'false'}>
+        <svg className="dsh-ring-svg" viewBox="0 0 120 120" aria-hidden="true">
+          {/* No stroke class here: the ink is the phase (blue focus, lime break) and it is
+              painted by the stylesheet. A `stroke-chart-4` utility would outrank that rule —
+              utilities is a later cascade layer — and the break ring would stay blue. */}
+          <circle className="dsh-ring-track" cx="60" cy="60" r="52" />
+          <circle className="dsh-ring-progress transition-[stroke-dasharray] duration-500 ease-out" cx="60" cy="60" r="52" pathLength="1"
+            strokeDasharray={`${Math.max(0.001, progress).toFixed(4)} 1`} transform="rotate(-90 60 60)" />
+        </svg>
+        <div className="dsh-ring-inner flex flex-col items-center gap-0.5">
+          <span className="dsh-ring-value text-title-1-medium tabular-nums text-text-primary" role="timer">{formatClock(snapshot.remainingMs)}</span>
+          <span className="dsh-ring-caption text-caption-1-medium text-text-tertiary">{t(snapshot.phase === 'focus' ? 'pomodoro.focus' : 'pomodoro.break')}</span>
+        </div>
       </div>
+      <span className="text-caption-1-medium tabular-nums text-text-tertiary">{t('pomodoro.rounds', { count: rounds })}</span>
     </div>
     <div className="dsh-timer-actions flex w-full items-center justify-center gap-1.5">
       <Button variant="primary" size="small" disabled={readOnly} onClick={running ? onPause : onStart}>

@@ -182,6 +182,8 @@ export const zhPlanner = {
   'balance.refresh': '刷新',
   'balance.toppedUp': '充值',
   'balance.granted': '赠送',
+  'balance.hint': '在设置里配置 API key 后刷新',
+  'balance.hint.failed': '没读到余额，稍后再试',
 
 
 
@@ -370,6 +372,8 @@ export const enPlanner: Record<keyof typeof zhPlanner, string> = {
   'balance.refresh': 'Refresh',
   'balance.toppedUp': 'Topped up',
   'balance.granted': 'Granted',
+  'balance.hint': 'Set an API key in settings, then refresh',
+  'balance.hint.failed': 'The balance could not be read; try again',
 
 
 
