@@ -15,7 +15,7 @@ import type { HomeWidgets, RegisteredWidgetDefinition, WidgetContentProps, Widge
 import { widgetText } from './widget-settings.tsx'
 import { validateWidgetConfig } from './widget-registry.ts'
 import { WidgetGallery } from './widget-gallery.tsx'
-import { WidgetContentPreview } from './widget-preview.tsx'
+import { cardContentSize, WidgetContentPreview } from './widget-preview.tsx'
 import { WidgetCardBody, WidgetCardShell } from './widget-card-shell.tsx'
 import { WidgetFrameHeader } from './widget-frame.tsx'
 import { libraryItem, type LibraryDrag } from './library-drag-model.ts'
@@ -279,8 +279,7 @@ export function HomePage(props: HomePageProps): ReactNode {
               style={{ width: '100%', height: '100%', boxSizing: 'border-box' }}><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
               <WidgetCardBody><CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetContentPreview definition={libraryDrag.definition} t={t} language={locale()}
                 size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)}
-                width={widgetWidthForColumns(libraryDrag.item.w)}
-                height={libraryDrag.item.h * SPATIAL_ROW_HEIGHT + (libraryDrag.item.h - 1) * SPATIAL_GAP}/></CardBoundary></WidgetCardBody></WidgetCardShell>}>
+                {...cardContentSize(libraryDrag.item.w, libraryDrag.item.h)}/></CardBoundary></WidgetCardBody></WidgetCardShell>}>
           {geometry.map((rect, cardIndex) => {
             const instance = instancesById.get(rect.i)
             if (instance === undefined) return null

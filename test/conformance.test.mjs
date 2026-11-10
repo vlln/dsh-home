@@ -209,7 +209,7 @@ test('the drag ghost is the card it will become', async () => {
   assert.match(grid, /className="dsh-library-ghost"/, 'the portal box is not a dsh-w')
   assert.doesNotMatch(grid, /className="dsh-library-ghost dsh-w"/, 'no dsh-w on the ghost')
   assert.match(page, /size=\{sizeFromRect\(/, 'ghost takes the size the drop will produce')
-  assert.match(page, /width=\{widgetWidthForColumns\(libraryDrag\.item\.w\)\}/, 'ghost width is a card width')
+  assert.match(page, /cardContentSize\(libraryDrag\.item\.w, libraryDrag\.item\.h\)/, 'preview content is sized to the card body')
   assert.doesNotMatch(page, /cardContentSize\(libraryDrag/, 'no second sizing path')
 })
 
