@@ -19,6 +19,21 @@ import { createWidgetPreviewProps } from './widget-registry.ts'
 export { cardContentSize } from './preview-geometry.ts'
 
 /** The registered Content in an inert box. Used by the drag ghost, which draws its own shell. */
+export function WidgetContentPreview({ definition, t, language = 'en', width, height, size }: {
+  definition: RegisteredWidgetDefinition; t: Translate; language?: string
+  width: number; height: number; size: WidgetSize
+}) {
+  // Geometry changes must not rerun a provider's config factory or reset stateful Content.
+  const sample = useMemo(() => createWidgetPreviewProps(definition, {
+    size: definition.defaults.size, width: 0, height: 0,
+  }), [definition])
+  const Content = definition.Content
+  return <div inert aria-hidden="true" data-widget-content-preview={definition.typeId} style={{ width, height }}>
+    <BuiltinPreviewProvider t={t} data={sample.preview!.data} language={language}>
+      <Content {...sample} size={size} width={width} height={height} />
+    </BuiltinPreviewProvider>
+  </div>
+}
 
 /** The real body at its default card size, scaled to fit the tray column it is measured in.
  * The gallery draws the same `WidgetFrameHeader` the board uses, so the tile *is* a card:

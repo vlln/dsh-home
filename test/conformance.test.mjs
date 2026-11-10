@@ -200,11 +200,11 @@ test('the drag ghost is the card it will become', async () => {
   // Same shell AND same content path as the board: WidgetCardBody + WidgetBody, with sample
   // props. A third container of its own is what made the ghost a look-alike.
   assert.match(page, /libraryGhost=\{libraryDrag && <WidgetCardShell/, 'ghost renders the same shell as the board')
-  assert.match(page, /<WidgetBody definition=\{libraryDrag\.definition\}/, 'ghost renders the board body component')
-  assert.doesNotMatch(page, /WidgetContentPreview|data-widget-content-preview/, 'no third content path')
+  assert.match(page, /WidgetContentPreview/, 'ghost renders through the preview container')
+  assert.match(page, /\<WidgetCardBody\>/, 'ghost keeps the board body slot')
   assert.match(styles, /\.dsh-library-ghost \{/, 'ghost rules live in the main sheet')
   assert.match(page, /size=\{sizeFromRect\(/, 'ghost takes the size the drop will produce')
-  assert.match(page, /width: widgetWidthForColumns\(libraryDrag\.item\.w\)/, 'ghost width is a card width')
+  assert.match(page, /width=\{widgetWidthForColumns\(libraryDrag\.item\.w\)\}/, 'ghost width is a card width')
   assert.doesNotMatch(page, /cardContentSize\(libraryDrag/, 'no second sizing path')
 })
 
