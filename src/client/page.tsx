@@ -25,8 +25,9 @@ import { CanvasWidthHandle } from './canvas-grip.tsx'
 import { boardColumnsFor, boardWidthForColumns, resolveCanvasWidth, widgetWidthForColumns } from './canvas-width.ts'
 import { scatterDebris } from './debris-burst.ts'
 
-/** 已并入「最近活跃」的旧组件：仍照常渲染已有实例，只是不再出现在组件库里。 */
-const RETIRED_FROM_LIBRARY = new Set(['@vlln/dsh-home:today', '@vlln/dsh-home:rhythm'])
+/** 已下线的旧组件类型：仍照常渲染已有实例，只是不再出现在组件库里。
+ *  「今天」不在其中——它是一张在用的卡（24h 轨），不是被并掉的旧类型。 */
+const RETIRED_FROM_LIBRARY = new Set(['@vlln/dsh-home:rhythm'])
 
 export interface HomePageProps {
   t: Translate

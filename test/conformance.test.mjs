@@ -332,3 +332,14 @@ test('the header is a name and its actions, nothing else', async () => {
   assert.match(server, /export const BOARD_TITLE_MAX = 40/)
   assert.match(await read('api.ts'), /export const BOARD_TITLE_MAX = 40/)
 })
+
+test('every card on the board can also be added from the library', async () => {
+  // "Today" was hidden from the gallery as if it had been merged into Recent activity,
+  // while it stayed a live card with its own 24h rail. A card you can see but cannot add
+  // is a card you cannot put back after deleting it.
+  const pageSource = await read('page.tsx')
+  const retired = /const RETIRED_FROM_LIBRARY = new Set\(\[([^\]]*)\]\)/s.exec(pageSource)
+  assert.ok(retired !== null, 'the retired list is readable')
+  assert.doesNotMatch(retired[1], /:today/, 'today is not retired from the library')
+  assert.match(retired[1], /:rhythm/, 'rhythm stays retired')
+})
