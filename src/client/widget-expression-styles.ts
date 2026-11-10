@@ -38,14 +38,14 @@ export const widgetExpressionStyles = `
 .dsh-home-widget .dsh-focus-snippet { -webkit-line-clamp:4; }
 .dsh-home-widget .dsh-focus-actions { margin-top:auto; }
 .dsh-home-widget .dsh-today-timeline { min-width:0; }
-.dsh-home-widget .dsh-today-content[data-roomy="true"] { gap:8px; justify-content:space-between; }
-@container widget (min-width:560px) {
-  .dsh-home-widget .dsh-today-content { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); grid-template-rows:auto auto; gap:6px 24px; align-content:center; }
-  .dsh-today-content .dsh-today-hero { grid-column:1; grid-row:1 / span 2; }
-  .dsh-today-content .dsh-today-timeline { grid-column:2; grid-row:1; align-self:end; }
-  .dsh-home-widget .dsh-today-content .dsh-today-stats { grid-column:2; grid-row:2; align-self:start; }
-  .dsh-today-content .dsh-today-longest { grid-column:1 / -1; }
-}
+.dsh-home-widget .dsh-today-note { font:var(--dsh-font-xxs-12); color:var(--color-text-tertiary); text-align:end; }
+/* One column, full width, in three bands: the number with its second line, the day's
+   rail, then the counts. The rail is the widest thing in the card, so it gets the width;
+   sitting it beside the number left two dead quadrants in a short wide card. */
+.dsh-home-widget .dsh-today-content { justify-content:center; gap:10px; }
+.dsh-home-widget .dsh-today-content[data-roomy="true"] { gap:14px; }
+.dsh-home-widget .dsh-today-hero { align-items:flex-end; }
+.dsh-today-content .dsh-today-longest { text-align:end; }
 @container widget (max-width:280px) {
   .dsh-day-dial { width:48px; }
 }

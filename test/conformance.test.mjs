@@ -298,3 +298,19 @@ test('edge to edge means the whole card, head included', async () => {
   assert.match(await read('styles.ts'), /@layer dsh-reset, dsh-legacy, theme, base, components, utilities;/)
   assert.doesNotMatch(await read('planner-styles.ts'), /\.dsh-card\[data-editing/)
 })
+
+test('the Today card reports the day: one rail, no call to action', async () => {
+  // Three bands down one column instead of a two-column split: the rail is the widest
+  // element in a short wide card, and sitting it beside the number left two dead
+  // quadrants. The shortcut pitch ("press ⌘N to start") and its button are gone —
+  // this card reports today, it does not sell an action.
+  const [widgets, expression, locales] = await Promise.all([
+    read('widgets.tsx'), read('widget-expression-styles.ts'), read('locales.ts'),
+  ])
+  const today = widgets.slice(widgets.indexOf('function TodayBody'), widgets.indexOf('export function sessionTitle'))
+  assert.doesNotMatch(today, /startSession|shortcutHint|<Button/)
+  assert.match(expression, /\.dsh-home-widget \.dsh-today-content \{ justify-content:center; gap:10px; \}/)
+  assert.doesNotMatch(expression, /\.dsh-today-content \{ display:grid/)
+  assert.doesNotMatch(locales, /widget\.empty\.action/)
+  assert.match(locales, /'widget\.today\.empty': '今天还没有记录'/)
+})

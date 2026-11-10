@@ -12,11 +12,11 @@ import { useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { LedgerSession, LedgerSnapshot, WidgetSize } from './api.ts'
 import type { SessionMeta } from './store.ts'
-import { formatDuration, hhmm, shortcutHint, shortDay, type Translate } from './format.ts'
+import { formatDuration, hhmm, shortDay, type Translate } from './format.ts'
 import { RecentBody } from './recent.tsx'
 import { PinnedBody } from './pinned-widget.tsx'
 import { dayCoverage, localDayWindow } from './widget-visual-model.ts'
-import { Button, CardEmpty, cx, Meter, SparkBars } from './ui/index.ts'
+import { cx } from './ui/index.ts'
 import { useVisibleRows } from './fit-rows.ts'
 import { useHoverTip } from './hover-tip.tsx'
 import type { SessionStatusMap } from './session-model.ts'
@@ -89,20 +89,6 @@ function IconRhythm() {
   )
 }
 
-/** 空的友好态（不画灰框，只给一句话 + 可选动作）。 */
-function Empty({ children, action }: { children: ReactNode; action?: ReactNode }) {
-  return <CardEmpty title={children} action={action} />
-}
-
-/** 空态里的主行动（开个新会话）。 */
-function StartAction({ t, actions }: Pick<WidgetProps, 't' | 'actions'>) {
-  return (
-    <Button variant="primary" size="xs" onClick={() => { actions.startSession() }}>
-      {t('widget.empty.action')}
-    </Button>
-  )
-}
-
 /** 会话标题：官方标题 → 目录名 → 短 id。 */
 export function sessionTitle(
   session: Pick<LedgerSession, 'id' | 'cwd'> | undefined,
@@ -126,7 +112,7 @@ function dayMsLabel(start: number, end: number, fraction: number): string {
   return time.endsWith(':00') ? time.slice(0, 2) : time
 }
 
-function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
+function TodayBody({ t, data, sessions, now, height }: WidgetProps) {
   const tip = useHoverTip()
   const { start, end } = localDayWindow(now)
   const dayMs = end - start
@@ -161,7 +147,11 @@ function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
           <span className="dsh-number">{formatDuration(active, t)}</span>
           <span className="dsh-label">{t('widget.today.focused')}</span>
         </div>
-        {hasActivity && <span className="dsh-today-runs text-caption-1-medium text-text-tertiary">{t('widget.today.longest', { dur: formatDuration(longest, t) })}</span>}
+        {/* The second line of the same thought: how quiet the day was, or its longest
+            stretch. It sits on the metric's baseline instead of in a row of its own. */}
+        {empty
+          ? <span className="dsh-today-note">{t('widget.today.empty')}</span>
+          : longest > 0 && <span className="dsh-muted dsh-today-longest">{t('widget.today.longest', { dur: formatDuration(longest, t) })}</span>}
       </div>
       <div className="dsh-today-timeline">
         <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-chart-track"
@@ -182,19 +172,13 @@ function TodayBody({ t, data, sessions, now, actions, height }: WidgetProps) {
           {[0, .25, .5, .75, 1].map(fraction => <span key={fraction}>{dayMsLabel(start, end, fraction)}</span>)}
         </div>
       </div>
-      {empty
-        ? <div className="dsh-today-empty flex flex-wrap items-center gap-2 text-caption-1-medium text-text-tertiary">
-          <span>{t('widget.today.empty', { shortcut: shortcutHint() })}</span>
-          <StartAction t={t} actions={actions} />
-        </div>
-        : <>
-          <div className="dsh-today-stats">
-            <span><strong>{data?.today.sessions ?? 0}</strong><span>{t('widget.today.sessionsLabel')}</span></span>
-            <span><strong>{data?.today.turns ?? 0}</strong><span>{t('widget.today.turnsLabel')}</span></span>
-            <span><strong>{formatDuration(run, t)}</strong><span>{t('widget.today.runLabel')}</span></span>
-          </div>
-          {longest > 0 && <span className="dsh-muted dsh-today-longest">{t('widget.today.longest', { dur: formatDuration(longest, t) })}</span>}
-        </>}
+      {/* No call to action: this card reports the day, it does not sell a shortcut. The
+          counts only appear once there is something to count. */}
+      {!empty && <div className="dsh-today-stats">
+        <span><strong>{data?.today.sessions ?? 0}</strong><span>{t('widget.today.sessionsLabel')}</span></span>
+        <span><strong>{data?.today.turns ?? 0}</strong><span>{t('widget.today.turnsLabel')}</span></span>
+        <span><strong>{formatDuration(run, t)}</strong><span>{t('widget.today.runLabel')}</span></span>
+      </div>}
     </div>
   )
 }

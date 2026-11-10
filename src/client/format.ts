@@ -81,11 +81,6 @@ export function shortDay(key: string): string {
  * 平台快捷键提示：macOS 用 ⌘N，其余 Ctrl+N。
  * @returns 可直接嵌进文案的字符串
  */
-export function shortcutHint(): string {
-  const platform = typeof navigator === 'undefined' ? '' : navigator.platform
-  return /mac/i.test(platform) ? '⌘N' : 'Ctrl+N'
-}
-
 /**
  * 时刻的 `HH:MM`（本地时区，24 小时制）。
  * @param time 时刻
