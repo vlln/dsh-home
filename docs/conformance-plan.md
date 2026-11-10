@@ -81,6 +81,15 @@
 
 槽的尺寸就是**卡片正文的尺寸**：虚线框占满正文区（不是一条 66px 的横带）。
 
+点开「贴边铺满」后，**图片就是整张卡**：标题行、图标、16px 内边距全部让位，显示区域是卡片边框内的
+整块（实测 756×324 的卡里图片 754×322，位于 1,1），圆角由卡片自己裁。编辑布局时标题行必须回来——
+拖拽把手在里面，藏了卡片就动不了。
+
+> 这类「整卡级」规则只能写在 `theme.css` 的 `components` 层。本项目的样式层序是
+> `dsh-reset, dsh-legacy, theme, base, components, utilities`，所有手写组件 CSS 都在 `dsh-legacy`，
+> 位置在最前，**在层序上永远输给 `components`**——无论选择器多具体。写在图片样式旁边那两轮，
+> padding 一直是 16px、标题行一直在，原因就在这里。
+
 选图**不做 data URL**：整份 widget 配置只有 **8 KiB**（`widget-registry.ts` 的 `WIDGET_JSON_LIMITS`），
 图片字节永远进不了配置——把它塞进去，保存时只会得到「配置无效」。所以选中的文件由宿主的
 `POST /api/dsh-home/picture` 落到 `$DSH_HOME/data/dsh-home/pictures/`（按内容嗅探类型、限 8 MB、

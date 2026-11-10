@@ -286,3 +286,15 @@ test('a picked picture never becomes config text', async () => {
   assert.doesNotMatch(settings, /dsh-task-error/)
   assert.match(settings, /className="dsh-modal-error"/)
 })
+
+test('edge to edge means the whole card, head included', async () => {
+  // The switch is not "add padding back": the picture IS the card — title line, icon and
+  // the 16px pad all step aside, and the card's own radius does the clipping.
+  const themeSource = await read('theme.css')
+  assert.match(themeSource, /\.dsh-card\[data-editing="false"\]:has\(\.dsh-picture-bleed\) \{[^}]*padding: 0/s)
+  assert.match(themeSource, /\[data-editing="false"\]:has\(\.dsh-picture-bleed\) > \.dsh-card-head \{\s*display: none/s)
+  // And it cannot live beside the widget: dsh-legacy is declared before components, so a
+  // card rule written there loses regardless of specificity. That cost two rounds.
+  assert.match(await read('styles.ts'), /@layer dsh-reset, dsh-legacy, theme, base, components, utilities;/)
+  assert.doesNotMatch(await read('planner-styles.ts'), /\.dsh-card\[data-editing/)
+})

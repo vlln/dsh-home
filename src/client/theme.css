@@ -352,6 +352,26 @@ body[data-ds-dark-theme] {
     min-width: 0;
   }
 
+  /* A card can be a picture. When its content asks for edge to edge, the card itself
+   * becomes the frame: no padding, no head, the body paints to the rounded edge.
+   * This has to live in `components`, right here: `dsh-legacy` is declared first, so
+   * the same rule written beside the widget is outranked no matter how specific it is —
+   * it silently did nothing for two rounds.
+   * While the board is being arranged the head stays: the drag handle lives in it. */
+  .dsh-card[data-editing="false"]:has(.dsh-picture-bleed) {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .dsh-card[data-editing="false"]:has(.dsh-picture-bleed) > .dsh-card-head {
+    display: none;
+  }
+
+  .dsh-card[data-editing="false"]:has(.dsh-picture-bleed) .dsh-picture-bleed {
+    margin: 0;
+    border-radius: 0;
+  }
+
   .dsh-metric {
     display: flex;
     align-items: baseline;

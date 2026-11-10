@@ -39,6 +39,16 @@
 > 统计卡的例外：`stat-cards` 的主值是 **32/500**，因为那张卡只有"一个数 + 一行说明"。
 > 我们的 `StatGrid` 是卡内的三格小读数，用 `title-2`（20/500）是对的，别照搬 32。
 
+### 1.1 卡片级覆盖只能写在 `components` 层
+
+注入的样式表是 `@layer dsh-reset, dsh-legacy, theme, base, components, utilities;`，
+所有手写组件 CSS 都被包进 `dsh-legacy`（第 2 位），而卡片定义在 `components`（第 5 位）。
+**层序优先于选择器权重**：`dsh-legacy` 里写 `.dsh-card[data-editing="false"]:has(...)` 也依然输给
+`components` 里的 `.dsh-card`。
+
+所以「整卡级」的规则（例如图片贴边铺满时删掉内边距与标题行）写在 `theme.css` 的 `components` 层里，
+紧挨着 `.dsh-card` 本身；组件样式表只负责卡内的几何。
+
 ## 2. 柱状图（`SparkBars`）
 
 量于 2026-11-09，`components/earnings-chart-card` 的 SVG。

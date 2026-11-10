@@ -217,8 +217,8 @@ export const plannerStyles = `
 .dsh-picture img { width:100%; height:100%; display:block; }
 /* 图片卡的所有几何都留在这一个文件里：跨文件写同一选择器时，后加载的整张表说了算，
    .dsh-picture{margin:0} 就曾把 personal-styles 里的贴边规则盖掉，开关打开了却什么也没发生。 */
-/* 贴边时由卡片自己的圆角来裁：图的自圆角只能圆它自己那四个角，卡片外面那 1px 边框处的直角会露出来。 */
-.dsh-card:has(.dsh-picture-bleed) { overflow:hidden; }
+/* 贴边铺满的卡片级规则在 theme.css 的 components 层里：本文件整层是 dsh-legacy，
+   层序上永远输给 components，写在这里等于没写（踩过两次）。 */
 .dsh-picture-bleed { margin:calc(-1 * var(--dsh-card-pad)); border-radius:var(--dsh-card-radius); }
 .dsh-picture-bleed img { width:100%; height:100%; }
 .dsh-picture-hit { display:flex; flex-direction:column; box-sizing:border-box; width:100%; height:100%; padding:0; border:0; border-radius:12px; background:none; cursor:pointer; text-align:inherit; }
