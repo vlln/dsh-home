@@ -197,8 +197,9 @@ test('the drag ghost is the card it will become', async () => {
   // already sized as if padded, and it took `defaults.size` instead of the size the drop
   // would produce. Both are gone — the ghost takes the real card's geometry and size.
   const [styles, page, grid] = await Promise.all([read('styles.ts'), read('page.tsx'), read('spatial-grid.tsx')])
-  // Same shell AND same content path as the board: WidgetCardBody + WidgetBody, with sample
-  // props. A third container of its own is what made the ghost a look-alike.
+  // Same shell as the board, and the preview's width is the card body's width — the card box
+  // is the full card, the content inside it is the body. Passing the card width to the content
+  // made the ghost's content 32px wider than the box it sat in.
   assert.match(page, /libraryGhost=\{libraryDrag && <WidgetCardShell/, 'ghost renders the same shell as the board')
   assert.match(page, /WidgetContentPreview/, 'ghost renders through the preview container')
   assert.match(page, /\<WidgetCardBody\>/, 'ghost keeps the board body slot')
@@ -210,7 +211,6 @@ test('the drag ghost is the card it will become', async () => {
   assert.doesNotMatch(grid, /className="dsh-library-ghost dsh-w"/, 'no dsh-w on the ghost')
   assert.match(page, /size=\{sizeFromRect\(/, 'ghost takes the size the drop will produce')
   assert.match(page, /cardContentSize\(libraryDrag\.item\.w, libraryDrag\.item\.h\)/, 'preview content is sized to the card body')
-  assert.doesNotMatch(page, /cardContentSize\(libraryDrag/, 'no second sizing path')
 })
 
 test('a card is a container, not a target', async () => {
