@@ -1,3 +1,9 @@
 node_modules/
 *.tgz
 .DS_Store
+
+# 本机笔记：不进公开仓库
+AGENTS.local.md
+
+# 演示视频走 GitHub 附件（user-attachments），不进分支
+*.mp4
