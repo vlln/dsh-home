@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { personalClockDisplayParts } from '../src/client/personal-clock-display.ts'
+import { clockFaceParts, personalClockDisplayParts } from '../src/client/personal-clock-display.ts'
 import { defaultClockConfig, formatPersonalClock } from '../src/client/personal-model.ts'
 
 const config = { timeZone: 'America/Los_Angeles' }
@@ -43,4 +43,24 @@ test('empty zone preserves browser default and config stays immutable', () => {
   assert.equal(result.day, date.find(part => part.type === 'day').value)
   assert.equal(result.month, date.find(part => part.type === 'month').value)
   assert.deepEqual(selected, before)
+})
+
+test('the day period is painted after the numerals, whichever way Intl orders it', () => {
+  const now = Date.UTC(2026, 0, 1, 20, 5)
+  const en = personalClockDisplayParts(now, { timeZone: 'UTC', hour12: true }, 'en-US').timeParts
+  const zh = personalClockDisplayParts(now, { timeZone: 'UTC', hour12: true }, 'zh-CN').timeParts
+  // Intl itself puts the period first in zh and last in en.
+  assert.equal(en[0].type, 'hour')
+  assert.equal(zh[0].type, 'dayPeriod')
+  for (const parts of [en, zh]) {
+    const face = clockFaceParts(parts)
+    assert.equal(face[0].type, 'hour', 'the numeral keeps the card edge')
+    assert.equal(face.at(-1).type, 'dayPeriod', 'the period is a trailing unit')
+    const kept = list => list.filter(part => !(part.type === 'literal' && /^\s+$/u.test(part.value)))
+      .map(part => part.value).sort()
+    assert.deepEqual(kept(face), kept(parts), 'only the whitespace before the period is dropped')
+  }
+  // 24h has no period at all, so the face is the parts untouched.
+  const plain = personalClockDisplayParts(now, { timeZone: 'UTC', hour12: false }, 'zh-CN').timeParts
+  assert.deepEqual(clockFaceParts(plain), plain)
 })

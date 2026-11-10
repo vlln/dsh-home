@@ -11,6 +11,7 @@ export const zhPersonal = {
   'widget.clock.description': '时间、日期与一个时区选项；每分钟更新。时区从列表里选，不需要输入。',
   'clock.timeZone': '时区',
   'clock.followBrowser': '跟随浏览器',
+  'clock.toggleFormat': '点击切换 12/24 小时制',
   'clock.dateLocale': 'zh-CN',
 } as const
 
@@ -26,5 +27,6 @@ export const enPersonal: Record<keyof typeof zhPersonal, string> = {
   'widget.clock.description': 'Time, date and one time-zone option, updated every minute. Pick the zone from a list; no typing.',
   'clock.timeZone': 'Time zone',
   'clock.followBrowser': 'Follow browser',
+  'clock.toggleFormat': 'Click to switch 12/24-hour',
   'clock.dateLocale': 'en-US',
 }

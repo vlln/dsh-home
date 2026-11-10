@@ -152,6 +152,10 @@ test('the clock is the one deliberate size above the list, and says so', async (
     'the numeral scales with the card')
   assert.doesNotMatch(personal, /className="dsh-personal-clock-time [^"]*text-/, 'the stylesheet owns the numeral')
   assert.match(plan, /clamp\(34px,16cqi,58px\)/, 'the deviation is recorded in the plan')
+  // The numeral is the 12/24 control: no extra row, no switch. Clicking it stores the cycle.
+  assert.match(personal, /clockHour12\(config, locale\)/, 'the card reads the effective cycle')
+  assert.match(personal, /clock\.toggleFormat/, 'the press is announced, not guessed')
+  assert.doesNotMatch(personal, /<Switch/, 'no switch row on a card this size')
 })
 
 test('notes keeps the three text roles from the list', async () => {

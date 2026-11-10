@@ -6,11 +6,11 @@ import { useBuiltin } from './builtin-registration.tsx'
 import type { Translate } from './format.ts'
 import type { HomeWidgets, WidgetContentProps } from './widget-contract.ts'
 import {
-  CLOCK_ZONES, defaultClockConfig, defaultNotesConfig, formatPersonalClock, migrateClockConfig,
+  CLOCK_ZONES, clockHour12, defaultClockConfig, defaultNotesConfig, formatPersonalClock, migrateClockConfig,
   migrateNotesConfig, startMinuteClock, validateClockConfig, validateNotesConfig,
 } from './personal-model.ts'
 import type { ClockConfig, NotesConfig } from './personal-model.ts'
-import { personalClockDisplayParts } from './personal-clock-display.ts'
+import { clockFaceParts, personalClockDisplayParts } from './personal-clock-display.ts'
 
 export function NotesContent(props: WidgetContentProps<NotesConfig>): ReactNode {
   const { config, preview, editing, saveConfig } = props
@@ -81,22 +81,47 @@ export function ClockContent(props: WidgetContentProps<ClockConfig>): ReactNode 
   const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
   const zones = config.timeZone !== '' && !CLOCK_ZONES.includes(config.timeZone)
     ? [config.timeZone, ...CLOCK_ZONES] : CLOCK_ZONES
-  return <div className="dsh-personal-clock flex h-full min-h-0 flex-col justify-between gap-2">
-    <div className="dsh-personal-clock-display flex items-end justify-between gap-3">
-      <time className="dsh-personal-clock-time text-display-3-semibold tabular-nums text-text-primary" dateTime={new Date(now).toISOString()} aria-label={time}>
-        {timeParts.map((part, index) => <span key={index} data-part={part.type} aria-hidden="true">{part.value}</span>)}
-      </time>
-      <div className="dsh-personal-clock-date flex flex-none flex-col items-center rounded-xl bg-[var(--dsh-sunken)] px-2.5 py-1.5" role="img" aria-label={date} title={date}>
-        <span className="dsh-personal-clock-day text-title-2-medium leading-none tabular-nums text-text-primary" aria-hidden="true">{day}</span>
-        <span className="dsh-personal-clock-month text-caption-1-medium leading-tight text-text-tertiary" aria-hidden="true">{month}</span>
+  // The card's geometry lives in personal-styles.ts: a fluid numeral, the date as a hairline
+  // tile, and the whole stack centred. Utility classes used to sit on top of exactly those
+  // three decisions — `justify-between` pinned the zone row to the bottom edge, `bg-[--dsh-sunken]`
+  // turned the date tile into a grey slab, `text-display-3-semibold` froze the numeral at 40px —
+  // and utilities is the last cascade layer, so the stylesheet never got a say. The classes are
+  // gone; the card is one centred block again, on a numeral that grows with the card.
+  const twelve = clockHour12(config, locale)
+  // The numeral is the button: one press flips 12/24 and the choice is stored on the instance.
+  // A label above a switch would have been a second row on a card that has no room for one.
+  const flip = (): void => {
+    if (saveConfig === undefined) return
+    void saveConfig({ timeZone: config.timeZone, hour12: !twelve })
+  }
+  const face = clockFaceParts(timeParts)
+    .map((part, index) => <span key={index} data-part={part.type} aria-hidden="true">{part.value}</span>)
+  return <div className="dsh-personal-clock" data-hour12={String(twelve)}>
+    <div className="dsh-personal-clock-display">
+      {editable
+        ? <button type="button" className="dsh-personal-clock-time" onClick={flip}
+          title={t('clock.toggleFormat')} aria-label={`${time} · ${t('clock.toggleFormat')}`} aria-pressed={twelve}>
+          {face}
+        </button>
+        : <time className="dsh-personal-clock-time" dateTime={new Date(now).toISOString()} aria-label={time}>{face}</time>}
+      <div className="dsh-personal-clock-date" role="img" aria-label={date} title={date}>
+        <span className="dsh-personal-clock-day" aria-hidden="true">{day}</span>
+        <span className="dsh-personal-clock-month" aria-hidden="true">{month}</span>
       </div>
     </div>
-    <div className="dsh-personal-clock-zone text-caption-1-medium text-text-tertiary">
-      {/* One option, chosen from a list: no typing, no dialog, no editable heading. */}
-      <select className="dsh-quiet-select dsh-clock-zone" aria-label={t('clock.timeZone')}
+    <div className="dsh-personal-clock-zone" data-static={editable ? undefined : 'true'}>
+      {/* A native <select> sizes itself to its longest option, so the caret sat a hundred pixels
+          away from a two-word label and the row read as a stranded form field. The visible text
+          is ours (the chosen option, one line); the select lies invisibly over it and keeps the
+          keyboard, the native list and the accessibility. */}
+      <span className="dsh-clock-zone-label" aria-hidden="true">
+        {config.timeZone === '' ? t('clock.followBrowser') : config.timeZone}
+        <span className="dsh-clock-zone-caret">▾</span>
+      </span>
+      <select className="dsh-clock-zone" aria-label={t('clock.timeZone')}
         title={config.timeZone === '' ? `${t('clock.followBrowser')} · ${browserZone}` : config.timeZone}
         value={config.timeZone} disabled={!editable}
-        onChange={event => { void saveConfig?.({ timeZone: event.target.value }) }}>
+        onChange={event => { void saveConfig?.({ timeZone: event.target.value, hour12: config.hour12 }) }}>
         <option value="">{t('clock.followBrowser')}</option>
         {zones.map(zone => <option key={zone} value={zone}>{zone}</option>)}
       </select>
@@ -116,9 +141,9 @@ export function registerPersonalWidgets(registry: HomeWidgets, t: Translate): ()
       defaultConfig: defaultNotesConfig, validateConfig: validateNotesConfig, migrateConfig: migrateNotesConfig, Content: NotesContent,
     }))
     disposers.push(registry.register<ClockConfig>({
-      typeId: '@vlln/dsh-home:clock', apiVersion: 1, configVersion: 3, source: '@vlln/dsh-home',
+      typeId: '@vlln/dsh-home:clock', apiVersion: 1, configVersion: 4, source: '@vlln/dsh-home',
       title: () => t('widget.clock.title'), description: () => t('widget.clock.description'), icon: IconClockOutlineRegular,
-      preview: { config: () => ({ timeZone: 'UTC' }), data: { now: Date.UTC(2026, 9, 20, 10, 24) } }, sizing: { default: {w:4,h:4}, supported: [{w:4,h:4}] },
+      preview: { config: () => ({ timeZone: 'UTC', hour12: null }), data: { now: Date.UTC(2026, 9, 20, 10, 24) } }, sizing: { default: {w:4,h:4}, supported: [{w:4,h:4}] },
       defaultConfig: defaultClockConfig, validateConfig: validateClockConfig, migrateConfig: migrateClockConfig, Content: ClockContent,
     }))
   } catch (error) { dispose(); throw error }

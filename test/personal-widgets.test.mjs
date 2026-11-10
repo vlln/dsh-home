@@ -3,11 +3,12 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   PERSONAL_CONFIG_MAX_BYTES,
-  defaultClockConfig, defaultNotesConfig, formatPersonalClock, isValidTimeZone,
+  clockHour12, defaultClockConfig, defaultNotesConfig, formatPersonalClock, isValidTimeZone,
   migrateClockConfig, migrateNotesConfig, millisecondsToNextMinute, personalConfigBytes, startMinuteClock,
   validateClockConfig, validateNotesConfig,
 } from '../src/client/personal-model.ts'
 import { enPersonal, zhPersonal } from '../src/client/personal-locales.ts'
+import { personalClockDisplayParts } from '../src/client/personal-clock-display.ts'
 import { HomeWidgetRegistry, validateWidgetConfig } from '../src/client/widget-registry.ts'
 
 const encoder = new TextEncoder()
@@ -55,21 +56,44 @@ test('notes reject wrong schema and accessors; v1 titles migrate into the first 
 test('clock takes exactly one time zone and treats only the empty string as browser zone', () => {
   for (const zone of ['', 'UTC', 'Asia/Shanghai', 'America/Los_Angeles', 'Europe/London', 'Asia/Kathmandu']) {
     assert.equal(isValidTimeZone(zone), true, zone)
-    assert.equal(validateClockConfig({ timeZone: zone }), true)
+    assert.equal(validateClockConfig({ timeZone: zone, hour12: null }), true)
+    assert.equal(validateClockConfig({ timeZone: zone, hour12: true }), true)
   }
   for (const zone of [null, undefined, 0, {}, 'Mars/Olympus', 'Not/A_Zone', ' UTC', 'UTC ', ' ', 'x'.repeat(101)]) {
     assert.equal(isValidTimeZone(zone), false, String(zone))
-    assert.equal(validateClockConfig({ timeZone: zone }), false)
+    assert.equal(validateClockConfig({ timeZone: zone, hour12: null }), false)
   }
-  for (const config of [null, [], {}, { timeZone: '', label: 'stale' },
-    { timeZone: '', hour12: true }, { timeZone: '', seconds: true }, { timeZone: '', extra: 1 }]) {
+  // v4 stores the cycle as a tri-state: null follows the locale, true/false pin it.
+  for (const config of [null, [], {}, { timeZone: '', label: 'stale' }, { timeZone: '' },
+    { timeZone: '', hour12: 'yes' }, { timeZone: '', hour12: 1 }, { timeZone: '', seconds: true }, { timeZone: '', extra: 1 }]) {
     assert.equal(validateClockConfig(config), false)
   }
-  assert.deepEqual(migrateClockConfig({ label: 'x', timeZone: 'Asia/Shanghai', hour12: true }, 2), { timeZone: 'Asia/Shanghai' })
-  assert.deepEqual(migrateClockConfig({ timeZone: '' }, 2), { timeZone: '' })
-  assert.deepEqual(migrateClockConfig({ timeZone: 'Mars/Olympus' }, 2), { timeZone: '' })
-  assert.deepEqual(migrateClockConfig(null, 2), { timeZone: '' })
-  assert.deepEqual(migrateClockConfig({ timeZone: 'UTC' }, 3), { timeZone: 'UTC' })
+  // v2 kept a boolean switch; v3 dropped it. Migration keeps it when it is still there.
+  assert.deepEqual(migrateClockConfig({ label: 'x', timeZone: 'Asia/Shanghai', hour12: true }, 2), { timeZone: 'Asia/Shanghai', hour12: true })
+  assert.deepEqual(migrateClockConfig({ timeZone: '' }, 2), { timeZone: '', hour12: null })
+  assert.deepEqual(migrateClockConfig({ timeZone: 'Mars/Olympus' }, 2), { timeZone: '', hour12: null })
+  assert.deepEqual(migrateClockConfig(null, 2), { timeZone: '', hour12: null })
+  assert.deepEqual(migrateClockConfig({ timeZone: 'UTC' }, 3), { timeZone: 'UTC', hour12: null })
+  assert.deepEqual(migrateClockConfig({ timeZone: 'UTC', hour12: false }, 4), { timeZone: 'UTC', hour12: false })
+})
+
+test('one config drives both formats, and null keeps the locale\'s own cycle', () => {
+  const now = Date.UTC(2026, 0, 1, 20, 5)
+  const base = { timeZone: 'UTC', hour12: null }
+  // zh-CN counts by 24 by default, en-US by 12; null means "whatever the reader's locale does".
+  assert.equal(clockHour12(base, 'zh-CN'), false)
+  assert.equal(clockHour12(base, 'en-US'), true)
+  assert.equal(clockHour12({ ...base, hour12: true }, 'zh-CN'), true)
+  assert.equal(clockHour12({ ...base, hour12: false }, 'en-US'), false)
+  const pinned24 = formatPersonalClock(now, { ...base, hour12: false }, 'en-US').time
+  const pinned12 = formatPersonalClock(now, { ...base, hour12: true }, 'en-US').time
+  assert.match(pinned12, /PM/u)
+  assert.doesNotMatch(pinned24, /AM|PM/u)
+  // The card paints parts, not the formatted string: the day period exists only in 12h.
+  const parts12 = personalClockDisplayParts(now, { ...base, hour12: true }, 'en-US').timeParts
+  const parts24 = personalClockDisplayParts(now, { ...base, hour12: false }, 'en-US').timeParts
+  assert.ok(parts12.some(part => part.type === 'dayPeriod'))
+  assert.ok(!parts24.some(part => part.type === 'dayPeriod'))
 })
 
 test('clock formats minute-only time and localized date in the selected zone across midnight', () => {
