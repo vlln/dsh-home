@@ -275,7 +275,8 @@ export function HomePage(props: HomePageProps): ReactNode {
             deleteZone={deleteZoneRef} onDeleteRequest={requestDelete}
             libraryDrag={libraryDrag} onLibraryEnd={() => setLibraryDrag(null)}
             onLibraryDrop={(drag,accepted) => {try {if(registry.get(drag.definition.typeId)!==drag.definition||JSON.stringify(store.getSnapshot().layout)!==drag.baseLayout)throw new Error('Widget or layout changed');store.dropInstance(drag.definition,drag.id,accepted,cols)}catch{setManagementError(true)}}}
-            libraryGhost={libraryDrag && <WidgetCardShell size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)} editing><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
+            libraryGhost={libraryDrag && <WidgetCardShell size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)} editing
+              style={{ width: '100%', height: '100%', boxSizing: 'border-box' }}><WidgetFrameHeader title={widgetText(libraryDrag.definition.title,libraryDrag.definition.typeId)} t={t} editing/>
               <WidgetCardBody><CardBoundary fallback={<div className="dsh-empty">{t('error.card')}</div>}><WidgetContentPreview definition={libraryDrag.definition} t={t} language={locale()}
                 size={sizeFromRect({ w: libraryDrag.item.w, h: libraryDrag.item.h } as SpatialItem, cols)}
                 width={widgetWidthForColumns(libraryDrag.item.w)}

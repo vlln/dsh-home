@@ -21,7 +21,9 @@ export const libraryStyles=`
   position:fixed; z-index:1000; pointer-events:none; overflow:hidden; margin:0; box-sizing:border-box;
   border-radius:var(--dsh-card-radius); box-shadow:var(--dsh-shadow-lv3); opacity:.9;
 }
-.dsh-library-ghost > .dsh-card { height:100%; box-shadow:none; }
+/* The card must fill the box the drag sized, with border-box: content-box let the padding
+   grow outside the box, so the ghost was 32px narrower than the card it previewed. */
+.dsh-library-ghost > .dsh-card { width:100%; height:100%; box-sizing:border-box; box-shadow:none; }
 .dsh-library-ghost[data-inside="false"] { opacity:.55; }
 .dsh-library-outline {position:fixed;z-index:70;pointer-events:none;border:2px solid var(--color-chart-4);border-radius:var(--dsh-radius-xl);background:color-mix(in srgb, var(--color-chart-4) 12%, transparent);opacity:.4;box-sizing:border-box}
 .dsh-library-outline[data-pending="true"]{border-style:dashed;background:transparent}

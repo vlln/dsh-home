@@ -6,6 +6,8 @@ import { insideDropZone } from './drop-zone.ts'
 import { createPortal } from 'react-dom'
 import type { LibraryDrag } from './library-drag-model.ts'
 import { libraryPointerInside } from './library-drag-model.ts'
+import { widgetWidthForColumns } from './canvas-width.ts'
+import { SPATIAL_GAP, SPATIAL_ROW_HEIGHT } from './spatial-model.ts'
 import GridLayout, { setTransform, type Layout as EngineLayout, type LayoutItem, type Position } from 'react-grid-layout'
 import { snapCandidate } from './collision-preview.ts'
 import { multiPreviewPlacement, placementAxis } from './multi-preview.ts'
@@ -400,7 +402,11 @@ export function SpatialGrid({ width, cols, layout, editing, onCommit, onActive, 
     const drag = libraryRef.current, session = gesture.current, p = pointer.current, grid = root.current?.getBoundingClientRect()
     if (!drag || !session || !p || !grid) return
     const inside = libraryPointerInside(p, grid) && !document.elementFromPoint(p.x,p.y)?.closest('.dsh-library-panel')
-    const w = (width + 12) / cols * drag.item.w - 12, h = drag.item.h * 56 - 12
+    // Same numbers the card itself will have: a card's width depends only on its column
+    // span, so the ghost must not derive it from the viewport. Two formulas here is what
+    // made the ghost wider than the card it previewed.
+    const w = widgetWidthForColumns(drag.item.w)
+    const h = drag.item.h * SPATIAL_ROW_HEIGHT + (drag.item.h - 1) * SPATIAL_GAP
     setLibraryVisual({ x:p.x-drag.grab.x, y:p.y-drag.grab.y, w,h,inside })
     if (!inside) {
       clearHover(); session.intent=null; session.pending=true; session.rejected=false
