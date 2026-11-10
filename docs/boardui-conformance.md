@@ -123,6 +123,30 @@
 
 > 这条是量出来的巧合：先按 16/4 写的，量完发现正好对上。巧合也要记，否则下次改就没人知道它对过。
 
+## 3.9 宿主弹窗里的表单（配置对话框）
+
+配置对话框渲染在宿主的 `Modal` 里（portal 到 `body`，不在 `.dsh-home` 之内），所以卡片规则一条也用不上。
+规格只能来自宿主自己的 settings-form（`packages/client/ui-primitives settings-form/fields.module.css`，
+量于 2026-11-09）：
+
+| 属性 | 宿主 settings-form | 我们的 `.dsh-modal-*` |
+|---|---|---|
+| 标签 | **13px / 500 / 1.5**，`label-primary` | `--dsh-font-xs-strong-13` + `text-primary` ✅ |
+| 控件高度 | **34px**（`height: 34px`） | 34 ✅ |
+| 控件文字 | **13px / 1.5** | `--dsh-font-xs-13` ✅ |
+| 控件描边 | 0.5px `border-l4`，圆角 `radius-md` | 0.5px hairline + `--dsh-radius-md` ✅（宿主 token 换成本板的；`check:assets` 禁止 `--dsw-*`） |
+| 控件底色 | `bg-layer-3` | `--dsh-sunken` ✅ |
+| 行距 | `padding: 12px 0`，行间 0.5px 分隔线 | 同 ✅ |
+| 提示 / 错误 | 12px，tertiary / error | `--dsh-font-xxs-12` ✅ |
+| 底部动作 | 右对齐，gap 8，host Button | host `Button`（`outline` / `primary`）✅ |
+
+**这一段是补的洞**：在改用宿主规格之前，同一个对话框里同时存在 10、12、13、14、16px 五种字号，
+标签是 10px 灰、输入框 26px、开关文字因为 `font: var(--dsh-font-s-medium-14)` 变量根本不存在而落到 16px。
+"不统一"不是审美问题，是没有规格。
+
+> 规则：**在宿主的容器里，只用宿主的尺**。要么用宿主的组件（`Button` / `SegmentedControl` / `Switch`），
+> 要么照宿主量出来的数字写自己的类（`.dsh-modal-*`），不要顺手拿卡片的 `.dsh-item-*`。
+
 ## 4. 我们的卡片 → BoardUI 的同类
 
 | 我们的卡 | BoardUI 里最接近 | 状态 |

@@ -9,6 +9,7 @@
 
 import { useId } from 'react'
 import type { ReactNode } from 'react'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useBuiltin } from './builtin-registration.tsx'
 import { useNow } from './home-data.ts'
 import { countdownLeft, nextTarget, parseDayKey } from './focus-model.ts'
@@ -66,26 +67,34 @@ function CountdownSettings({ config, onConfigChange }: WidgetSettingsProps<Count
   const { t } = useBuiltin()
   const id = useId()
   const update = (targets: CountdownTarget[]): void => onConfigChange({ targets: targets.slice(0, MAX_TARGETS) })
-  return <div className="dsh-personal-settings">
-    {config.targets.map((target, index) => <div key={target.id} className="dsh-countdown-row">
-      <label className="dsh-item-field" htmlFor={`${id}-title-${index}`}>
-        <span className="dsh-item-label">{t('countdown.title')}</span>
-        <input id={`${id}-title-${index}`} type="text" maxLength={MAX_TITLE} value={target.title}
-          onChange={event => update(config.targets.map(entry => entry.id === target.id ? { ...entry, title: event.target.value } : entry))} />
-      </label>
-      <label className="dsh-item-field" htmlFor={`${id}-date-${index}`}>
-        <span className="dsh-item-label">{t('countdown.date')}</span>
-        <input id={`${id}-date-${index}`} type="date" value={target.date}
-          onChange={event => update(config.targets.map(entry => entry.id === target.id ? { ...entry, date: event.target.value } : entry))} />
-      </label>
-      <button type="button" className="dsh-item-button" aria-label={t('countdown.remove')}
-        onClick={() => update(config.targets.filter(entry => entry.id !== target.id))}>×</button>
+  return <div className="dsh-modal-form">
+    {config.targets.map((target, index) => <div key={target.id} className="dsh-modal-field">
+      <div className="dsh-modal-grid">
+        {/* The first row carries the column labels; the rest keep the same grid so the
+            inputs stay aligned without repeating a label per row. */}
+        <label className="dsh-modal-subfield" htmlFor={`${id}-title-${index}`}>
+          {index === 0 && <span className="dsh-modal-label">{t('countdown.title')}</span>}
+          <input className="dsh-modal-input" id={`${id}-title-${index}`} type="text" maxLength={MAX_TITLE} value={target.title}
+            aria-label={index === 0 ? undefined : t('countdown.title')}
+            onChange={event => update(config.targets.map(entry => entry.id === target.id ? { ...entry, title: event.target.value } : entry))} />
+        </label>
+        <label className="dsh-modal-subfield" htmlFor={`${id}-date-${index}`}>
+          {index === 0 && <span className="dsh-modal-label">{t('countdown.date')}</span>}
+          <input className="dsh-modal-input" id={`${id}-date-${index}`} type="date" value={target.date}
+            aria-label={index === 0 ? undefined : t('countdown.date')}
+            onChange={event => update(config.targets.map(entry => entry.id === target.id ? { ...entry, date: event.target.value } : entry))} />
+        </label>
+        <Button variant="ghost" size="md" aria-label={t('countdown.remove')} title={t('countdown.remove')}
+          onClick={() => update(config.targets.filter(entry => entry.id !== target.id))}>×</Button>
+      </div>
     </div>)}
-    <button type="button" className="dsh-item-button" disabled={config.targets.length >= MAX_TARGETS}
-      onClick={() => update([...config.targets, { id: createId(Date.now()), title: '', date: new Date().toISOString().slice(0, 10) }])}>
-      + {t('countdown.add')}
-    </button>
-    <p className="dsh-personal-hint">{t('countdown.hint', { max: MAX_TARGETS })}</p>
+    <div className="dsh-modal-actions">
+      <Button variant="outline" size="sm" disabled={config.targets.length >= MAX_TARGETS}
+        onClick={() => update([...config.targets, { id: createId(Date.now()), title: '', date: new Date().toISOString().slice(0, 10) }])}>
+        + {t('countdown.add')}
+      </Button>
+      <p className="dsh-modal-hint">{t('countdown.hint', { max: MAX_TARGETS })}</p>
+    </div>
   </div>
 }
 

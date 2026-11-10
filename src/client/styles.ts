@@ -369,8 +369,53 @@ export const CSS = `
 .dsh-workbench-notice > span { overflow-wrap: anywhere; }
 .dsh-widget-own-editor { display: flex; justify-content: flex-end; margin-top: 8px; }
 .dsh-widget-config-modal .dsh-widget-settings { margin: 0; padding: 0; border: 0; }
+.dsh-widget-config-modal .dsh-settings-fields { margin: 0; }
 .dsh-widget-settings { margin-top: 16px; padding-top: 4px; border-top: 0.5px solid var(--dsh-hairline); }
 .dsh-settings-fields { margin: 12px 0; min-width: 0; }
+/* ---- A form inside a Host Modal: the Host's settings-form measurements.
+   Portalled out of .dsh-home, so it inherits no card rule and must not invent its
+   own scale: 13/500 labels, 34px controls, 12px rows split by a hairline, 12px
+   hints. Sizes measured from the Host's settings-form/fields.module.css
+   (2026-11-09); colours and radii are this board's tokens. ---- */
+.dsh-modal-form { display: flex; flex-direction: column; }
+.dsh-modal-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 12px 0; }
+.dsh-modal-field:first-child { padding-top: 0; }
+.dsh-modal-field:last-child { padding-bottom: 0; }
+.dsh-modal-field + .dsh-modal-field { border-top: 0.5px solid var(--dsh-hairline); }
+.dsh-modal-field[data-row="true"] { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+.dsh-modal-label { min-width: 0; font: var(--dsh-font-xs-strong-13); color: var(--color-text-primary); }
+.dsh-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.dsh-modal-input {
+  box-sizing: border-box;
+  width: 100%; min-width: 0; height: 34px; padding: 0 12px;
+  border: 0.5px solid var(--dsh-hairline);
+  border-radius: var(--dsh-radius-md);
+  background: var(--dsh-sunken);
+  font: var(--dsh-font-xs-13);
+  color: var(--color-text-primary);
+}
+.dsh-modal-input::placeholder { color: var(--color-text-tertiary); }
+.dsh-modal-input:focus-visible { outline: none; border-color: var(--color-chart-4); }
+.dsh-modal-textarea {
+  box-sizing: border-box;
+  width: 100%; min-width: 0; padding: 8px 12px;
+  border: 0.5px solid var(--dsh-hairline);
+  border-radius: var(--dsh-radius-md);
+  background: var(--dsh-sunken);
+  font: var(--dsh-font-xs-13);
+  color: var(--color-text-primary);
+  resize: vertical;
+}
+.dsh-modal-textarea::placeholder { color: var(--color-text-tertiary); }
+.dsh-modal-textarea:focus-visible { outline: none; border-color: var(--color-chart-4); }
+/* Two labelled controls and a row action on one line, bottoms aligned so the
+   inputs share a baseline whatever the labels above them say. */
+.dsh-modal-grid { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 8px; align-items: end; min-width: 0; }
+.dsh-modal-subfield { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dsh-modal-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 12px; }
+.dsh-modal-actions .dsh-modal-hint { flex: 1 1 auto; min-width: 0; }
+.dsh-modal-hint { margin: 0; font: var(--dsh-font-xxs-12); color: var(--color-text-tertiary); }
+.dsh-modal-error { margin: 0; font: var(--dsh-font-xxs-12); color: var(--color-text-error-primary); }
 /* Fill only the content flex box, excluding the shell header and padding. The
    observer reports this available viewport, independent of overflowing children. */
 .dsh-widget-viewport { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; overflow: hidden; }

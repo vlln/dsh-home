@@ -32,13 +32,13 @@ function validateQuoteConfig(value: unknown): value is QuoteConfig {
 function QuoteSettings({ config, onConfigChange }: WidgetSettingsProps<QuoteConfig>): ReactNode {
   const { t } = useBuiltin()
   const id = useId()
-  return <div className="dsh-personal-settings">
-    <label className="dsh-item-field" htmlFor={`${id}-lines`}>
-      <span className="dsh-item-label">{t('quote.lines')}</span>
-      <textarea id={`${id}-lines`} rows={8} value={config.lines.join('\n')} placeholder={t('quote.placeholder')}
+  return <div className="dsh-modal-form">
+    <div className="dsh-modal-field">
+      <label className="dsh-modal-label" htmlFor={`${id}-lines`}>{t('quote.lines')}</label>
+      <textarea className="dsh-modal-textarea" id={`${id}-lines`} rows={8} value={config.lines.join('\n')} placeholder={t('quote.placeholder')}
         onChange={event => onConfigChange({ lines: event.target.value.split('\n').slice(0, MAX_LINES).map(line => line.slice(0, MAX_LINE)) })} />
-    </label>
-    <p className="dsh-personal-hint">{t('quote.hint', { max: MAX_LINES })}</p>
+      <p className="dsh-modal-hint">{t('quote.hint', { max: MAX_LINES })}</p>
+    </div>
   </div>
 }
 

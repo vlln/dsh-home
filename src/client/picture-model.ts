@@ -35,6 +35,7 @@ export type PictureSource =
   | { kind: 'none' }
   | { kind: 'remote'; url: string }
   | { kind: 'local'; url: string }
+  | { kind: 'embedded'; url: string }
 
 /**
  * 把配置里的来源翻译成可渲染的 URL。
@@ -45,6 +46,9 @@ export function pictureSource(src: string): PictureSource {
   const value = src.trim()
   if (value === '') return { kind: 'none' }
   if (/^https?:\/\//iu.test(value)) return { kind: 'remote', url: value }
+  // A picked file is embedded as a data URL (see PICTURE_SRC_MAX); it is the one
+  // scheme a user can produce from inside the dialog, so it must survive here.
+  if (/^data:image\/[a-z+]+(;[a-z\d=.-]+)*,/iu.test(value)) return { kind: 'embedded', url: value }
   if (/^[a-z][a-z\d+.-]*:/iu.test(value)) return { kind: 'none' }
   if (!value.startsWith('/') && !value.startsWith('~/')) return { kind: 'none' }
   return { kind: 'local', url: `${IMAGE_PATH}?path=${encodeURIComponent(value)}` }

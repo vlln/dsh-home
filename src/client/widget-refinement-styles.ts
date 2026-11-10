@@ -15,6 +15,11 @@ export const widgetRefinementStyles = `
 .dsh-home .dsh-home-widget-content { scroll-padding-block:4px; }
 .dsh-home-widget .dsh-widget-own-editor { flex-shrink:0; padding-inline:2px; padding-bottom:2px; }
 .dsh-home-widget .dsh-widget-own-editor > button { flex-shrink:0; }
+/* A card whose whole body is the affordance (picture) puts the trigger where the
+   content is, not on a footer chip: the file picker's trigger has to own the
+   leftover height and add no padding of its own. */
+.dsh-home-widget .dsh-widget-own-editor[data-fill="true"] { flex:1 1 auto; min-height:0; margin-top:0; padding:0; align-items:stretch; }
+.dsh-home-widget .dsh-widget-own-editor[data-fill="true"] > button { flex:1 1 auto; min-height:0; }
 
 /* A quiet outer surface, not a stack of decorated nested cards. Content owns
    its responsive structure; the shell must retain overflow as a safety net. */

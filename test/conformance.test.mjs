@@ -237,3 +237,38 @@ test('every primitive we implement is recorded in the conformance doc', () => {
   }
   assert.match(doc, /优先采用/, 'the doc states: prefer BoardUI\'s implementation')
 })
+
+test('a dialog form speaks the Host settings grammar, one scale for every field', async () => {
+  // Measured from the Host's settings-form (fields.module.css, 2026-11-09): 13/500
+  // labels in label-primary, 34px controls, 12px hints, 12px rows split by a hairline.
+  // A config dialog earlier carried four type sizes at once (10 label / 12 input /
+  // 13 segmented / 16 stray span) — that is what "字体、按钮都不统一" meant.
+  const styles = await read('styles.ts')
+  assert.match(styles, /\.dsh-modal-label \{[^}]*font: var\(--dsh-font-xs-strong-13\)/s)
+  assert.match(styles, /\.dsh-modal-input \{[^}]*height: 34px/s)
+  assert.match(styles, /\.dsh-modal-hint \{[^}]*font: var\(--dsh-font-xxs-12\)/s)
+  const dialogs = ['picture-widget.tsx', 'countdown-widget.tsx', 'quote-widget.tsx']
+  for (const name of dialogs) {
+    const source = await read(name)
+    assert.match(source, /className="dsh-modal-form"/, `${name} renders a host-grammar form`)
+    // The 10px label belongs to the compact in-card item editor, never to a dialog.
+    assert.doesNotMatch(source, /dsh-item-label|dsh-item-button|dsh-personal-settings/, `${name} uses no in-card form class`)
+  }
+})
+
+test('the picture card body is the trigger, and it fills the card', async () => {
+  // The card is the affordance: no separate options button, and the empty slot has to
+  // own the leftover height instead of collapsing into a 66px band.
+  const [widget, settings, refine] = await Promise.all([
+    read('picture-widget.tsx'), read('widget-settings.tsx'), read('widget-refinement-styles.ts'),
+  ])
+  assert.match(widget, /renderTrigger=\{open => <PictureBody/)
+  assert.match(widget, /className="dsh-picture-hit"/)
+  assert.match(settings, /data-fill=\{renderTrigger === undefined \? undefined : 'true'\}/)
+  assert.match(refine, /\[data-fill="true"\] \{[^}]*flex:1 1 auto/s)
+  // One sheet owns the picture: cross-sheet, `.dsh-picture{margin:0}` silently beat the
+  // bleed rule and the toggle did nothing for two rounds.
+  const [personal, planner] = await Promise.all([read('personal-styles.ts'), read('planner-styles.ts')])
+  assert.doesNotMatch(personal, /\.dsh-picture-/)
+  assert.match(planner, /\.dsh-picture-bleed \{ margin:calc\(-1 \* var\(--dsh-card-pad\)\)/)
+})

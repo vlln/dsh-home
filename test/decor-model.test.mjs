@@ -28,6 +28,11 @@ test('picture sources: remote direct, local via the host route, everything else 
   assert.deepEqual(pictureSource('relative/a.png'), { kind: 'none' })
   assert.deepEqual(pictureSource('file:///etc/passwd'), { kind: 'none' })
   assert.deepEqual(pictureSource('javascript:alert(1)'), { kind: 'none' })
+  // A file picked in the dialog arrives as a data URL; dropping it here left the card
+  // showing "No picture chosen" after a successful pick.
+  assert.deepEqual(pictureSource('data:image/png;base64,iVBORw0KGgo='), { kind: 'embedded', url: 'data:image/png;base64,iVBORw0KGgo=' })
+  assert.deepEqual(pictureSource('data:image/svg+xml;utf8,%3Csvg%3E'), { kind: 'embedded', url: 'data:image/svg+xml;utf8,%3Csvg%3E' })
+  assert.deepEqual(pictureSource('data:text/html,<b>x</b>'), { kind: 'none' })
 })
 
 test('picture config is strict', () => {

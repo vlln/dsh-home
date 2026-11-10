@@ -64,7 +64,7 @@ export function WidgetConfigEditor<C extends JsonValue>({ t, widgetProps, title,
 }): ReactNode {
   const [open, setOpen] = useState(false)
   if (widgetProps.editing || widgetProps.preview) return null
-  return <div className="dsh-widget-own-editor">
+  return <div className="dsh-widget-own-editor" data-fill={renderTrigger === undefined ? undefined : 'true'}>
     {renderTrigger === undefined
       ? <Button variant="ghost" size="sm" disabled={!widgetProps.saveConfig} onClick={() => setOpen(true)}>{label}</Button>
       : renderTrigger(() => setOpen(true))}

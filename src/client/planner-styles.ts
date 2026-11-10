@@ -215,9 +215,20 @@ export const plannerStyles = `
 /* ---------- 图片 / 一句话 ---------- */
 .dsh-picture { position:relative; flex:1 1 auto; min-height:0; margin:0; border-radius:12px; overflow:hidden; background:var(--dsh-sunken); }
 .dsh-picture img { width:100%; height:100%; display:block; }
+/* 图片卡的所有几何都留在这一个文件里：跨文件写同一选择器时，后加载的整张表说了算，
+   .dsh-picture{margin:0} 就曾把 personal-styles 里的贴边规则盖掉，开关打开了却什么也没发生。 */
+/* 贴边时由卡片自己的圆角来裁：图的自圆角只能圆它自己那四个角，卡片外面那 1px 边框处的直角会露出来。 */
+.dsh-card:has(.dsh-picture-bleed) { overflow:hidden; }
+.dsh-picture-bleed { margin:calc(-1 * var(--dsh-card-pad)); border-radius:var(--dsh-card-radius); }
+.dsh-picture-bleed img { width:100%; height:100%; }
+.dsh-picture-hit { display:flex; flex-direction:column; box-sizing:border-box; width:100%; height:100%; padding:0; border:0; border-radius:12px; background:none; cursor:pointer; text-align:inherit; }
+.dsh-picture-hit:focus-visible { outline:var(--dsh-focus-ring-width,2px) solid var(--dsh-focus-ring-color,var(--color-chart-4)); outline-offset:2px; }
+/* 虚线框就是点击区，所以它要像可点区域那样回应指针。 */
+.dsh-picture-hit:hover .dsh-picture-empty { border-color:var(--dsh-card-line); background:var(--dsh-hover); }
+.dsh-picture-pick { display:inline-flex; flex:none; }
 .dsh-picture-caption { position:absolute; inset-inline:0; bottom:0; padding:6px 10px; color:var(--color-text-white); font-size:11px; line-height:16px; font-weight:600; background:color-mix(in srgb, var(--color-neutral-950) 55%, transparent); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.dsh-picture-empty { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; border:.5px dashed var(--dsh-hairline); border-radius:12px; color:var(--color-text-tertiary); font-size:11px; text-align:center; padding:10px; }
-.dsh-picture-empty-glyph { color:var(--color-text-tertiary); font-size:22px; line-height:1; }
+.dsh-picture-empty { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; border:.5px dashed var(--dsh-hairline); border-radius:12px; color:var(--color-text-tertiary); font-size:12px; line-height:16px; text-align:center; padding:10px; }
+.dsh-picture-empty-glyph { color:var(--color-text-tertiary); font-size:24px; line-height:1; }
 .dsh-picture-path { max-width:100%; color:var(--color-text-tertiary); font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:start; }
 .dsh-quote { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:6px; justify-content:center; padding:2px 4px; }
 .dsh-quote-mark { color:var(--color-chart-4); font-size:34px; line-height:.8; font-weight:600; }
