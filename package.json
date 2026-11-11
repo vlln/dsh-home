@@ -42,8 +42,8 @@
     "@deepseek-ai/cordis": "^4.0.1"
   },
   "engines": {
-    "node": ">=22.19.0",
-    "dsh": ">=0.2.0"
+    "node": ">=24.9.0",
+    "dsh": ">=0.2.2-rc.1 <0.3.0-0"
   },
   "scripts": {
     "build": "npm run build:css && npm run check:assets && tsdown --config ./tsdown.config.ts && tsc -p tsconfig.widgets.json",
