@@ -102,6 +102,61 @@ test('a platform that is not configured is a reason, not a spend of zero', async
   }
 })
 
+/** Mount with settings/credentials services so the credential path is exercised. */
+function mountWith(hostModule, services) {
+  const routes = new Map()
+  const connection = {
+    fetch: {
+      register(spec) {
+        routes.set(spec.path, spec.fetch)
+        return () => {}
+      },
+    },
+  }
+  const lookup = name =>
+    name === 'connection' ? connection : services[name] ?? (name === 'webServer' ? { register: () => () => {} } : undefined)
+  const scoped = {
+    get: lookup,
+    effect: fn => { fn() },
+  }
+  const ctx = {
+    inject(names, register) {
+      if (names.includes('connection')) register(scoped)
+    },
+    get: lookup,
+    effect(fn) { fn() },
+  }
+  hostModule.apply(ctx)
+  return routes.get(hostModule.BALANCE_PATH)
+}
+
+test('the credential referenced by the describe() row wins over the launch environment', async () => {
+  const route = mountWith(await host('credential'), {
+    settings: { describe: () => [{ ns: 'llm-deepseek', value: { apiKeyEnv: 'DEEPSEEK_API_KEY' } }] },
+    credentials: { resolve: async ref => (ref === 'DEEPSEEK_API_KEY' ? { value: 'sk-from-credential' } : undefined) },
+  })
+  const realKey = process.env.DEEPSEEK_API_KEY
+  process.env.DEEPSEEK_API_KEY = 'sk-from-environment'
+  const realFetch = globalThis.fetch
+  let authorization
+  globalThis.fetch = async (_url, init) => {
+    authorization = init?.headers?.authorization
+    return new Response(JSON.stringify({
+      is_available: true,
+      balance_infos: [{ currency: 'CNY', total_balance: '42.00', granted_balance: '0.00', topped_up_balance: '42.00' }],
+    }), { status: 200, headers: { 'content-type': 'application/json' } })
+  }
+  try {
+    const body = await (await route()).json()
+    assert.equal(body.available, true, 'the balance reads with the credential')
+    assert.equal(authorization, 'Bearer sk-from-credential')
+  } finally {
+    globalThis.fetch = realFetch
+    if (realKey === undefined) delete process.env.DEEPSEEK_API_KEY
+    else process.env.DEEPSEEK_API_KEY = realKey
+  }
+})
+
 process.on('exit', () => {
   if (previousHome === undefined) delete process.env.DSH_HOME
   else process.env.DSH_HOME = previousHome

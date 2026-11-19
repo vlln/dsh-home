@@ -26,6 +26,7 @@ import path from 'node:path'
 import { isSameOrigin } from './trust.mjs'
 import { buildActivity, validateActivityQuery } from './activity.mjs'
 import { appendRead, spentToday } from './balance-history.mjs'
+import { platformKeyRefs } from './balance-key.mjs'
 import { applyFocusOp, emptyFocus } from './focus.mjs'
 import { buildSnapshot, foldSession, FOLD_VERSION } from './ledger.mjs'
 import { applyPlannerOp, emptyPlanner } from './planner.mjs'
@@ -573,7 +574,8 @@ function withSpentToday(value) {
 }
 
 /**
- * 解析 DeepSeek 平台的 API key：先找设置里声明的 `apiKeyEnv` 引用，再退到环境变量。
+ * 解析 DeepSeek 平台的 API key：先按设置里声明的 `apiKeyEnv` 引用问凭据服务
+ * （Settings → Models 存的 key 走这条），再退到环境变量。
  * @param ctx 插件上下文
  * @returns key 或 null
  */
@@ -581,13 +583,12 @@ async function resolvePlatformKey(ctx) {
   try {
     const settings = ctx.get('settings')
     const credentials = ctx.get('credentials')
-    const rows = typeof settings?.describe === 'function' ? settings.describe() : []
-    for (const row of Array.isArray(rows) ? rows : []) {
-      const ref = row?.apiKeyEnv
-      if (typeof ref !== 'string' || ref === '') continue
-      if (typeof credentials?.resolve !== 'function') continue
-      const resolved = await credentials.resolve(ref)
-      if (typeof resolved?.value === 'string' && resolved.value !== '') return resolved.value
+    if (typeof credentials?.resolve === 'function') {
+      const rows = typeof settings?.describe === 'function' ? settings.describe() : []
+      for (const ref of platformKeyRefs(rows)) {
+        const resolved = await credentials.resolve(ref)
+        if (typeof resolved?.value === 'string' && resolved.value !== '') return resolved.value
+      }
     }
   } catch {
     // 设置或凭据服务不可用：走环境变量兜底。
